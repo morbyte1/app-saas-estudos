@@ -598,138 +598,14 @@ export default function CalendarioPage() {
                   className="flex-1 px-4 py-2 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition"
                 >
                   Salvar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-          </>
-        )}
-
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-3xl p-6 w-full max-w-md">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-slate-900">
-                  {editingEventId ? 'Editar Estudo' : 'Novo Estudo'}
-                </h3>
-                <button onClick={closeModal} className="p-2 hover:bg-slate-100 rounded-lg">
-                  <X className="w-5 h-5 text-slate-600" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Nome do Estudo
-                  </label>
-                  <input
-                    type="text"
-                    value={modalData.title}
-                    onChange={(e) => setModalData({ ...modalData, title: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="Ex: Estudo Matemática"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Horário de Início
-                  </label>
-                  <input
-                    type="time"
-                    value={modalData.time}
-                    onChange={(e) => setModalData({ ...modalData, time: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Duração em Minutos
-                  </label>
-                  <input
-                    type="number"
-                    value={modalData.duration}
-                    onChange={(e) => setModalData({ ...modalData, duration: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="Ex: 90"
-                  />
-                  {modalData.duration && (
-                    <p className="text-purple-600 text-sm mt-1">
-                      Equivale a {formatDuration(parseInt(modalData.duration))}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Matéria/Tag
-                  </label>
-                  <select
-                    value={modalData.subjectId}
-                    onChange={(e) => {
-                      setShowNewSubject(e.target.value === 'new')
-                      setModalData({ ...modalData, subjectId: e.target.value })
-                    }}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    {subjects.map(subject => (
-                      <option key={subject.id} value={subject.id}>
-                        {subject.name}
-                      </option>
-                    ))}
-                    {!editingEventId && <option value="new">Criar Nova Matéria</option>}
-                  </select>
-                </div>
-
-                {showNewSubject && (
-                  <div className="space-y-3 bg-slate-50 p-4 rounded-xl">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Nome da Nova Matéria
-                      </label>
-                      <input
-                        type="text"
-                        value={modalData.newSubjectName}
-                        onChange={(e) => setModalData({ ...modalData, newSubjectName: e.target.value })}
-                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        placeholder="Ex: Biologia"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Cor
-                      </label>
-                      <input
-                        type="color"
-                        value={modalData.newSubjectColor}
-                        onChange={(e) => setModalData({ ...modalData, newSubjectColor: e.target.value })}
-                        className="w-12 h-10 p-0.5 border-0 rounded-md cursor-pointer"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={closeModal}
-                  className="flex-1 px-4 py-2 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={saveEvent}
-                  className="flex-1 px-4 py-2 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition"
-                >
-                  Salvar
-                </button>
+</button>
               </div>
             </div>
           </div>
         )}
+        </>
+      )}
       </div>
     </div>
-  )
+  );
 }
