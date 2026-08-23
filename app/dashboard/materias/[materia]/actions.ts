@@ -8,13 +8,11 @@ export async function getMateriaByName(name: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
 
-  const decodedName = decodeURIComponent(name)
-
   const { data, error } = await supabase
     .from('materias')
     .select('*')
     .eq('user_id', user.id)
-    .ilike('name', decodedName)
+    .ilike('name', name) // Procura a matéria exata de forma case-insensitive
     .single()
 
   if (error) return { error: error.message }
