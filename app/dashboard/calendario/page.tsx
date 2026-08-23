@@ -699,14 +699,14 @@ export default function CalendarioPage() {
                       ) : (
                         <div className="space-y-3 bg-purple-50 border border-purple-100 p-4 rounded-xl">
                           <div className="flex justify-between items-center">
-                            <h4 className="text-sm font-bold text-purple-900">Criar Nova Tag</h4>
+                            <h4 className="text-sm font-bold text-purple-900">Criação de tags</h4>
                             <button type="button" onClick={() => setShowNewSubject(false)} className="text-slate-400 hover:text-slate-600">
                               <X className="w-4 h-4" />
                             </button>
                           </div>
                           <div>
                             <label className="block text-xs font-medium text-slate-700 mb-1">
-                              Nome da nova tag
+                              Nome
                             </label>
                             <input
                               type="text"
