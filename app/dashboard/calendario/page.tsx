@@ -161,23 +161,41 @@ export default function CalendarioPage() {
   const handleSaveSubject = async () => {
     if (!modalData.newSubjectName) return
     setIsSavingSubject(true)
-    const result = await createSubject({
-      name: modalData.newSubjectName,
-      color: modalData.newSubjectColor
-    })
     
-    if (result.success && result.subject) {
-      setSubjects([...subjects, result.subject])
-      setModalData({ 
-        ...modalData, 
-        subjectId: result.subject.id, 
-        newSubjectName: '' 
+    try {
+      const result = await createSubject({
+        name: modalData.newSubjectName,
+        color: modalData.newSubjectColor
       })
-      setShowNewSubject(false)
-    } else {
-      console.error('Error creating subject:', result.error)
+      
+      if (result.success) {
+        // Busca os dados atualizados direto do banco para garantir consistência total
+        const dataResult = await getCalendarData()
+        
+        if (!dataResult.error) {
+          setSubjects(dataResult.subjects || [])
+          
+          // Encontra a tag recém-criada na lista atualizada
+          const createdSubject = result.subject || dataResult.subjects?.find((s: Subject) => s.name === modalData.newSubjectName)
+          
+          setModalData(prev => ({ 
+            ...prev, 
+            subjectId: createdSubject ? createdSubject.id : (dataResult.subjects?.[0]?.id || ''), 
+            newSubjectName: '',
+            newSubjectColor: '#8b5cf6'
+          }))
+        }
+        setShowNewSubject(false)
+      } else {
+        console.error('Error creating subject:', result.error)
+        alert('Não foi possível criar a matéria/tag. Detalhe do erro: ' + result.error)
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err)
+      alert('Erro inesperado ao tentar salvar.')
+    } finally {
+      setIsSavingSubject(false)
     }
-    setIsSavingSubject(false)
   }
 
   const saveEvent = async () => {

@@ -186,15 +186,14 @@ export async function createSubject(data: {
     return { error: 'User not authenticated', subject: null }
   }
 
-  const { data: subject, error } = await supabase
+  // Realizamos o insert de forma isolada para não dar conflito com regras RLS (Row Level Security)
+  const { error } = await supabase
     .from('subjects')
     .insert({
       user_id: user.id,
       name: data.name,
       color: data.color,
     })
-    .select()
-    .single()
 
   if (error) {
     console.error('Error creating subject:', error.message)
@@ -202,7 +201,17 @@ export async function createSubject(data: {
   }
 
   revalidatePath('/dashboard/calendario')
-  return { success: true, subject }
+  
+  // Buscamos a matéria recém-criada para retornar o ID correto
+  const { data: newSubject } = await supabase
+    .from('subjects')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('name', data.name)
+    .order('id', { ascending: false })
+    .limit(1)
+
+  return { success: true, subject: newSubject?.[0] || null }
 }
 
 export async function duplicateEvents(
@@ -222,7 +231,6 @@ export async function duplicateEvents(
     return { error: 'User not authenticated' }
   }
 
-  // Busca os eventos originais que o usuário escolheu duplicar
   const { data: sourceEvents, error: fetchError } = await supabase
     .from('schedule_events')
     .select('*')
@@ -234,11 +242,8 @@ export async function duplicateEvents(
     return { error: fetchError?.message }
   }
 
-  // Usa T12:00:00 para evitar que o fuso horário mude o dia acidentalmente
   const sourceDate = new Date(sourceDateStr + 'T12:00:00')
   const eventsToInsert = []
-  
-  // Se "Manter nas próximas semanas" estiver on, repetimos por 4 semanas, senão apenas 1 semana
   const weeksToRepeat = repeatFuture ? 4 : 1 
 
   for (let i = 1; i <= weeksToRepeat; i++) {
@@ -254,7 +259,7 @@ export async function duplicateEvents(
         duration: event.duration,
         subject_id: event.subject_id,
         event_date: targetDateString,
-        is_done: false, // O novo evento duplicado sempre nasce como "não concluído"
+        is_done: false,
       })
     }
   }
