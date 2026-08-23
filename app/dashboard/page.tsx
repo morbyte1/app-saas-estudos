@@ -1,9 +1,96 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Calendar, Clock, Target, TrendingUp, Plus, Medal, Flame, CheckCircle, PlayCircle } from 'lucide-react'
+import { Calendar, Clock, Target, TrendingUp, Plus, Medal, Flame } from 'lucide-react'
+import { getCalendarData } from './calendario/actions'
+
+interface Event {
+  id: string
+  title: string
+  time: string
+  duration: number
+  subject_id: string
+  is_done: boolean
+  event_date: string
+}
+
+interface Subject {
+  id: string
+  name: string
+  color: string
+}
 
 export default function DashboardPage() {
+  const [events, setEvents] = useState<Event[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true)
+      const result = await getCalendarData()
+      if (!result.error) {
+        setEvents(result.events || [])
+        setSubjects(result.subjects || [])
+      }
+      setIsLoading(false)
+    }
+    fetchData()
+  }, [])
+
+  // Pega a data de hoje para filtrar os estudos do dia atual
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  const dateString = `${year}-${month}-${day}`
+
+  // Filtra eventos de hoje e ordena por horário
+  const todaysEvents = events
+    .filter(e => e.event_date && e.event_date.startsWith(dateString))
+    .sort((a, b) => a.time.localeCompare(b.time))
+
+  // Lógica para determinar status da tarefa ("Feito", "Próxima", "Depois")
+  let foundNext = false
+  const eventsWithStatus = todaysEvents.map(event => {
+    let status = ''
+    if (event.is_done) {
+      status = 'Feito'
+    } else if (!foundNext) {
+      status = 'Próxima'
+      foundNext = true
+    } else {
+      status = 'Depois'
+    }
+    return { ...event, status }
+  })
+
+  // Funções utilitárias herdadas para formatar duração e cores da barra lateral de estudos
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    if (hours === 0) return `${mins}min`
+    if (mins === 0) return `${hours}h`
+    return `${hours}h ${mins}min`
+  }
+
+  const getSubjectColorStyle = (color: string) => {
+    if (color && color.startsWith('#')) return { backgroundColor: color }
+    return {}
+  }
+
+  const getSubjectColorClass = (color: string) => {
+    const colors: Record<string, string> = {
+      purple: 'bg-purple-500',
+      blue: 'bg-blue-500',
+      green: 'bg-green-500',
+      orange: 'bg-orange-500',
+      red: 'bg-red-500'
+    }
+    if (color && color.startsWith('#')) return ''
+    return colors[color || 'purple'] || colors.purple
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-8">
@@ -129,47 +216,55 @@ export default function DashboardPage() {
             </div>
 
             <div className="bg-white border border-slate-200 rounded-3xl p-6 mt-8 shadow-sm">
-              <h2 className="text-lg font-bold text-slate-900 mb-6">Cronograma de Hoje</h2>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-lg font-bold text-slate-900">Cronograma de Hoje</h2>
+                <Link href="/dashboard/calendario" className="text-sm text-purple-600 font-medium hover:text-purple-700 transition">
+                  Ir ao calendário →
+                </Link>
+              </div>
               <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 flex flex-col">
-                    <span className="text-slate-900 font-bold">09:00</span>
-                    <span className="text-slate-400 text-xs">45min</span>
+                {isLoading ? (
+                  <div className="text-center text-slate-500 py-6 text-sm font-medium">
+                    Carregando cronograma...
                   </div>
-                  <div className="w-1 h-10 rounded-full bg-emerald-500 mx-4"></div>
-                  <div className="flex-1 text-sm font-semibold text-slate-700">Revisão de Fórmulas Matemáticas</div>
-                  <CheckCircle className="w-5 h-5 text-emerald-500" />
-                </div>
+                ) : eventsWithStatus.length === 0 ? (
+                  <div className="text-center text-slate-500 py-6 text-sm font-medium">
+                    Nenhum estudo planejado para hoje no calendário.
+                  </div>
+                ) : (
+                  eventsWithStatus.map((event) => {
+                    const subject = subjects.find(s => s.id === event.subject_id)
+                    const colorClass = getSubjectColorClass(subject?.color || 'purple')
+                    const colorStyle = getSubjectColorStyle(subject?.color || '')
 
-                <div className="flex items-center gap-4">
-                  <div className="w-16 flex flex-col">
-                    <span className="text-slate-900 font-bold">10:00</span>
-                    <span className="text-slate-400 text-xs">1h</span>
-                  </div>
-                  <div className="w-1 h-10 rounded-full bg-emerald-500 mx-4"></div>
-                  <div className="flex-1 text-sm font-semibold text-slate-700">Exercícios de Física</div>
-                  <CheckCircle className="w-5 h-5 text-emerald-500" />
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="w-16 flex flex-col">
-                    <span className="text-slate-900 font-bold">14:00</span>
-                    <span className="text-slate-400 text-xs">1h</span>
-                  </div>
-                  <div className="w-1 h-10 rounded-full bg-purple-500 mx-4"></div>
-                  <div className="flex-1 text-sm font-semibold text-slate-700">Estudo de Química</div>
-                  <PlayCircle className="w-5 h-5 text-purple-500" />
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="w-16 flex flex-col">
-                    <span className="text-slate-900 font-bold">16:00</span>
-                    <span className="text-slate-400 text-xs">45min</span>
-                  </div>
-                  <div className="w-1 h-10 rounded-full bg-purple-500 mx-4"></div>
-                  <div className="flex-1 text-sm font-semibold text-slate-700">Revisão Geral</div>
-                  <PlayCircle className="w-5 h-5 text-purple-500" />
-                </div>
+                    return (
+                      <div key={event.id} className="flex items-center gap-4">
+                        <div className="w-16 flex flex-col">
+                          <span className="text-slate-900 font-bold">{event.time}</span>
+                          <span className="text-slate-400 text-xs">{formatDuration(event.duration)}</span>
+                        </div>
+                        <div 
+                          className={`w-1 h-10 rounded-full mx-4 ${colorClass}`}
+                          style={colorStyle}
+                        ></div>
+                        <div className={`flex-1 text-sm font-semibold ${event.is_done ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
+                          {event.title}
+                        </div>
+                        <div>
+                          {event.status === 'Feito' && (
+                            <span className="bg-emerald-100 text-emerald-700 text-[10px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wide">Feito</span>
+                          )}
+                          {event.status === 'Próxima' && (
+                            <span className="bg-purple-100 text-purple-700 text-[10px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wide">Próxima</span>
+                          )}
+                          {event.status === 'Depois' && (
+                            <span className="bg-slate-100 text-slate-500 text-[10px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wide">Depois</span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
               </div>
             </div>
           </div>
