@@ -116,24 +116,17 @@ export default function CalendarioPage() {
            date.getFullYear() === selectedDate.getFullYear()
   }
 
-  const hasEvents = (date: Date) => {
+  const getEventsForDate = (date: Date) => {
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
     const dateString = `${year}-${month}-${day}`
     
-    // CORREÇÃO: Usando startsWith para evitar falhas com formatações ISO Timestamp do Supabase
-    return events.some(event => event.event_date && event.event_date.startsWith(dateString))
+    return events.filter(event => event.event_date && event.event_date.startsWith(dateString))
   }
 
   const getEventsForSelectedDate = () => {
-    const year = selectedDate.getFullYear()
-    const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
-    const day = String(selectedDate.getDate()).padStart(2, '0')
-    const dateString = `${year}-${month}-${day}`
-    
-    // CORREÇÃO: Usando startsWith no filtro
-    return events.filter(event => event.event_date && event.event_date.startsWith(dateString))
+    return getEventsForDate(selectedDate)
   }
 
   const toggleEventDone = async (eventId: string) => {
@@ -207,7 +200,6 @@ export default function CalendarioPage() {
   }
 
   const saveEvent = async () => {
-    // Corrige problema de fuso horário garantindo que usemos a data exata selecionada no Brasil
     const year = selectedDate.getFullYear()
     const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
     const day = String(selectedDate.getDate()).padStart(2, '0')
@@ -215,7 +207,6 @@ export default function CalendarioPage() {
     
     const finalSubjectId = modalData.subjectId
 
-    // Validações Rígidas para evitar erros silenciosos
     if (!modalData.title.trim() || !modalData.time || !modalData.duration) {
       alert("Por favor, preencha o nome, horário e a duração do estudo.")
       return
@@ -242,11 +233,9 @@ export default function CalendarioPage() {
       })
       
       if (result.success) {
-        // OTIMIZAÇÃO: Atualiza o estado usando o objeto fresco retornado do banco
         if (result.event) {
           setEvents(events.map(event => event.id === editingEventId ? result.event : event))
         } else {
-          // Fallback
           const dataResult = await getCalendarData()
           if (!dataResult.error) {
             setEvents(dataResult.events || [])
@@ -266,11 +255,9 @@ export default function CalendarioPage() {
       })
       
       if (result.success) {
-        // OTIMIZAÇÃO: Injeta no estado localmente para refletir na UI imediatamente
         if (result.event) {
           setEvents([...events, result.event])
         } else {
-          // Fallback
           const dataResult = await getCalendarData()
           if (!dataResult.error) {
             setEvents(dataResult.events || [])
@@ -309,7 +296,6 @@ export default function CalendarioPage() {
     }
   }
 
-  // Funções de Duplicação
   const openDuplicateModal = () => {
     const dayEvents = getEventsForSelectedDate()
     setSelectedEventsToDuplicate(dayEvents.map(e => e.id))
@@ -364,6 +350,22 @@ export default function CalendarioPage() {
 
     if (color && color.startsWith('#')) {
       return { backgroundColor: color + '20', color: color }
+    }
+
+    return colors[color || 'purple'] || colors.purple
+  }
+
+  const getSubjectDotColorClass = (color: string) => {
+    const colors: Record<string, string> = {
+      purple: 'bg-purple-400',
+      blue: 'bg-blue-400',
+      green: 'bg-green-400',
+      orange: 'bg-orange-400',
+      red: 'bg-red-400'
+    }
+
+    if (color && color.startsWith('#')) {
+      return '' // Retorna vazio para usar inline style
     }
 
     return colors[color || 'purple'] || colors.purple
@@ -438,22 +440,34 @@ export default function CalendarioPage() {
 
                     const today = isToday(date)
                     const selected = isSelected(date)
-                    const eventsOnDay = hasEvents(date)
+                    const dayEvents = getEventsForDate(date)
+                    const displayEvents = dayEvents.slice(0, 3) // Limita a 3 bolinhas
 
                     return (
                       <button
                         key={index}
                         onClick={() => selectDate(date)}
-                        className={`h-10 w-10 flex flex-col items-center justify-center rounded-xl transition-all hover:bg-slate-100 cursor-pointer mx-auto ${
-                          selected ? 'bg-purple-600 text-white shadow-md' : ''
+                        className={`h-10 w-10 flex flex-col items-center justify-center rounded-xl transition-all cursor-pointer mx-auto ${
+                          selected 
+                            ? 'bg-purple-600 text-white shadow-md hover:bg-purple-700' 
+                            : 'hover:bg-slate-100'
                         } ${today && !selected ? 'text-purple-600 font-bold' : ''}`}
                       >
                         <span className="text-sm">{date.getDate()}</span>
-                        {eventsOnDay && (
+                        {displayEvents.length > 0 && (
                           <div className="flex gap-1 mt-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                            <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                            {displayEvents.map((event, idx) => {
+                              const subject = subjects.find(s => s.id === event.subject_id)
+                              const isHex = subject?.color?.startsWith('#')
+                              
+                              return (
+                                <div 
+                                  key={idx}
+                                  className={`w-1.5 h-1.5 rounded-full ${isHex ? '' : getSubjectDotColorClass(subject?.color || 'purple')}`}
+                                  style={isHex ? { backgroundColor: subject!.color } : {}}
+                                />
+                              )
+                            })}
                           </div>
                         )}
                       </button>
