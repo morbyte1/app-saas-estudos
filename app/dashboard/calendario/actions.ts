@@ -61,7 +61,8 @@ export async function createEvent(data: {
     return { error: 'User not authenticated' }
   }
 
-  const { error } = await supabase.from('schedule_events').insert({
+  // OTIMIZAÇÃO: Usamos .select().single() para retornar os dados recém-inseridos
+  const { data: newEvent, error } = await supabase.from('schedule_events').insert({
     user_id: user.id,
     title: data.title,
     time: data.time,
@@ -69,7 +70,7 @@ export async function createEvent(data: {
     subject_id: data.subject_id,
     event_date: data.event_date,
     is_done: false,
-  })
+  }).select().single()
 
   if (error) {
     console.error('Error creating event:', error.message)
@@ -77,7 +78,7 @@ export async function createEvent(data: {
   }
 
   revalidatePath('/dashboard/calendario')
-  return { success: true }
+  return { success: true, event: newEvent }
 }
 
 export async function updateEvent(id: string, data: {
@@ -99,11 +100,14 @@ export async function updateEvent(id: string, data: {
     return { error: 'User not authenticated' }
   }
 
-  const { error } = await supabase
+  // OTIMIZAÇÃO: Usamos .select().single()
+  const { data: updatedEvent, error } = await supabase
     .from('schedule_events')
     .update(data)
     .eq('id', id)
     .eq('user_id', user.id)
+    .select()
+    .single()
 
   if (error) {
     console.error('Error updating event:', error.message)
@@ -111,7 +115,7 @@ export async function updateEvent(id: string, data: {
   }
 
   revalidatePath('/dashboard/calendario')
-  return { success: true }
+  return { success: true, event: updatedEvent }
 }
 
 export async function deleteEvent(id: string) {

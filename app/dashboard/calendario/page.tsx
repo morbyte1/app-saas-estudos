@@ -122,7 +122,8 @@ export default function CalendarioPage() {
     const day = String(date.getDate()).padStart(2, '0')
     const dateString = `${year}-${month}-${day}`
     
-    return events.some(event => event.event_date === dateString)
+    // CORREÇÃO: Usando startsWith para evitar falhas com formatações ISO Timestamp do Supabase
+    return events.some(event => event.event_date && event.event_date.startsWith(dateString))
   }
 
   const getEventsForSelectedDate = () => {
@@ -131,7 +132,8 @@ export default function CalendarioPage() {
     const day = String(selectedDate.getDate()).padStart(2, '0')
     const dateString = `${year}-${month}-${day}`
     
-    return events.filter(event => event.event_date === dateString)
+    // CORREÇÃO: Usando startsWith no filtro
+    return events.filter(event => event.event_date && event.event_date.startsWith(dateString))
   }
 
   const toggleEventDone = async (eventId: string) => {
@@ -240,18 +242,16 @@ export default function CalendarioPage() {
       })
       
       if (result.success) {
-        setEvents(events.map(event =>
-          event.id === editingEventId
-            ? {
-                ...event,
-                title: modalData.title,
-                time: modalData.time,
-                duration: parsedDuration,
-                subject_id: finalSubjectId,
-                event_date: eventDate
-              }
-            : event
-        ))
+        // OTIMIZAÇÃO: Atualiza o estado usando o objeto fresco retornado do banco
+        if (result.event) {
+          setEvents(events.map(event => event.id === editingEventId ? result.event : event))
+        } else {
+          // Fallback
+          const dataResult = await getCalendarData()
+          if (!dataResult.error) {
+            setEvents(dataResult.events || [])
+          }
+        }
         closeModal()
       } else {
         alert("Erro ao atualizar o estudo: " + result.error)
@@ -266,9 +266,15 @@ export default function CalendarioPage() {
       })
       
       if (result.success) {
-        const dataResult = await getCalendarData()
-        if (!dataResult.error) {
-          setEvents(dataResult.events || [])
+        // OTIMIZAÇÃO: Injeta no estado localmente para refletir na UI imediatamente
+        if (result.event) {
+          setEvents([...events, result.event])
+        } else {
+          // Fallback
+          const dataResult = await getCalendarData()
+          if (!dataResult.error) {
+            setEvents(dataResult.events || [])
+          }
         }
         closeModal()
       } else {
