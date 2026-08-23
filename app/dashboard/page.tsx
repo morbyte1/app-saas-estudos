@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Calendar, Clock, Target, TrendingUp, Plus, Medal, Flame } from 'lucide-react'
-import { getCalendarData } from './calendario/actions'
+import { Calendar, Clock, Target, TrendingUp, Plus, Medal, Flame, Check, X, Edit2, Trash2 } from 'lucide-react'
+import { getCalendarData, createSubject } from './calendario/actions'
+import { getTasks, createTask, updateTask, deleteTask, toggleTaskStatus } from './actions'
 
 interface Event {
   id: string
@@ -21,19 +22,56 @@ interface Subject {
   color: string
 }
 
+interface Task {
+  id: string
+  title: string
+  subject_id: string
+  priority: 'baixa' | 'normal' | 'alta'
+  is_done: boolean
+}
+
 export default function DashboardPage() {
   const [events, setEvents] = useState<Event[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
   const [isLoading, setIsLoading] = useState(true)
+
+  // Estados do Modal de Tarefas
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [taskModalData, setTaskModalData] = useState<{
+    title: string;
+    subjectId: string;
+    priority: 'baixa' | 'normal' | 'alta';
+  }>({
+    title: '',
+    subjectId: '',
+    priority: 'normal'
+  })
+
+  // Estados para nova Tag (Subject) no modal de Tarefas
+  const [showNewSubject, setShowNewSubject] = useState(false)
+  const [newSubjectName, setNewSubjectName] = useState('')
+  const [newSubjectColor, setNewSubjectColor] = useState('#8b5cf6')
+  const [isSavingSubject, setIsSavingSubject] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true)
-      const result = await getCalendarData()
-      if (!result.error) {
-        setEvents(result.events || [])
-        setSubjects(result.subjects || [])
+      
+      // Busca dados do calendário (e subjects)
+      const calendarResult = await getCalendarData()
+      if (!calendarResult.error) {
+        setEvents(calendarResult.events || [])
+        setSubjects(calendarResult.subjects || [])
       }
+
+      // Busca tarefas
+      const tasksResult = await getTasks()
+      if (!tasksResult.error) {
+        setTasks(tasksResult.tasks || [])
+      }
+
       setIsLoading(false)
     }
     fetchData()
@@ -66,7 +104,13 @@ export default function DashboardPage() {
     return { ...event, status }
   })
 
-  // Funções utilitárias herdadas para formatar duração e cores da barra lateral de estudos
+  // Ordenação das Tarefas (Alta > Normal > Baixa)
+  const priorityWeight = { alta: 3, normal: 2, baixa: 1 }
+  const sortedTasks = [...tasks].sort((a, b) => {
+    return priorityWeight[b.priority] - priorityWeight[a.priority]
+  })
+
+  // Funções utilitárias
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60)
     const mins = minutes % 60
@@ -92,6 +136,127 @@ export default function DashboardPage() {
     return colors[color || 'purple'] || colors.purple
   }
 
+  const getSubjectTextColorClass = (color: string) => {
+    const colors: Record<string, string> = {
+      purple: 'text-purple-600',
+      blue: 'text-blue-600',
+      green: 'text-green-600',
+      orange: 'text-orange-600',
+      red: 'text-red-600'
+    }
+    if (color && color.startsWith('#')) return ''
+    return colors[color || 'purple'] || colors.purple
+  }
+
+  // --- Lógica de CRUD para Tarefas ---
+
+  const openTaskModal = () => {
+    setIsTaskModalOpen(true)
+    setTaskModalData({
+      title: '',
+      subjectId: subjects.length > 0 ? subjects[0].id : '',
+      priority: 'normal'
+    })
+    setEditingTaskId(null)
+    setShowNewSubject(false)
+  }
+
+  const closeTaskModal = () => {
+    setIsTaskModalOpen(false)
+    setEditingTaskId(null)
+  }
+
+  const handleSaveSubjectForTask = async () => {
+    if (!newSubjectName.trim()) return
+    setIsSavingSubject(true)
+    
+    try {
+      const result = await createSubject({
+        name: newSubjectName,
+        color: newSubjectColor
+      })
+      
+      if (result.success) {
+        const dataResult = await getCalendarData()
+        if (!dataResult.error) {
+          setSubjects(dataResult.subjects || [])
+          const createdSubject = result.subject || dataResult.subjects?.find((s: Subject) => s.name === newSubjectName)
+          setTaskModalData(prev => ({ 
+            ...prev, 
+            subjectId: createdSubject ? createdSubject.id : (dataResult.subjects?.[0]?.id || '')
+          }))
+          setNewSubjectName('')
+          setNewSubjectColor('#8b5cf6')
+        }
+        setShowNewSubject(false)
+      } else {
+        alert('Não foi possível criar a matéria/tag.')
+      }
+    } finally {
+      setIsSavingSubject(false)
+    }
+  }
+
+  const handleSaveTask = async () => {
+    if (!taskModalData.title.trim() || !taskModalData.subjectId) {
+      alert("Por favor, preencha o nome da tarefa e selecione uma matéria (tag).")
+      return
+    }
+
+    if (editingTaskId) {
+      const result = await updateTask(editingTaskId, {
+        title: taskModalData.title,
+        subject_id: taskModalData.subjectId,
+        priority: taskModalData.priority
+      })
+      
+      if (result.success && result.task) {
+        setTasks(tasks.map(t => t.id === editingTaskId ? result.task : t))
+        closeTaskModal()
+      } else {
+        alert("Erro ao atualizar a tarefa.")
+      }
+    } else {
+      const result = await createTask({
+        title: taskModalData.title,
+        subject_id: taskModalData.subjectId,
+        priority: taskModalData.priority
+      })
+      
+      if (result.success && result.task) {
+        setTasks([...tasks, result.task])
+        closeTaskModal()
+      } else {
+        alert("Erro ao criar a tarefa.")
+      }
+    }
+  }
+
+  const handleEditTask = (task: Task) => {
+    setTaskModalData({
+      title: task.title,
+      subjectId: task.subject_id,
+      priority: task.priority
+    })
+    setEditingTaskId(task.id)
+    setIsTaskModalOpen(true)
+    setShowNewSubject(false)
+  }
+
+  const handleDeleteTask = async (id: string) => {
+    if(confirm("Tem certeza que deseja excluir esta tarefa?")) {
+      const result = await deleteTask(id)
+      if(result.success) setTasks(tasks.filter(t => t.id !== id))
+    }
+  }
+
+  const handleToggleTask = async (id: string, currentStatus: boolean) => {
+    const result = await toggleTaskStatus(id, !currentStatus)
+    if(result.success) {
+      setTasks(tasks.map(t => t.id === id ? { ...t, is_done: !currentStatus } : t))
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-8">
       <div className="max-w-7xl mx-auto">
@@ -107,6 +272,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-8">
+          {/* Blocos Estáticos Mantidos */}
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col">
             <div className="flex justify-between items-start mb-2">
               <span className="text-xs text-slate-400 font-semibold uppercase">Tempo Hoje</span>
@@ -273,42 +439,80 @@ export default function DashboardPage() {
             <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-lg font-bold text-slate-900">Lista de Tarefas</h2>
-                <button className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 transition">
+                <button 
+                  onClick={openTaskModal}
+                  className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 transition"
+                >
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
+              
               <div className="space-y-3">
-                <div className="flex items-center gap-4 border border-slate-100 rounded-xl p-4">
-                  <input type="checkbox" defaultChecked className="w-4 h-4 text-purple-600 rounded border-slate-300" />
-                  <div className="flex-1">
-                    <p className="font-medium text-slate-400 line-through">Resolver exercícios cap. 3</p>
-                    <p className="text-purple-600 text-xs font-semibold">Matemática</p>
+                {isLoading ? (
+                  <div className="text-center text-slate-500 py-4 text-sm">Carregando tarefas...</div>
+                ) : sortedTasks.length === 0 ? (
+                  <div className="text-center text-slate-500 py-4 text-sm border border-dashed border-slate-200 rounded-xl">
+                    Nenhuma tarefa pendente
                   </div>
-                </div>
+                ) : (
+                  sortedTasks.map(task => {
+                    const subject = subjects.find(s => s.id === task.subject_id)
+                    
+                    return (
+                      <div key={task.id} className="flex items-center gap-3 border border-slate-100 rounded-xl p-3 group relative hover:border-slate-200 transition">
+                        <div
+                          onClick={() => handleToggleTask(task.id, task.is_done)}
+                          className={`w-5 h-5 border-2 rounded flex-shrink-0 cursor-pointer flex items-center justify-center ${
+                            task.is_done
+                              ? 'border-emerald-500 bg-emerald-500 text-white'
+                              : 'border-slate-300'
+                          }`}
+                        >
+                          {task.is_done && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0 pr-12">
+                          <p className={`font-medium truncate ${task.is_done ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
+                            {task.title}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {subject && (
+                              <p 
+                                className={`text-[11px] font-semibold ${getSubjectTextColorClass(subject.color)}`}
+                                style={subject.color?.startsWith('#') ? { color: subject.color } : {}}
+                              >
+                                {subject.name}
+                              </p>
+                            )}
+                            <span className="text-[10px] text-slate-300">•</span>
+                            <span className={`text-[10px] font-bold uppercase tracking-wide ${
+                              task.priority === 'alta' ? 'text-red-500' :
+                              task.priority === 'normal' ? 'text-blue-500' : 'text-slate-400'
+                            }`}>
+                              Prioridade {task.priority}
+                            </span>
+                          </div>
+                        </div>
 
-                <div className="flex items-center gap-4 border border-slate-100 rounded-xl p-4">
-                  <input type="checkbox" className="w-4 h-4 text-purple-600 rounded border-slate-300" />
-                  <div className="flex-1">
-                    <p className="font-medium text-slate-900">Ler resumo de Mecânica</p>
-                    <p className="text-purple-600 text-xs font-semibold">Física</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 border border-slate-100 rounded-xl p-4">
-                  <input type="checkbox" className="w-4 h-4 text-purple-600 rounded border-slate-300" />
-                  <div className="flex-1">
-                    <p className="font-medium text-slate-900">Fazer lista de exercícios</p>
-                    <p className="text-green-600 text-xs font-semibold">Química</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 border border-slate-100 rounded-xl p-4">
-                  <input type="checkbox" className="w-4 h-4 text-purple-600 rounded border-slate-300" />
-                  <div className="flex-1">
-                    <p className="font-medium text-slate-900">Revisar anotações</p>
-                    <p className="text-blue-600 text-xs font-semibold">Geral</p>
-                  </div>
-                </div>
+                        {/* Ações aparecerão no hover (em telas grandes) */}
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => handleEditTask(task)}
+                            className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
               </div>
             </div>
 
@@ -331,6 +535,141 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* MODAL DE TAREFAS */}
+      {isTaskModalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-slate-900">
+                {editingTaskId ? 'Editar Tarefa' : 'Nova Tarefa'}
+              </h3>
+              <button onClick={closeTaskModal} className="p-2 hover:bg-slate-100 rounded-lg">
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  O que precisa ser feito?
+                </label>
+                <input
+                  type="text"
+                  value={taskModalData.title}
+                  onChange={(e) => setTaskModalData({ ...taskModalData, title: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Ex: Resolver lista de exercícios..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Prioridade
+                </label>
+                <select
+                  value={taskModalData.priority}
+                  onChange={(e) => setTaskModalData({ ...taskModalData, priority: e.target.value as 'baixa' | 'normal' | 'alta' })}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="baixa">Baixa</option>
+                  <option value="normal">Normal</option>
+                  <option value="alta">Alta</option>
+                </select>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-slate-700">
+                    Matéria (Tag)
+                  </label>
+                  {!showNewSubject && (
+                    <button
+                      type="button"
+                      onClick={() => setShowNewSubject(true)}
+                      className="text-purple-600 text-xs font-bold flex items-center gap-1 hover:text-purple-700"
+                    >
+                      <Plus className="w-3 h-3" /> Nova Tag
+                    </button>
+                  )}
+                </div>
+                
+                {!showNewSubject ? (
+                  <select
+                    value={taskModalData.subjectId}
+                    onChange={(e) => setTaskModalData({ ...taskModalData, subjectId: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="" disabled>Selecione uma matéria</option>
+                    {subjects.map(subject => (
+                      <option key={subject.id} value={subject.id}>
+                        {subject.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="space-y-3 bg-purple-50 border border-purple-100 p-4 rounded-xl">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-sm font-bold text-purple-900">Criação de tags</h4>
+                      <button type="button" onClick={() => setShowNewSubject(false)} className="text-slate-400 hover:text-slate-600">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
+                        Nome
+                      </label>
+                      <input
+                        type="text"
+                        value={newSubjectName}
+                        onChange={(e) => setNewSubjectName(e.target.value)}
+                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                        placeholder="Ex: Biologia"
+                      />
+                    </div>
+                    <div className="flex items-end gap-3">
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium text-slate-700 mb-1">
+                          Cor
+                        </label>
+                        <input
+                          type="color"
+                          value={newSubjectColor}
+                          onChange={(e) => setNewSubjectColor(e.target.value)}
+                          className="w-full h-10 p-1 bg-white border border-slate-200 rounded-xl cursor-pointer"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSaveSubjectForTask}
+                        disabled={!newSubjectName.trim() || isSavingSubject}
+                        className="px-4 py-2 h-10 bg-purple-600 text-white text-sm font-medium rounded-xl hover:bg-purple-700 transition disabled:opacity-50"
+                      >
+                        {isSavingSubject ? 'Salvando...' : 'Salvar'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={closeTaskModal}
+                className="flex-1 px-4 py-2 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveTask}
+                className="flex-1 px-4 py-2 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
