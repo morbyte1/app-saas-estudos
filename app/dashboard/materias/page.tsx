@@ -18,18 +18,21 @@ const StatCard = ({ icon, label, value }: { icon: React.ReactNode, label: string
   </div>
 )
 
+import Link from 'next/link' // Adicione no topo do arquivo junto com os outros imports
+
 const SubjectCard = ({ materia, onEdit }: { materia: Materia, onEdit: (m: Materia) => void }) => (
   <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
     <div className="flex justify-between items-start mb-6">
       <h3 className="text-lg font-bold text-slate-900">{materia.name}</h3>
       <div className="flex items-center gap-1">
-        <button 
-          onClick={() => alert('Em breve')} 
+        {/* Adicionado o redirecionamento dinâmico com encodeURIComponent para proteger contra quebras de URL */}
+        <Link 
+          href={`/dashboard/materias/${encodeURIComponent(materia.name)}`}
           title="Ver detalhes"
-          className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition"
+          className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition flex items-center justify-center"
         >
           <Eye className="w-4.5 h-4.5" />
-        </button>
+        </Link>
         <button 
           onClick={() => onEdit(materia)} 
           title="Configurações"
