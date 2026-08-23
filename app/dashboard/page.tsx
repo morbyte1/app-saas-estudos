@@ -272,7 +272,6 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-8">
-          {/* Blocos Estáticos Mantidos */}
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col">
             <div className="flex justify-between items-start mb-2">
               <span className="text-xs text-slate-400 font-semibold uppercase">Tempo Hoje</span>
@@ -459,10 +458,10 @@ export default function DashboardPage() {
                     const subject = subjects.find(s => s.id === task.subject_id)
                     
                     return (
-                      <div key={task.id} className="flex items-center gap-3 border border-slate-100 rounded-xl p-3 group relative hover:border-slate-200 transition">
+                      <div key={task.id} className="flex items-start gap-3 border border-slate-100 rounded-xl p-3 group relative hover:border-slate-200 transition">
                         <div
                           onClick={() => handleToggleTask(task.id, task.is_done)}
-                          className={`w-5 h-5 border-2 rounded flex-shrink-0 cursor-pointer flex items-center justify-center ${
+                          className={`w-5 h-5 border-2 rounded flex-shrink-0 cursor-pointer flex items-center justify-center mt-0.5 ${
                             task.is_done
                               ? 'border-emerald-500 bg-emerald-500 text-white'
                               : 'border-slate-300'
@@ -472,20 +471,20 @@ export default function DashboardPage() {
                         </div>
                         
                         <div className="flex-1 min-w-0 pr-12">
-                          <p className={`font-medium truncate ${task.is_done ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
+                          <p className={`font-medium break-words leading-snug ${task.is_done ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
                             {task.title}
                           </p>
-                          <div className="flex items-center gap-2 mt-0.5">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
                             {subject && (
                               <p 
-                                className={`text-[11px] font-semibold ${getSubjectTextColorClass(subject.color)}`}
+                                className={`text-[11px] font-semibold break-words ${getSubjectTextColorClass(subject.color)}`}
                                 style={subject.color?.startsWith('#') ? { color: subject.color } : {}}
                               >
                                 {subject.name}
                               </p>
                             )}
                             <span className="text-[10px] text-slate-300">•</span>
-                            <span className={`text-[10px] font-bold uppercase tracking-wide ${
+                            <span className={`text-[10px] font-bold uppercase tracking-wide whitespace-nowrap ${
                               task.priority === 'alta' ? 'text-red-500' :
                               task.priority === 'normal' ? 'text-blue-500' : 'text-slate-400'
                             }`}>
@@ -498,13 +497,13 @@ export default function DashboardPage() {
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={() => handleEditTask(task)}
-                            className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition"
+                            className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition bg-white/90 shadow-sm border border-slate-100 lg:border-transparent lg:shadow-none"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button 
                             onClick={() => handleDeleteTask(task.id)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition"
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition bg-white/90 shadow-sm border border-slate-100 lg:border-transparent lg:shadow-none"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
