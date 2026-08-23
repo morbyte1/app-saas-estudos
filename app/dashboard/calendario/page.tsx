@@ -389,7 +389,7 @@ export default function CalendarioPage() {
           <>
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h1 className="text-3xl font-extrabold text-slate-900">Meu Calendário de Estudos</h1>
+                <h1 className="text-3xl font-extrabold text-slate-900">Planejamento</h1>
                 <p className="text-slate-500 mt-2">Gerencie seu cronograma de estudos</p>
               </div>
               <div className="flex gap-4">
@@ -480,7 +480,7 @@ export default function CalendarioPage() {
                 <div className="flex justify-between items-center mb-6">
                   <div>
                     <h2 className="text-xl font-bold text-slate-900">Cronograma Semanal</h2>
-                    <p className="text-slate-500 text-sm mt-1">Seus estudos da semana</p>
+                    <p className="text-slate-500 text-sm mt-1">O que você planejou para os próximos dias</p>
                   </div>
                   <div className="flex gap-2">
                     {getEventsForSelectedDate().length > 0 && (
@@ -651,7 +651,7 @@ export default function CalendarioPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Duração em Minutos
+                        Duração (em minutos)
                       </label>
                       <input
                         type="number"
@@ -670,7 +670,7 @@ export default function CalendarioPage() {
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <label className="block text-sm font-medium text-slate-700">
-                          Matéria/Tag
+                          Tags
                         </label>
                         {!showNewSubject && (
                           <button
@@ -706,7 +706,7 @@ export default function CalendarioPage() {
                           </div>
                           <div>
                             <label className="block text-xs font-medium text-slate-700 mb-1">
-                              Nome da Nova Matéria
+                              Nome da nova tag
                             </label>
                             <input
                               type="text"
@@ -734,7 +734,7 @@ export default function CalendarioPage() {
                               disabled={!modalData.newSubjectName.trim() || isSavingSubject}
                               className="px-4 py-2 h-10 bg-purple-600 text-white text-sm font-medium rounded-xl hover:bg-purple-700 transition disabled:opacity-50"
                             >
-                              {isSavingSubject ? 'Salvando...' : 'Salvar Tag'}
+                              {isSavingSubject ? 'Salvando...' : 'Salvar'}
                             </button>
                           </div>
                         </div>
