@@ -117,12 +117,20 @@ export default function CalendarioPage() {
   }
 
   const hasEvents = (date: Date) => {
-    const dateString = date.toISOString().split('T')[0]
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const dateString = `${year}-${month}-${day}`
+    
     return events.some(event => event.event_date === dateString)
   }
 
   const getEventsForSelectedDate = () => {
-    const dateString = selectedDate.toISOString().split('T')[0]
+    const year = selectedDate.getFullYear()
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
+    const day = String(selectedDate.getDate()).padStart(2, '0')
+    const dateString = `${year}-${month}-${day}`
+    
     return events.filter(event => event.event_date === dateString)
   }
 
@@ -159,7 +167,7 @@ export default function CalendarioPage() {
   }
 
   const handleSaveSubject = async () => {
-    if (!modalData.newSubjectName) return
+    if (!modalData.newSubjectName.trim()) return
     setIsSavingSubject(true)
     
     try {
@@ -169,13 +177,11 @@ export default function CalendarioPage() {
       })
       
       if (result.success) {
-        // Busca os dados atualizados direto do banco para garantir consistência total
         const dataResult = await getCalendarData()
         
         if (!dataResult.error) {
           setSubjects(dataResult.subjects || [])
           
-          // Encontra a tag recém-criada na lista atualizada
           const createdSubject = result.subject || dataResult.subjects?.find((s: Subject) => s.name === modalData.newSubjectName)
           
           setModalData(prev => ({ 
@@ -192,18 +198,35 @@ export default function CalendarioPage() {
       }
     } catch (err) {
       console.error('Unexpected error:', err)
-      alert('Erro inesperado ao tentar salvar.')
+      alert('Erro inesperado ao tentar salvar a matéria.')
     } finally {
       setIsSavingSubject(false)
     }
   }
 
   const saveEvent = async () => {
-    const eventDate = selectedDate.toISOString().split('T')[0]
+    // Corrige problema de fuso horário garantindo que usemos a data exata selecionada no Brasil
+    const year = selectedDate.getFullYear()
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
+    const day = String(selectedDate.getDate()).padStart(2, '0')
+    const eventDate = `${year}-${month}-${day}`
+    
     const finalSubjectId = modalData.subjectId
 
+    // Validações Rígidas para evitar erros silenciosos
+    if (!modalData.title.trim() || !modalData.time || !modalData.duration) {
+      alert("Por favor, preencha o nome, horário e a duração do estudo.")
+      return
+    }
+
     if (!finalSubjectId) {
-      alert("Por favor, selecione ou crie uma matéria.")
+      alert("Por favor, selecione ou crie uma matéria (tag).")
+      return
+    }
+
+    const parsedDuration = parseInt(modalData.duration)
+    if (isNaN(parsedDuration) || parsedDuration <= 0) {
+      alert("A duração deve ser um número válido maior que zero.")
       return
     }
 
@@ -211,10 +234,11 @@ export default function CalendarioPage() {
       const result = await updateEvent(editingEventId, {
         title: modalData.title,
         time: modalData.time,
-        duration: parseInt(modalData.duration),
+        duration: parsedDuration,
         subject_id: finalSubjectId,
         event_date: eventDate
       })
+      
       if (result.success) {
         setEvents(events.map(event =>
           event.id === editingEventId
@@ -222,30 +246,35 @@ export default function CalendarioPage() {
                 ...event,
                 title: modalData.title,
                 time: modalData.time,
-                duration: parseInt(modalData.duration),
+                duration: parsedDuration,
                 subject_id: finalSubjectId,
                 event_date: eventDate
               }
             : event
         ))
+        closeModal()
+      } else {
+        alert("Erro ao atualizar o estudo: " + result.error)
       }
     } else {
       const result = await createEvent({
         title: modalData.title,
         time: modalData.time,
-        duration: parseInt(modalData.duration),
+        duration: parsedDuration,
         subject_id: finalSubjectId,
         event_date: eventDate
       })
+      
       if (result.success) {
         const dataResult = await getCalendarData()
         if (!dataResult.error) {
           setEvents(dataResult.events || [])
         }
+        closeModal()
+      } else {
+        alert("Erro ao criar o estudo no banco de dados: " + result.error)
       }
     }
-
-    closeModal()
   }
 
   const editEvent = (eventId: string) => {
@@ -290,7 +319,11 @@ export default function CalendarioPage() {
     if (selectedEventsToDuplicate.length === 0) return
     setIsDuplicating(true)
     
-    const dateStr = selectedDate.toISOString().split('T')[0]
+    const year = selectedDate.getFullYear()
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
+    const day = String(selectedDate.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
+    
     const result = await duplicateEvents(selectedEventsToDuplicate, dateStr, repeatFuture)
     
     if (result.success) {
@@ -299,6 +332,8 @@ export default function CalendarioPage() {
         setEvents(dataResult.events || [])
       }
       closeDuplicateModal()
+    } else {
+      alert("Erro ao duplicar cronograma: " + result.error)
     }
     
     setIsDuplicating(false)
@@ -321,11 +356,11 @@ export default function CalendarioPage() {
       red: 'bg-red-100 text-red-700'
     }
 
-    if (color.startsWith('#')) {
+    if (color && color.startsWith('#')) {
       return { backgroundColor: color + '20', color: color }
     }
 
-    return colors[color] || colors.purple
+    return colors[color || 'purple'] || colors.purple
   }
 
   const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -508,12 +543,12 @@ export default function CalendarioPage() {
                           {subject && (
                             <span
                               className={
-                                subject.color.startsWith('#')
+                                subject.color && subject.color.startsWith('#')
                                   ? 'px-3 py-1 rounded-full text-xs font-medium'
                                   : `px-3 py-1 rounded-full text-xs font-medium ${getSubjectColorClass(subject.color)}`
                               }
                               style={
-                                subject.color.startsWith('#')
+                                subject.color && subject.color.startsWith('#')
                                   ? { backgroundColor: subject.color + '20', color: subject.color }
                                   : {}
                               }
@@ -605,7 +640,7 @@ export default function CalendarioPage() {
                         className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
                         placeholder="Ex: 90"
                       />
-                      {modalData.duration && (
+                      {modalData.duration && !isNaN(parseInt(modalData.duration)) && (
                         <p className="text-purple-600 text-sm mt-1">
                           Equivale a {formatDuration(parseInt(modalData.duration))}
                         </p>
@@ -676,7 +711,7 @@ export default function CalendarioPage() {
                             <button
                               type="button"
                               onClick={handleSaveSubject}
-                              disabled={!modalData.newSubjectName || isSavingSubject}
+                              disabled={!modalData.newSubjectName.trim() || isSavingSubject}
                               className="px-4 py-2 h-10 bg-purple-600 text-white text-sm font-medium rounded-xl hover:bg-purple-700 transition disabled:opacity-50"
                             >
                               {isSavingSubject ? 'Salvando...' : 'Salvar Tag'}
