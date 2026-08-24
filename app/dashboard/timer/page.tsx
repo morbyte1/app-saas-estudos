@@ -461,7 +461,7 @@ export default function TimerPage() {
               <select
                 value={selectedMateriaId}
                 onChange={(e) => setSelectedMateriaId(e.target.value)}
-                className="appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:text-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none"
+                className="appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none"
               >
                 <option value="" disabled>SELECIONE A MATÉRIA</option>
                 {materias.map(m => (
@@ -477,7 +477,7 @@ export default function TimerPage() {
               <select
                 value={selectedAssuntoId}
                 onChange={(e) => setSelectedAssuntoId(e.target.value)}
-                className="appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:text-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none"
+                className="appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none"
               >
                 <option value="" disabled>SELECIONE O ASSUNTO</option>
                 {assuntos.map(a => (
@@ -493,13 +493,13 @@ export default function TimerPage() {
           <div className="flex gap-3 items-center">
             <button 
               onClick={openSettings}
-              className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 hover:text-primary-600 hover:text-white transition-colors hover:border-primary-600"
+              className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600"
             >
               <Settings className="w-4 h-4" />
             </button>
             <button 
               onClick={() => setIsMaximized(true)}
-              className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 hover:text-primary-600 hover:text-white transition-colors hover:border-primary-600"
+              className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600"
             >
               <Maximize className="w-4 h-4" />
             </button>
@@ -548,7 +548,7 @@ export default function TimerPage() {
             <button
               onClick={handleStart}
               disabled={isRunning || isLoading}
-              className="px-8 py-3.5 text-primary-600 text-white font-bold rounded-full hover:bg-primary-700 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
+              className="px-8 py-3.5 bg-primary-600 text-white font-bold rounded-full hover:bg-primary-700 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
             >
               <Play className="w-4 h-4 fill-current" /> Iniciar
             </button>
@@ -564,7 +564,7 @@ export default function TimerPage() {
             <button
               onClick={handleFinishRequest}
               disabled={isLoading || totalStudySeconds === 0}
-              className="px-8 py-3.5 bg-slate-900 text-white font-bold rounded-full hover:text-primary-600 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
+              className="px-8 py-3.5 bg-slate-900 text-white font-bold rounded-full hover:bg-primary-600 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
             >
               <Check className="w-4 h-4 stroke-[3]" /> Finalizar
             </button>
@@ -789,7 +789,7 @@ export default function TimerPage() {
               </button>
               <button
                 onClick={handleSaveSettings}
-                className="flex-1 px-4 py-2.5 text-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition shadow-md"
+                className="flex-1 px-4 py-2.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition shadow-md"
               >
                 Salvar 
               </button>
@@ -867,7 +867,7 @@ export default function TimerPage() {
               <button
                 onClick={handleConfirmFinish}
                 disabled={isLoading}
-                className="flex-1 px-4 py-2.5 text-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50 shadow-md flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50 shadow-md flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>
@@ -987,7 +987,7 @@ export default function TimerPage() {
               <button
                 onClick={handleConfirmManual}
                 disabled={isLoading}
-                className="flex-1 px-4 py-2.5 text-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50 shadow-md flex items-center justify-center gap-2 text-sm"
+                className="flex-1 px-4 py-2.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50 shadow-md flex items-center justify-center gap-2 text-sm"
               >
                 {isLoading ? (
                   <>

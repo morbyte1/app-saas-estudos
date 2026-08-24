@@ -449,7 +449,7 @@ export default function CalendarioPage() {
                         onClick={() => selectDate(date)}
                         className={`h-10 w-10 flex flex-col items-center justify-center rounded-xl transition-all cursor-pointer mx-auto ${
                           selected 
-                            ? 'text-primary-600 text-white shadow-md hover:bg-primary-700' 
+                            ? 'bg-primary-600 text-white shadow-md hover:bg-primary-700' 
                             : 'hover:bg-slate-100'
                         } ${today && !selected ? 'text-primary-600 font-bold' : ''}`}
                       >
@@ -494,7 +494,7 @@ export default function CalendarioPage() {
                     )}
                     <button
                       onClick={openModal}
-                      className="flex items-center gap-2 px-4 py-2 text-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition"
+                      className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition"
                     >
                       <Plus className="w-4 h-4" />
                       Novo Estudo
@@ -514,7 +514,7 @@ export default function CalendarioPage() {
                         onClick={() => selectDate(date)}
                         className={`flex-1 py-3 rounded-2xl text-center font-medium transition-all ${
                           isCurrentDay
-                            ? 'text-primary-600 text-white'
+                            ? 'bg-primary-600 text-white'
                             : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
                         }`}
                       >
@@ -732,7 +732,7 @@ export default function CalendarioPage() {
                               type="button"
                               onClick={handleSaveSubject}
                               disabled={!modalData.newSubjectName.trim() || isSavingSubject}
-                              className="px-4 py-2 h-10 text-primary-600 text-white text-sm font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
+                              className="px-4 py-2 h-10 bg-primary-600 text-white text-sm font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
                             >
                               {isSavingSubject ? 'Salvando...' : 'Salvar'}
                             </button>
@@ -751,7 +751,7 @@ export default function CalendarioPage() {
                     </button>
                     <button
                       onClick={saveEvent}
-                      className="flex-1 px-4 py-2 text-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition"
+                      className="flex-1 px-4 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition"
                     >
                       Salvar
                     </button>
@@ -826,7 +826,7 @@ export default function CalendarioPage() {
                     <button
                       onClick={handleDuplicate}
                       disabled={selectedEventsToDuplicate.length === 0 || isDuplicating}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
                     >
                       {isDuplicating ? 'Sincronizando...' : 'Sincronizar'}
                     </button>

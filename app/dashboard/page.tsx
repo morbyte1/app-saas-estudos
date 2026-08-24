@@ -440,7 +440,7 @@ export default function DashboardPage() {
                 <h2 className="text-lg font-bold text-slate-900">Lista de Tarefas</h2>
                 <button 
                   onClick={openTaskModal}
-                  className="text-primary-600 text-white p-2 rounded-lg hover:bg-primary-700 transition"
+                  className="bg-primary-600 text-white p-2 rounded-lg hover:bg-primary-700 transition"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -642,7 +642,7 @@ export default function DashboardPage() {
                         type="button"
                         onClick={handleSaveSubjectForTask}
                         disabled={!newSubjectName.trim() || isSavingSubject}
-                        className="px-4 py-2 h-10 text-primary-600 text-white text-sm font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
+                        className="px-4 py-2 h-10 bg-primary-600 text-white text-sm font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
                       >
                         {isSavingSubject ? 'Salvando...' : 'Salvar'}
                       </button>
@@ -661,7 +661,7 @@ export default function DashboardPage() {
               </button>
               <button
                 onClick={handleSaveTask}
-                className="flex-1 px-4 py-2 text-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition"
+                className="flex-1 px-4 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition"
               >
                 Salvar
               </button>

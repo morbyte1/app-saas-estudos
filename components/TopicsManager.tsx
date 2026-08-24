@@ -125,7 +125,7 @@ export default function TopicsManager({
         </div>
         <button 
           onClick={() => setIsTopicoModalOpen(true)}
-          className="flex items-center justify-center gap-2 px-5 py-2.5 text-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition shadow-sm"
+          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition shadow-sm"
         >
           <Plus className="w-4.5 h-4.5" />
           Criar tópico
@@ -276,7 +276,7 @@ export default function TopicsManager({
             <button
               onClick={handleCreateTopico}
               disabled={!newTopicoName.trim()}
-              className="w-full py-2.5 text-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
+              className="w-full py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
             >
               Criar Tópico
             </button>
@@ -305,7 +305,7 @@ export default function TopicsManager({
             <button
               onClick={handleCreateAssunto}
               disabled={!newAssuntoName.trim()}
-              className="w-full py-2.5 text-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
+              className="w-full py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
             >
               Criar Assunto
             </button>
@@ -341,7 +341,7 @@ export default function TopicsManager({
               <button
                 onClick={handleEditAssunto}
                 disabled={!editAssuntoName.trim() || editAssuntoName === editingAssunto.name}
-                className="flex-1 py-2.5 text-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
+                className="flex-1 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
               >
                 Salvar Alterações
               </button>
