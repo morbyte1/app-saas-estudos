@@ -7,7 +7,7 @@ import { getEstatisticas, getMaterias, createMateria, updateMateria, deleteMater
 
 const StatCard = ({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number }) => (
   <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
-    <div className="bg-purple-50 p-3 rounded-xl text-purple-600">
+    <div className="bg-primary-50 p-3 rounded-xl text-primary-600">
       {icon}
     </div>
     <div>
@@ -25,14 +25,14 @@ const SubjectCard = ({ materia, onEdit }: { materia: Materia, onEdit: (m: Materi
         <Link 
           href={`/dashboard/materias/${encodeURIComponent(materia.name)}`}
           title="Ver detalhes"
-          className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition flex items-center justify-center"
+          className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-md transition flex items-center justify-center"
         >
           <BookOpen className="w-4.5 h-4.5" />
         </Link>
         <button 
           onClick={() => onEdit(materia)} 
           title="Configurações"
-          className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition"
+          className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-md transition"
         >
           <Settings className="w-4.5 h-4.5" />
         </button>
@@ -53,10 +53,10 @@ const SubjectCard = ({ materia, onEdit }: { materia: Materia, onEdit: (m: Materi
     <div>
       <div className="flex justify-between items-center mb-2">
         <span className="text-sm font-semibold text-slate-700">Progresso semanal</span>
-        <span className="text-sm font-bold text-purple-600">{materia.progress}%</span>
+        <span className="text-sm font-bold text-primary-600">{materia.progress}%</span>
       </div>
       <div className="w-full bg-slate-100 rounded-full h-2">
-        <div className="bg-purple-600 h-2 rounded-full transition-all duration-500" style={{ width: `${materia.progress}%` }}></div>
+        <div className="text-primary-600 h-2 rounded-full transition-all duration-500" style={{ width: `${materia.progress}%` }}></div>
       </div>
     </div>
   </div>
@@ -159,7 +159,7 @@ export default function MateriasPage() {
           </div>
           <button 
             onClick={openCreateModal}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition shadow-sm"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 text-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition shadow-sm"
           >
             <Plus className="w-4.5 h-4.5" />
             Criar matéria
@@ -224,7 +224,7 @@ export default function MateriasPage() {
                   type="text"
                   value={modalData.name}
                   onChange={(e) => setModalData({ ...modalData, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
                   placeholder="Ex: Matemática"
                 />
               </div>
@@ -238,7 +238,7 @@ export default function MateriasPage() {
                   min="1"
                   value={modalData.goalHours}
                   onChange={(e) => setModalData({ ...modalData, goalHours: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
                   placeholder="Ex: 5"
                 />
               </div>
@@ -264,7 +264,7 @@ export default function MateriasPage() {
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="flex-1 px-4 py-2.5 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 text-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
               >
                 {isSaving ? 'Salvando...' : 'Salvar'}
               </button>

@@ -1,1 +1,29 @@
 @import "tailwindcss";
+
+@theme {
+  /* Paleta Principal (Escala de Verdes) */
+  --color-primary-50: #F1F7ED;  /* Mint Cream */
+  --color-primary-100: #E6F1DF; 
+  --color-primary-200: #E0EEC6; /* Frosted Mint */
+  --color-primary-300: #BED6AC; 
+  --color-primary-400: #9DBF97; 
+  --color-primary-500: #7CA982; /* Muted Teal */
+  --color-primary-600: #5F8C65; /* Tom ajustado para botões e contrastes */
+  --color-primary-700: #436E4B;
+  --color-primary-800: #33553E;
+  --color-primary-900: #243E36; /* Dark Slate Grey */
+  --color-primary-950: #152620;
+
+  /* Paleta Secundária (Escala de Dourados) */
+  --color-secondary-50: #FCFBF6;
+  --color-secondary-100: #F8F5E8;
+  --color-secondary-200: #EFE6C5;
+  --color-secondary-300: #E3D299;
+  --color-secondary-400: #D5BC6B;
+  --color-secondary-500: #C2A83E; /* Old Gold */
+  --color-secondary-600: #A3892F;
+  --color-secondary-700: #826B25;
+  --color-secondary-800: #665320;
+  --color-secondary-900: #54441E;
+  --color-secondary-950: #30260F;
+}

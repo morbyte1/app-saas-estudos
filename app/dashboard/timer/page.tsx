@@ -461,7 +461,7 @@ export default function TimerPage() {
               <select
                 value={selectedMateriaId}
                 onChange={(e) => setSelectedMateriaId(e.target.value)}
-                className="appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-[#8961DA] hover:text-white transition-colors hover:border-[#8961DA] cursor-pointer pr-10 focus:outline-none"
+                className="appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:text-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none"
               >
                 <option value="" disabled>SELECIONE A MATÉRIA</option>
                 {materias.map(m => (
@@ -477,7 +477,7 @@ export default function TimerPage() {
               <select
                 value={selectedAssuntoId}
                 onChange={(e) => setSelectedAssuntoId(e.target.value)}
-                className="appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-[#8961DA] hover:text-white transition-colors hover:border-[#8961DA] cursor-pointer pr-10 focus:outline-none"
+                className="appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:text-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none"
               >
                 <option value="" disabled>SELECIONE O ASSUNTO</option>
                 {assuntos.map(a => (
@@ -493,13 +493,13 @@ export default function TimerPage() {
           <div className="flex gap-3 items-center">
             <button 
               onClick={openSettings}
-              className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 hover:bg-[#8961DA] hover:text-white transition-colors hover:border-[#8961DA]"
+              className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 hover:text-primary-600 hover:text-white transition-colors hover:border-primary-600"
             >
               <Settings className="w-4 h-4" />
             </button>
             <button 
               onClick={() => setIsMaximized(true)}
-              className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 hover:bg-[#8961DA] hover:text-white transition-colors hover:border-[#8961DA]"
+              className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 hover:text-primary-600 hover:text-white transition-colors hover:border-primary-600"
             >
               <Maximize className="w-4 h-4" />
             </button>
@@ -527,7 +527,7 @@ export default function TimerPage() {
           )}
 
           {timerConfig.type === 'pomodoro' && (
-            <div className="mb-2 text-[#8961DA] font-bold uppercase tracking-widest text-sm animate-in fade-in flex items-center gap-2">
+            <div className="mb-2 text-primary-600 font-bold uppercase tracking-widest text-sm animate-in fade-in flex items-center gap-2">
               <RefreshCw className="w-5 h-5" />
               Ciclos Concluídos: {pomodoroCycles}
             </div>
@@ -548,7 +548,7 @@ export default function TimerPage() {
             <button
               onClick={handleStart}
               disabled={isRunning || isLoading}
-              className="px-8 py-3.5 bg-[#8961DA] text-white font-bold rounded-full hover:bg-[#784fcb] focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
+              className="px-8 py-3.5 text-primary-600 text-white font-bold rounded-full hover:bg-primary-700 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
             >
               <Play className="w-4 h-4 fill-current" /> Iniciar
             </button>
@@ -564,7 +564,7 @@ export default function TimerPage() {
             <button
               onClick={handleFinishRequest}
               disabled={isLoading || totalStudySeconds === 0}
-              className="px-8 py-3.5 bg-slate-900 text-white font-bold rounded-full hover:bg-[#8961DA] focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
+              className="px-8 py-3.5 bg-slate-900 text-white font-bold rounded-full hover:text-primary-600 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
             >
               <Check className="w-4 h-4 stroke-[3]" /> Finalizar
             </button>
@@ -591,7 +591,7 @@ export default function TimerPage() {
           {!isMaximized && (
             <div className="flex flex-col items-center gap-2">
               <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium">
-                <HelpCircle className="w-4 h-4 text-[#8961DA]" />
+                <HelpCircle className="w-4 h-4 text-primary-600" />
                 <span>Esqueceu de ligar o timer ou estudou fora do app? Envie seu tempo estudado abaixo</span>
               </div>
               <button 
@@ -621,7 +621,7 @@ export default function TimerPage() {
                 <div className="text-sm text-slate-500 bg-slate-50 p-6 rounded-2xl text-center border border-slate-100 flex flex-col items-center gap-2 shadow-sm">
                   <Clock className="w-8 h-8 text-slate-300 mb-1" />
                   <p className="text-slate-600">Até o momento você não tem nada registrado.</p>
-                  <p className="font-medium text-slate-700">Clique em <strong className="text-[#8961DA]">Iniciar o timer</strong> acima ou envie um estudo manual para começar!</p>
+                  <p className="font-medium text-slate-700">Clique em <strong className="text-primary-600">Iniciar o timer</strong> acima ou envie um estudo manual para começar!</p>
                 </div>
               ) : (
                 Object.keys(groupedHistory)
@@ -630,12 +630,12 @@ export default function TimerPage() {
                   <div key={dateStr} className="flex flex-col gap-2">
                     <button
                       onClick={() => toggleDate(dateStr)}
-                      className="w-full flex items-center justify-between px-6 py-4 rounded-full border border-slate-200 hover:border-[#8961DA] transition-colors group bg-white shadow-sm hover:shadow"
+                      className="w-full flex items-center justify-between px-6 py-4 rounded-full border border-slate-200 hover:border-primary-600 transition-colors group bg-white shadow-sm hover:shadow"
                     >
                       <span className="text-sm font-bold text-slate-700 uppercase">
                         {formatDateToPortuguese(dateStr)}
                       </span>
-                      <ChevronRight className={`w-5 h-5 text-slate-400 group-hover:text-[#8961DA] transition-transform ${expandedDates.includes(dateStr) ? 'rotate-90' : ''}`} />
+                      <ChevronRight className={`w-5 h-5 text-slate-400 group-hover:text-primary-600 transition-transform ${expandedDates.includes(dateStr) ? 'rotate-90' : ''}`} />
                     </button>
                     
                     {expandedDates.includes(dateStr) && (
@@ -644,7 +644,7 @@ export default function TimerPage() {
                           <div key={session.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm mx-2 group">
                             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                               <div className="flex items-center gap-2">
-                                <Book className="w-4 h-4 text-[#8961DA]" />
+                                <Book className="w-4 h-4 text-primary-600" />
                                 <span className="font-bold text-slate-800 text-sm">{session.materias?.name || 'Matéria removida'}</span>
                               </div>
                               <div className="flex items-center gap-3">
@@ -699,9 +699,9 @@ export default function TimerPage() {
           {[1, 2, 3, 4, 5].map((item) => (
             <div 
               key={item} 
-              className="flex items-center px-4 h-12 rounded-full border border-slate-100 bg-white hover:border-[#8961DA] transition-colors cursor-pointer group"
+              className="flex items-center px-4 h-12 rounded-full border border-slate-100 bg-white hover:border-primary-600 transition-colors cursor-pointer group"
             >
-              <Circle className="w-4 h-4 text-slate-300 group-hover:text-[#8961DA] transition-colors" />
+              <Circle className="w-4 h-4 text-slate-300 group-hover:text-primary-600 transition-colors" />
             </div>
           ))}
         </div>
@@ -752,7 +752,7 @@ export default function TimerPage() {
                         <button
                           key={idx}
                           onClick={() => setDraftConfig({...draftConfig, pomodoroStudy: preset.s, pomodoroRest: preset.r})}
-                          className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${isSelected ? 'border-[#8961DA] bg-purple-50 text-[#8961DA]' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}
+                          className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${isSelected ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}
                         >
                           <span className="font-bold">{preset.s} min estudo</span>
                           <span className="text-sm font-medium opacity-80">{preset.r} min descanso</span>
@@ -789,7 +789,7 @@ export default function TimerPage() {
               </button>
               <button
                 onClick={handleSaveSettings}
-                className="flex-1 px-4 py-2.5 bg-[#8961DA] text-white font-bold rounded-xl hover:bg-[#784fcb] transition shadow-md"
+                className="flex-1 px-4 py-2.5 text-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition shadow-md"
               >
                 Salvar 
               </button>
@@ -821,7 +821,7 @@ export default function TimerPage() {
               </div>
               <div className="flex items-center justify-between pt-3 border-t border-slate-200">
                 <span className="text-xs text-slate-500 font-bold uppercase">Tempo Estudado</span>
-                <span className="text-lg font-bold text-[#8961DA]">{formatTime(totalStudySeconds)}</span>
+                <span className="text-lg font-bold text-primary-600">{formatTime(totalStudySeconds)}</span>
               </div>
             </div>
 
@@ -867,7 +867,7 @@ export default function TimerPage() {
               <button
                 onClick={handleConfirmFinish}
                 disabled={isLoading}
-                className="flex-1 px-4 py-2.5 bg-[#8961DA] text-white font-bold rounded-xl hover:bg-[#784fcb] transition disabled:opacity-50 shadow-md flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 text-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50 shadow-md flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>
@@ -987,7 +987,7 @@ export default function TimerPage() {
               <button
                 onClick={handleConfirmManual}
                 disabled={isLoading}
-                className="flex-1 px-4 py-2.5 bg-[#8961DA] text-white font-bold rounded-xl hover:bg-[#784fcb] transition disabled:opacity-50 shadow-md flex items-center justify-center gap-2 text-sm"
+                className="flex-1 px-4 py-2.5 text-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50 shadow-md flex items-center justify-center gap-2 text-sm"
               >
                 {isLoading ? (
                   <>

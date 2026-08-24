@@ -126,7 +126,7 @@ export default function DashboardPage() {
 
   const getSubjectColorClass = (color: string) => {
     const colors: Record<string, string> = {
-      purple: 'bg-purple-500',
+      purple: 'bg-primary-500',
       blue: 'bg-blue-500',
       green: 'bg-green-500',
       orange: 'bg-orange-500',
@@ -138,7 +138,7 @@ export default function DashboardPage() {
 
   const getSubjectTextColorClass = (color: string) => {
     const colors: Record<string, string> = {
-      purple: 'text-purple-600',
+      purple: 'text-primary-600',
       blue: 'text-blue-600',
       green: 'text-green-600',
       orange: 'text-orange-600',
@@ -265,7 +265,7 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Seja bem-vindo, Lucas!</h1>
             <p className="text-sm text-slate-500 mt-2 font-medium">"O sucesso é a soma de pequenos esforços repetidos dia após dia." — Robert Collier</p>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-white text-purple-700 font-medium rounded-lg border border-slate-200 hover:bg-slate-50 transition">
+          <button className="flex items-center gap-2 px-4 py-2 bg-white text-primary-700 font-medium rounded-lg border border-slate-200 hover:bg-slate-50 transition">
             <Calendar className="w-4 h-4" />
             Hoje, 24 de Outubro
           </button>
@@ -275,8 +275,8 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col">
             <div className="flex justify-between items-start mb-2">
               <span className="text-xs text-slate-400 font-semibold uppercase">Tempo Hoje</span>
-              <div className="bg-purple-100 p-2 rounded-lg">
-                <Clock className="w-4 h-4 text-purple-600" />
+              <div className="bg-primary-100 p-2 rounded-lg">
+                <Clock className="w-4 h-4 text-primary-600" />
               </div>
             </div>
             <p className="text-2xl font-bold text-slate-900">2h 35min</p>
@@ -318,8 +318,8 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col">
             <div className="flex justify-between items-start mb-2">
               <span className="text-xs text-slate-400 font-semibold uppercase">Meta Prova</span>
-              <div className="bg-purple-100 p-2 rounded-lg">
-                <Target className="w-4 h-4 text-purple-600" />
+              <div className="bg-primary-100 p-2 rounded-lg">
+                <Target className="w-4 h-4 text-primary-600" />
               </div>
             </div>
             <p className="text-2xl font-bold text-slate-900">Faltam 5 dias</p>
@@ -331,14 +331,14 @@ export default function DashboardPage() {
             <div>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold text-slate-900">Matérias em Destaque</h2>
-                <Link href="#" className="text-purple-600 text-sm font-medium hover:text-purple-700">
+                <Link href="#" className="text-primary-600 text-sm font-medium hover:text-primary-700">
                   Ver todas
                 </Link>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
                   <div className="flex justify-between items-center mb-3">
-                    <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-md text-xs font-bold">Matemática</span>
+                    <span className="bg-primary-100 text-primary-700 px-2 py-1 rounded-md text-xs font-bold">Matemática</span>
                     <span className="text-slate-500 text-xs font-medium">2h 15min</span>
                   </div>
                   <div className="flex justify-between items-center mb-2">
@@ -346,7 +346,7 @@ export default function DashboardPage() {
                     <span className="text-slate-900 text-sm font-bold">80%</span>
                   </div>
                   <div className="h-2 w-full bg-slate-100 rounded-full mt-2">
-                    <div className="h-full bg-purple-600 rounded-full w-[80%]"></div>
+                    <div className="h-full text-primary-600 rounded-full w-[80%]"></div>
                   </div>
                 </div>
 
@@ -366,7 +366,7 @@ export default function DashboardPage() {
 
                 <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
                   <div className="flex justify-between items-center mb-3">
-                    <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-md text-xs font-bold">Química</span>
+                    <span className="bg-primary-100 text-primary-700 px-2 py-1 rounded-md text-xs font-bold">Química</span>
                     <span className="text-slate-500 text-xs font-medium">1h 20min</span>
                   </div>
                   <div className="flex justify-between items-center mb-2">
@@ -374,7 +374,7 @@ export default function DashboardPage() {
                     <span className="text-slate-900 text-sm font-bold">50%</span>
                   </div>
                   <div className="h-2 w-full bg-slate-100 rounded-full mt-2">
-                    <div className="h-full bg-purple-600 rounded-full w-[50%]"></div>
+                    <div className="h-full text-primary-600 rounded-full w-[50%]"></div>
                   </div>
                 </div>
               </div>
@@ -383,7 +383,7 @@ export default function DashboardPage() {
             <div className="bg-white border border-slate-200 rounded-3xl p-6 mt-8 shadow-sm">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-lg font-bold text-slate-900">Cronograma de Hoje</h2>
-                <Link href="/dashboard/calendario" className="text-sm text-purple-600 font-medium hover:text-purple-700 transition">
+                <Link href="/dashboard/calendario" className="text-sm text-primary-600 font-medium hover:text-primary-700 transition">
                   Ir ao calendário →
                 </Link>
               </div>
@@ -420,7 +420,7 @@ export default function DashboardPage() {
                             <span className="bg-emerald-100 text-emerald-700 text-[10px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wide">Feito</span>
                           )}
                           {event.status === 'Próxima' && (
-                            <span className="bg-purple-100 text-purple-700 text-[10px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wide">Próxima</span>
+                            <span className="bg-primary-100 text-primary-700 text-[10px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wide">Próxima</span>
                           )}
                           {event.status === 'Depois' && (
                             <span className="bg-slate-100 text-slate-500 text-[10px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wide">Depois</span>
@@ -440,7 +440,7 @@ export default function DashboardPage() {
                 <h2 className="text-lg font-bold text-slate-900">Lista de Tarefas</h2>
                 <button 
                   onClick={openTaskModal}
-                  className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 transition"
+                  className="text-primary-600 text-white p-2 rounded-lg hover:bg-primary-700 transition"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -497,7 +497,7 @@ export default function DashboardPage() {
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={() => handleEditTask(task)}
-                            className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition bg-white/90 shadow-sm border border-slate-100 lg:border-transparent lg:shadow-none"
+                            className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-md transition bg-white/90 shadow-sm border border-slate-100 lg:border-transparent lg:shadow-none"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
@@ -515,10 +515,10 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="bg-purple-50 border border-purple-200 rounded-2xl p-6">
+            <div className="bg-primary-50 border border-primary-200 rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="bg-purple-100 p-3 rounded-full">
-                  <Medal className="w-6 h-6 text-purple-600" />
+                <div className="bg-primary-100 p-3 rounded-full">
+                  <Medal className="w-6 h-6 text-primary-600" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-slate-900">Próxima Conquista</h3>
@@ -526,10 +526,10 @@ export default function DashboardPage() {
                 </div>
               </div>
               <p className="font-bold text-slate-900 mb-2">Maratonista de Estudos</p>
-              <div className="w-full bg-purple-200 rounded-full h-2 mb-2">
-                <div className="bg-purple-600 h-2 rounded-full" style={{ width: '90%' }}></div>
+              <div className="w-full bg-primary-200 rounded-full h-2 mb-2">
+                <div className="text-primary-600 h-2 rounded-full" style={{ width: '90%' }}></div>
               </div>
-              <p className="text-purple-600 text-sm font-medium">9/10 horas</p>
+              <p className="text-primary-600 text-sm font-medium">9/10 horas</p>
             </div>
           </div>
         </div>
@@ -557,7 +557,7 @@ export default function DashboardPage() {
                   type="text"
                   value={taskModalData.title}
                   onChange={(e) => setTaskModalData({ ...taskModalData, title: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="Ex: Resolver lista de exercícios..."
                 />
               </div>
@@ -569,7 +569,7 @@ export default function DashboardPage() {
                 <select
                   value={taskModalData.priority}
                   onChange={(e) => setTaskModalData({ ...taskModalData, priority: e.target.value as 'baixa' | 'normal' | 'alta' })}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="baixa">Baixa</option>
                   <option value="normal">Normal</option>
@@ -586,7 +586,7 @@ export default function DashboardPage() {
                     <button
                       type="button"
                       onClick={() => setShowNewSubject(true)}
-                      className="text-purple-600 text-xs font-bold flex items-center gap-1 hover:text-purple-700"
+                      className="text-primary-600 text-xs font-bold flex items-center gap-1 hover:text-primary-700"
                     >
                       <Plus className="w-3 h-3" /> Nova Tag
                     </button>
@@ -597,7 +597,7 @@ export default function DashboardPage() {
                   <select
                     value={taskModalData.subjectId}
                     onChange={(e) => setTaskModalData({ ...taskModalData, subjectId: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="" disabled>Selecione uma matéria</option>
                     {subjects.map(subject => (
@@ -607,9 +607,9 @@ export default function DashboardPage() {
                     ))}
                   </select>
                 ) : (
-                  <div className="space-y-3 bg-purple-50 border border-purple-100 p-4 rounded-xl">
+                  <div className="space-y-3 bg-primary-50 border border-primary-100 p-4 rounded-xl">
                     <div className="flex justify-between items-center">
-                      <h4 className="text-sm font-bold text-purple-900">Criação de tags</h4>
+                      <h4 className="text-sm font-bold text-primary-900">Criação de tags</h4>
                       <button type="button" onClick={() => setShowNewSubject(false)} className="text-slate-400 hover:text-slate-600">
                         <X className="w-4 h-4" />
                       </button>
@@ -622,7 +622,7 @@ export default function DashboardPage() {
                         type="text"
                         value={newSubjectName}
                         onChange={(e) => setNewSubjectName(e.target.value)}
-                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
                         placeholder="Ex: Biologia"
                       />
                     </div>
@@ -642,7 +642,7 @@ export default function DashboardPage() {
                         type="button"
                         onClick={handleSaveSubjectForTask}
                         disabled={!newSubjectName.trim() || isSavingSubject}
-                        className="px-4 py-2 h-10 bg-purple-600 text-white text-sm font-medium rounded-xl hover:bg-purple-700 transition disabled:opacity-50"
+                        className="px-4 py-2 h-10 text-primary-600 text-white text-sm font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
                       >
                         {isSavingSubject ? 'Salvando...' : 'Salvar'}
                       </button>
@@ -661,7 +661,7 @@ export default function DashboardPage() {
               </button>
               <button
                 onClick={handleSaveTask}
-                className="flex-1 px-4 py-2 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition"
+                className="flex-1 px-4 py-2 text-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition"
               >
                 Salvar
               </button>

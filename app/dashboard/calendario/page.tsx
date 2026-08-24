@@ -341,7 +341,7 @@ export default function CalendarioPage() {
 
   const getSubjectColorClass = (color: string) => {
     const colors: Record<string, string> = {
-      purple: 'bg-purple-100 text-purple-700',
+      purple: 'bg-primary-100 text-primary-700',
       blue: 'bg-blue-100 text-blue-700',
       green: 'bg-green-100 text-green-700',
       orange: 'bg-orange-100 text-orange-700',
@@ -357,7 +357,7 @@ export default function CalendarioPage() {
 
   const getSubjectDotColorClass = (color: string) => {
     const colors: Record<string, string> = {
-      purple: 'bg-purple-400',
+      purple: 'bg-primary-400',
       blue: 'bg-blue-400',
       green: 'bg-green-400',
       orange: 'bg-orange-400',
@@ -449,9 +449,9 @@ export default function CalendarioPage() {
                         onClick={() => selectDate(date)}
                         className={`h-10 w-10 flex flex-col items-center justify-center rounded-xl transition-all cursor-pointer mx-auto ${
                           selected 
-                            ? 'bg-purple-600 text-white shadow-md hover:bg-purple-700' 
+                            ? 'text-primary-600 text-white shadow-md hover:bg-primary-700' 
                             : 'hover:bg-slate-100'
-                        } ${today && !selected ? 'text-purple-600 font-bold' : ''}`}
+                        } ${today && !selected ? 'text-primary-600 font-bold' : ''}`}
                       >
                         <span className="text-sm">{date.getDate()}</span>
                         {displayEvents.length > 0 && (
@@ -494,7 +494,7 @@ export default function CalendarioPage() {
                     )}
                     <button
                       onClick={openModal}
-                      className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition"
+                      className="flex items-center gap-2 px-4 py-2 text-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition"
                     >
                       <Plus className="w-4 h-4" />
                       Novo Estudo
@@ -514,7 +514,7 @@ export default function CalendarioPage() {
                         onClick={() => selectDate(date)}
                         className={`flex-1 py-3 rounded-2xl text-center font-medium transition-all ${
                           isCurrentDay
-                            ? 'bg-purple-600 text-white'
+                            ? 'text-primary-600 text-white'
                             : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
                         }`}
                       >
@@ -632,7 +632,7 @@ export default function CalendarioPage() {
                         type="text"
                         value={modalData.title}
                         onChange={(e) => setModalData({ ...modalData, title: e.target.value })}
-                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                         placeholder="Ex: Estudo Matemática"
                       />
                     </div>
@@ -645,7 +645,7 @@ export default function CalendarioPage() {
                         type="time"
                         value={modalData.time}
                         onChange={(e) => setModalData({ ...modalData, time: e.target.value })}
-                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
                     </div>
 
@@ -657,11 +657,11 @@ export default function CalendarioPage() {
                         type="number"
                         value={modalData.duration}
                         onChange={(e) => setModalData({ ...modalData, duration: e.target.value })}
-                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                         placeholder="Ex: 90"
                       />
                       {modalData.duration && !isNaN(parseInt(modalData.duration)) && (
-                        <p className="text-purple-600 text-sm mt-1">
+                        <p className="text-primary-600 text-sm mt-1">
                           Equivale a {formatDuration(parseInt(modalData.duration))}
                         </p>
                       )}
@@ -676,7 +676,7 @@ export default function CalendarioPage() {
                           <button
                             type="button"
                             onClick={() => setShowNewSubject(true)}
-                            className="text-purple-600 text-xs font-bold flex items-center gap-1 hover:text-purple-700"
+                            className="text-primary-600 text-xs font-bold flex items-center gap-1 hover:text-primary-700"
                           >
                             <Plus className="w-3 h-3" /> Nova Tag
                           </button>
@@ -687,7 +687,7 @@ export default function CalendarioPage() {
                         <select
                           value={modalData.subjectId}
                           onChange={(e) => setModalData({ ...modalData, subjectId: e.target.value })}
-                          className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                         >
                           <option value="" disabled>Selecione uma matéria</option>
                           {subjects.map(subject => (
@@ -697,9 +697,9 @@ export default function CalendarioPage() {
                           ))}
                         </select>
                       ) : (
-                        <div className="space-y-3 bg-purple-50 border border-purple-100 p-4 rounded-xl">
+                        <div className="space-y-3 bg-primary-50 border border-primary-100 p-4 rounded-xl">
                           <div className="flex justify-between items-center">
-                            <h4 className="text-sm font-bold text-purple-900">Criação de tags</h4>
+                            <h4 className="text-sm font-bold text-primary-900">Criação de tags</h4>
                             <button type="button" onClick={() => setShowNewSubject(false)} className="text-slate-400 hover:text-slate-600">
                               <X className="w-4 h-4" />
                             </button>
@@ -712,7 +712,7 @@ export default function CalendarioPage() {
                               type="text"
                               value={modalData.newSubjectName}
                               onChange={(e) => setModalData({ ...modalData, newSubjectName: e.target.value })}
-                              className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                              className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
                               placeholder="Ex: Biologia"
                             />
                           </div>
@@ -732,7 +732,7 @@ export default function CalendarioPage() {
                               type="button"
                               onClick={handleSaveSubject}
                               disabled={!modalData.newSubjectName.trim() || isSavingSubject}
-                              className="px-4 py-2 h-10 bg-purple-600 text-white text-sm font-medium rounded-xl hover:bg-purple-700 transition disabled:opacity-50"
+                              className="px-4 py-2 h-10 text-primary-600 text-white text-sm font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
                             >
                               {isSavingSubject ? 'Salvando...' : 'Salvar'}
                             </button>
@@ -751,7 +751,7 @@ export default function CalendarioPage() {
                     </button>
                     <button
                       onClick={saveEvent}
-                      className="flex-1 px-4 py-2 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition"
+                      className="flex-1 px-4 py-2 text-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition"
                     >
                       Salvar
                     </button>
@@ -788,7 +788,7 @@ export default function CalendarioPage() {
                               setSelectedEventsToDuplicate(selectedEventsToDuplicate.filter(id => id !== event.id))
                             }
                           }}
-                          className="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500" 
+                          className="w-4 h-4 text-primary-600 rounded border-slate-300 focus:ring-primary-500" 
                         />
                         <div className="flex-1">
                           <p className="font-semibold text-slate-700 text-sm">{event.title}</p>
@@ -798,10 +798,10 @@ export default function CalendarioPage() {
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-3 p-4 bg-purple-50 rounded-xl mb-6 border border-purple-100">
+                  <div className="flex items-center gap-3 p-4 bg-primary-50 rounded-xl mb-6 border border-primary-100">
                     <div className="flex-1">
-                      <p className="font-semibold text-purple-900 text-sm">Manter nas próximas semanas</p>
-                      <p className="text-purple-700 text-xs mt-0.5">
+                      <p className="font-semibold text-primary-900 text-sm">Manter nas próximas semanas</p>
+                      <p className="text-primary-700 text-xs mt-0.5">
                         Repete este cronograma para as próximas 4 semanas.
                       </p>
                     </div>
@@ -812,7 +812,7 @@ export default function CalendarioPage() {
                         checked={repeatFuture} 
                         onChange={(e) => setRepeatFuture(e.target.checked)} 
                       />
-                      <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                      <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:text-primary-600"></div>
                     </label>
                   </div>
 
@@ -826,7 +826,7 @@ export default function CalendarioPage() {
                     <button
                       onClick={handleDuplicate}
                       disabled={selectedEventsToDuplicate.length === 0 || isDuplicating}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition disabled:opacity-50"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
                     >
                       {isDuplicating ? 'Sincronizando...' : 'Sincronizar'}
                     </button>

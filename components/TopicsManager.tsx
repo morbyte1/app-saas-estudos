@@ -125,7 +125,7 @@ export default function TopicsManager({
         </div>
         <button 
           onClick={() => setIsTopicoModalOpen(true)}
-          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition shadow-sm"
+          className="flex items-center justify-center gap-2 px-5 py-2.5 text-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition shadow-sm"
         >
           <Plus className="w-4.5 h-4.5" />
           Criar tópico
@@ -135,7 +135,7 @@ export default function TopicsManager({
       {/* Cards de Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 flex items-center gap-4">
-          <div className="bg-fuchsia-50 p-3 rounded-xl text-fuchsia-600">
+          <div className="bg-secondary-50 p-3 rounded-xl text-secondary-600">
             <Folder className="w-6 h-6" />
           </div>
           <div>
@@ -145,7 +145,7 @@ export default function TopicsManager({
         </div>
 
         <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 flex items-center gap-4">
-          <div className="bg-fuchsia-50 p-3 rounded-xl text-fuchsia-600">
+          <div className="bg-secondary-50 p-3 rounded-xl text-secondary-600">
             <BookOpen className="w-6 h-6" />
           </div>
           <div>
@@ -156,7 +156,7 @@ export default function TopicsManager({
 
         <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 flex flex-col justify-center">
           <div className="flex items-center gap-3 mb-2">
-            <div className="text-purple-600">
+            <div className="text-primary-600">
               <PieChart className="w-5 h-5" />
             </div>
             <div className="flex-1 flex justify-between items-center">
@@ -166,7 +166,7 @@ export default function TopicsManager({
           </div>
           <div className="w-full bg-slate-100 rounded-full h-2">
             <div 
-              className="bg-purple-600 h-2 rounded-full transition-all duration-500" 
+              className="text-primary-600 h-2 rounded-full transition-all duration-500" 
               style={{ width: `${progresso}%` }}
             ></div>
           </div>
@@ -188,7 +188,7 @@ export default function TopicsManager({
                 {/* Cabeçalho do Tópico */}
                 <div className="p-5 border-b border-slate-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="h-6 w-1 bg-purple-600 rounded-full"></div>
+                    <div className="h-6 w-1 text-primary-600 rounded-full"></div>
                     <h2 className="text-lg font-bold text-slate-900">{topico.name}</h2>
                     <span className="bg-slate-100 text-slate-600 text-xs font-medium px-2.5 py-1 rounded-md">
                       {assuntosDoTopico.length} assuntos
@@ -218,8 +218,8 @@ export default function TopicsManager({
                             onClick={() => handleToggleAssunto(assunto.id, assunto.is_done)}
                             className={`w-5 h-5 border-2 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
                               assunto.is_done 
-                                ? 'bg-purple-600 border-purple-600' 
-                                : 'border-slate-300 hover:border-purple-400'
+                                ? 'text-primary-600 border-primary-600' 
+                                : 'border-slate-300 hover:border-primary-400'
                             }`}
                           >
                             {assunto.is_done && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
@@ -239,7 +239,7 @@ export default function TopicsManager({
                               setEditingAssunto(assunto)
                               setEditAssuntoName(assunto.name)
                             }}
-                            className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition"
+                            className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-md transition"
                             title="Editar assunto"
                           >
                             <Pencil className="w-4 h-4" />
@@ -270,13 +270,13 @@ export default function TopicsManager({
               value={newTopicoName}
               onChange={(e) => setNewTopicoName(e.target.value)}
               placeholder="Ex: Matemática Básica"
-              className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 mb-4"
+              className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 mb-4"
               autoFocus
             />
             <button
               onClick={handleCreateTopico}
               disabled={!newTopicoName.trim()}
-              className="w-full py-2.5 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition disabled:opacity-50"
+              className="w-full py-2.5 text-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
             >
               Criar Tópico
             </button>
@@ -299,13 +299,13 @@ export default function TopicsManager({
               value={newAssuntoName}
               onChange={(e) => setNewAssuntoName(e.target.value)}
               placeholder="Ex: Frações e decimais"
-              className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 mb-4"
+              className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 mb-4"
               autoFocus
             />
             <button
               onClick={handleCreateAssunto}
               disabled={!newAssuntoName.trim()}
-              className="w-full py-2.5 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition disabled:opacity-50"
+              className="w-full py-2.5 text-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
             >
               Criar Assunto
             </button>
@@ -327,7 +327,7 @@ export default function TopicsManager({
               type="text"
               value={editAssuntoName}
               onChange={(e) => setEditAssuntoName(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 mb-4"
+              className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 mb-4"
               autoFocus
             />
             <div className="flex gap-2">
@@ -341,7 +341,7 @@ export default function TopicsManager({
               <button
                 onClick={handleEditAssunto}
                 disabled={!editAssuntoName.trim() || editAssuntoName === editingAssunto.name}
-                className="flex-1 py-2.5 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition disabled:opacity-50"
+                className="flex-1 py-2.5 text-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
               >
                 Salvar Alterações
               </button>

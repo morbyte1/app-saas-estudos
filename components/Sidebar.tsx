@@ -18,8 +18,8 @@ export default function Sidebar() {
     <aside className="w-64 h-screen bg-white border-r border-slate-200 flex flex-col">
       <div className="p-6">
         <div className="flex items-center gap-3">
-          <div className="bg-purple-100 p-2 rounded-lg">
-            <Book className="w-6 h-6 text-purple-600" />
+          <div className="bg-primary-100 p-2 rounded-lg">
+            <Book className="w-6 h-6 text-primary-600" />
           </div>
           <span className="text-xl font-bold text-slate-900">Focus App</span>
         </div>
@@ -35,7 +35,7 @@ export default function Sidebar() {
                   href={item.href}
                   className={`flex items-center gap-3 px-4 py-3 mx-4 rounded-xl font-medium transition-colors ${
                     isActive
-                      ? 'bg-purple-50 text-purple-700 font-semibold'
+                      ? 'bg-primary-50 text-primary-700 font-semibold'
                       : 'text-slate-500 hover:bg-slate-50'
                   }`}
                 >
