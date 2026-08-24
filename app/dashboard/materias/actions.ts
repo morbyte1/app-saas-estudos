@@ -45,7 +45,6 @@ export async function getEstatisticas() {
     }
   }
 
-  // Cálculos das estatísticas baseados nos dados reais do banco
   let totalHours = 0
   let totalMinutes = 0
   let totalProgress = 0
@@ -56,7 +55,6 @@ export async function getEstatisticas() {
     totalProgress += Number(m.progress) || 0
   })
 
-  // Converte minutos excedentes em horas
   totalHours += Math.floor(totalMinutes / 60)
   const remainingMinutes = totalMinutes % 60
 
@@ -97,7 +95,6 @@ export async function getMaterias() {
     return { error: error.message }
   }
 
-  // Mapeando do formato do banco (snake_case) para o Frontend (camelCase)
   const formattedMaterias: Materia[] = (materias || []).map(m => ({
     id: m.id,
     name: m.name,
@@ -194,4 +191,31 @@ export async function updateMateria(id: string, data: { name: string, goalHours:
   }
 
   return { success: true, data: formattedMateria }
+}
+
+export async function deleteMateria(id: string) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    return { error: 'Usuário não autenticado' }
+  }
+
+  const { error } = await supabase
+    .from('materias')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id)
+
+  if (error) {
+    console.error('Erro ao excluir matéria:', error.message)
+    return { error: error.message }
+  }
+
+  revalidatePath('/dashboard/materias')
+  return { success: true }
 }

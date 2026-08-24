@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Clock, Percent, Book, Eye, Settings, Target, X } from 'lucide-react'
-import { getEstatisticas, getMaterias, createMateria, updateMateria, Materia } from './actions'
-
-// --- Componentes de UI Internos ---
+import { Plus, Clock, Percent, Book, BookOpen, Settings, Target, X, Trash2 } from 'lucide-react'
+import Link from 'next/link'
+import { getEstatisticas, getMaterias, createMateria, updateMateria, deleteMateria, Materia } from './actions'
 
 const StatCard = ({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number }) => (
   <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
@@ -18,20 +17,17 @@ const StatCard = ({ icon, label, value }: { icon: React.ReactNode, label: string
   </div>
 )
 
-import Link from 'next/link' // Adicione no topo do arquivo junto com os outros imports
-
 const SubjectCard = ({ materia, onEdit }: { materia: Materia, onEdit: (m: Materia) => void }) => (
   <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
     <div className="flex justify-between items-start mb-6">
       <h3 className="text-lg font-bold text-slate-900">{materia.name}</h3>
       <div className="flex items-center gap-1">
-        {/* Adicionado o redirecionamento dinâmico com encodeURIComponent para proteger contra quebras de URL */}
         <Link 
           href={`/dashboard/materias/${encodeURIComponent(materia.name)}`}
           title="Ver detalhes"
           className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition flex items-center justify-center"
         >
-          <Eye className="w-4.5 h-4.5" />
+          <BookOpen className="w-4.5 h-4.5" />
         </Link>
         <button 
           onClick={() => onEdit(materia)} 
@@ -66,14 +62,11 @@ const SubjectCard = ({ materia, onEdit }: { materia: Materia, onEdit: (m: Materi
   </div>
 )
 
-// --- Página Principal ---
-
 export default function MateriasPage() {
   const [materias, setMaterias] = useState<Materia[]>([])
   const [estatisticas, setEstatisticas] = useState({ totalFocus: '', progress: '', activeSubjects: 0 })
   const [isLoading, setIsLoading] = useState(true)
 
-  // Estados do Modal
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -142,11 +135,23 @@ export default function MateriasPage() {
     closeModal()
   }
 
+  const handleDelete = async (id: string) => {
+    if (confirm("Tem certeza que deseja excluir esta matéria? Todos os dados vinculados também poderão ser perdidos.")) {
+      setIsSaving(true)
+      const result = await deleteMateria(id)
+      if (result.success) {
+        setMaterias(materias.filter(m => m.id !== id))
+        closeModal()
+      } else {
+        alert("Erro ao excluir matéria.")
+      }
+      setIsSaving(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 p-8">
       <div className="max-w-7xl mx-auto">
-        
-        {/* Cabeçalho */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Minhas Matérias</h1>
@@ -167,7 +172,6 @@ export default function MateriasPage() {
           </div>
         ) : (
           <>
-            {/* Cards de Estatísticas */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               <StatCard 
                 icon={<Clock className="w-6 h-6" />} 
@@ -186,7 +190,6 @@ export default function MateriasPage() {
               />
             </div>
 
-            {/* Grid de Matérias */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {materias.map(materia => (
                 <SubjectCard 
@@ -200,7 +203,6 @@ export default function MateriasPage() {
         )}
       </div>
 
-      {/* Modal de Criação / Edição */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl">
@@ -242,7 +244,17 @@ export default function MateriasPage() {
               </div>
             </div>
 
-            <div className="flex gap-3 mt-8">
+            <div className="flex gap-2 mt-8">
+              {editingId && (
+                <button
+                  onClick={() => handleDelete(editingId)}
+                  disabled={isSaving}
+                  className="flex items-center justify-center p-2.5 border border-red-200 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition disabled:opacity-50"
+                  title="Excluir Matéria"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              )}
               <button
                 onClick={closeModal}
                 className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition"

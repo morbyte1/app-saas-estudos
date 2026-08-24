@@ -1,13 +1,13 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { Book, LayoutGrid, BookOpen, Calendar, Award, BarChart2, Settings } from 'lucide-react'
+import { Book, LayoutGrid, BookOpen, Calendar, Clock, BarChart2, Settings } from 'lucide-react'
 
 const navigation = [
   { name: 'Painel Geral', href: '/dashboard', icon: LayoutGrid },
+  { name: 'Timer', href: '/dashboard/timer', icon: Clock },
   { name: 'Minhas Matérias', href: '/dashboard/materias', icon: BookOpen },
   { name: 'Calendário', href: '/dashboard/calendario', icon: Calendar },
-  { name: 'Desafios', href: '/dashboard/desafios', icon: Award },
   { name: 'Estatísticas', href: '/dashboard/estatisticas', icon: BarChart2 },
 ]
 

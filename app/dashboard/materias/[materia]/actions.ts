@@ -12,7 +12,7 @@ export async function getMateriaByName(name: string) {
     .from('materias')
     .select('*')
     .eq('user_id', user.id)
-    .ilike('name', name) // Procura a matéria exata de forma case-insensitive
+    .ilike('name', name) 
     .single()
 
   if (error) return { error: error.message }
@@ -42,7 +42,37 @@ export async function getTopicosEAssuntos(materiaId: string) {
     return { error: 'Erro ao buscar dados' }
   }
 
-  return { topicos: topicos || [], assuntos: assuntos || [] }
+  // Puxar o histórico do Timer para somar o tempo real de cada Assunto
+  const assuntoIds = assuntos?.map(a => a.id) || []
+  const sessionDurations: Record<string, number> = {}
+
+  if (assuntoIds.length > 0) {
+    const { data: sessions } = await supabase
+      .from('study_sessions')
+      .select('assunto_id, duration_seconds')
+      .in('assunto_id', assuntoIds)
+      .eq('user_id', user.id)
+
+    if (sessions) {
+      sessions.forEach(session => {
+        if (!sessionDurations[session.assunto_id]) {
+          sessionDurations[session.assunto_id] = 0
+        }
+        sessionDurations[session.assunto_id] += session.duration_seconds
+      })
+    }
+  }
+
+  // Sobrescreve o duration_minutes baseando-se no tempo real armazenado via Timer
+  const assuntosComTempoHistorico = assuntos?.map(a => {
+    const totalSeconds = sessionDurations[a.id] || 0
+    return {
+      ...a,
+      duration_minutes: Math.floor(totalSeconds / 60)
+    }
+  }) || []
+
+  return { topicos: topicos || [], assuntos: assuntosComTempoHistorico }
 }
 
 export async function createTopico(materiaId: string, name: string) {
@@ -61,7 +91,8 @@ export async function createTopico(materiaId: string, name: string) {
   return { topico: data }
 }
 
-export async function createAssunto(topicoId: string, name: string, durationMinutes: number = 60) {
+// Alterado o default para 0 para refletir o tempo real estudado na criação
+export async function createAssunto(topicoId: string, name: string, durationMinutes: number = 0) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
