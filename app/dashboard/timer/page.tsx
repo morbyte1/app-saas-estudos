@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getMaterias } from '@/app/dashboard/materias/actions'
 import { getTopicosEAssuntos } from '@/app/dashboard/materias/[materia]/actions'
 import { saveTimerSession, getTimerHistory, deleteTimerSession } from './actions'
-import { ChevronDown, Settings, Maximize, Minimize, Plus, ChevronRight, Circle, HelpCircle, X, CheckCircle, XCircle, Clock, Book, FileText, Play, Pause, Check, Coffee, Trash2 } from 'lucide-react'
+import { ChevronDown, Settings, Maximize, Minimize, Plus, ChevronRight, Circle, HelpCircle, X, CheckCircle, XCircle, Clock, Book, FileText, Play, Pause, Check, Coffee, Trash2, RefreshCw } from 'lucide-react'
 
 interface Materia {
   id: string
@@ -47,6 +47,13 @@ export default function TimerPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
   
+  // Estado para contagem de ciclos (exclusivo Pomodoro)
+  const [pomodoroCycles, setPomodoroCycles] = useState(0)
+  
+  // Ref para garantir o resgate seguro do tempo total estudado no Cronômetro 
+  // após o término de um descanso (evita a stale closure dentro do setInterval)
+  const totalStudySecondsRef = useRef(totalStudySeconds)
+  
   // Configurações do Timer
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [timerConfig, setTimerConfig] = useState<{
@@ -78,6 +85,10 @@ export default function TimerPage() {
   const [isFinishModalOpen, setIsFinishModalOpen] = useState(false)
   const [questionsDone, setQuestionsDone] = useState<string>('')
   const [questionsWrong, setQuestionsWrong] = useState<string>('')
+
+  useEffect(() => {
+    totalStudySecondsRef.current = totalStudySeconds
+  }, [totalStudySeconds])
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -155,10 +166,14 @@ export default function TimerPage() {
               // Descanso finalizado
               setIsRunning(false)
               setPhase('idle')
+              
               if (timerConfig.type === 'pomodoro') {
+                // Pomodoro: Incrementa o ciclo (estudo + descanso concluído) e prepara o próximo
+                setPomodoroCycles((c) => c + 1)
                 return timerConfig.pomodoroStudy * 60
               }
-              return 0
+              // Cronômetro: Retorna à exata marca de onde parou para continuar a contagem progressiva
+              return totalStudySecondsRef.current
             }
             return prev - 1
           })
@@ -214,16 +229,13 @@ export default function TimerPage() {
       setPhase('study')
       if (timerConfig.type === 'pomodoro' && currentDisplaySeconds === 0) {
         setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
-      }
-    } else if (phase === 'rest' && currentDisplaySeconds === 0) {
-      // Se acabou o descanso e clicou em iniciar
-      setPhase('study')
-      if (timerConfig.type === 'pomodoro') {
-        setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
-      } else {
-        setCurrentDisplaySeconds(0)
+      } else if (timerConfig.type === 'cronometro' && currentDisplaySeconds === 0) {
+        // Se o cronômetro foi reiniciado ou pausado e mandado para idle, 
+        // força garantir que pegue o total já estudado antes de arrancar.
+        setCurrentDisplaySeconds(totalStudySeconds)
       }
     }
+    // Caso a fase já seja 'study' ou 'rest', apenas prossegue (resume).
     setIsRunning(true)
   }
 
@@ -268,6 +280,7 @@ export default function TimerPage() {
 
     if (result.success) {
       setTotalStudySeconds(0)
+      setPomodoroCycles(0) // Reseta os ciclos para a nova sessão
       if (timerConfig.type === 'pomodoro') {
         setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
       } else {
@@ -318,6 +331,7 @@ export default function TimerPage() {
     setIsRunning(false)
     setPhase('idle')
     setTotalStudySeconds(0)
+    setPomodoroCycles(0)
     if (draftConfig.type === 'pomodoro') {
       setCurrentDisplaySeconds(draftConfig.pomodoroStudy * 60)
     } else {
@@ -409,6 +423,14 @@ export default function TimerPage() {
                <h2 className="text-2xl font-bold text-slate-900">{selectedMateriaName || 'Nenhuma matéria'}</h2>
                <p className="text-slate-500 font-medium">{selectedAssuntoName || 'Nenhum assunto'}</p>
              </div>
+          )}
+
+          {/* Quantos ciclos passaram (Pomodoro exclusivo) */}
+          {timerConfig.type === 'pomodoro' && (
+            <div className="mb-2 text-[#8961DA] font-bold uppercase tracking-widest text-sm animate-in fade-in flex items-center gap-2">
+              <RefreshCw className="w-5 h-5" />
+              Ciclos Concluídos: {pomodoroCycles}
+            </div>
           )}
 
           {phase === 'rest' && (
