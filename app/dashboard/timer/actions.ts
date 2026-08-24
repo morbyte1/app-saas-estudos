@@ -72,3 +72,26 @@ export async function getTimerHistory() {
 
   return { success: true, data: data || [] }
 }
+
+export async function deleteTimerSession(id: string) {
+  const supabase = await createClient()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    return { error: 'Usuário não autenticado' }
+  }
+
+  const { error } = await supabase
+    .from('study_sessions')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id)
+
+  if (error) {
+    console.error('Erro ao excluir sessão do timer:', error.message)
+    return { error: error.message }
+  }
+
+  revalidatePath('/dashboard/timer')
+  return { success: true }
+}

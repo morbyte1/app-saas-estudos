@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import { getMaterias } from '@/app/dashboard/materias/actions'
 import { getTopicosEAssuntos } from '@/app/dashboard/materias/[materia]/actions'
-import { saveTimerSession, getTimerHistory } from './actions'
-import { ChevronDown, Settings, Maximize, Plus, ChevronRight, Circle, HelpCircle, X, CheckCircle, XCircle, Clock, Book, FileText } from 'lucide-react'
+import { saveTimerSession, getTimerHistory, deleteTimerSession } from './actions'
+import { ChevronDown, Settings, Maximize, Minimize, Plus, ChevronRight, Circle, HelpCircle, X, CheckCircle, XCircle, Clock, Book, FileText, Play, Pause, Check, Coffee, Trash2 } from 'lucide-react'
 
 interface Materia {
   id: string
@@ -43,6 +43,7 @@ export default function TimerPage() {
   const [seconds, setSeconds] = useState(0)
   const [isRunning, setIsRunning] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isMaximized, setIsMaximized] = useState(false)
   
   // Estados de Histórico
   const [showHistory, setShowHistory] = useState(false)
@@ -62,7 +63,7 @@ export default function TimerPage() {
   const [questionsWrong, setQuestionsWrong] = useState<string>('')
 
   useEffect(() => {
-const fetchInitialData = async () => {
+    const fetchInitialData = async () => {
       const [materiasResult, historyResult] = await Promise.all([
         getMaterias(),
         getTimerHistory()
@@ -201,7 +202,7 @@ const fetchInitialData = async () => {
       session_date
     })
 
-if (result.success) {
+    if (result.success) {
       setSeconds(0)
       setIsFinishModalOpen(false)
       // Recarrega o histórico atualizado
@@ -221,6 +222,20 @@ if (result.success) {
     }
 
     setIsLoading(false)
+  }
+
+  const handleDeleteSession = async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir este registro de estudo?')) {
+      setIsLoading(true)
+      const result = await deleteTimerSession(id)
+      
+      if (result.success) {
+        setHistorySessions(prev => prev.filter(session => session.id !== id))
+      } else {
+        alert('Erro ao excluir registro: ' + result.error)
+      }
+      setIsLoading(false)
+    }
   }
 
   const selectedMateriaName = materias.find(m => m.id === selectedMateriaId)?.name || ''
@@ -272,56 +287,82 @@ if (result.success) {
             <button className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 hover:bg-[#8961DA] hover:text-white transition-colors hover:border-[#8961DA]">
               <Settings className="w-4 h-4" />
             </button>
-            <button className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 hover:bg-[#8961DA] hover:text-white transition-colors hover:border-[#8961DA]">
+            <button 
+              onClick={() => setIsMaximized(true)}
+              className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 hover:bg-[#8961DA] hover:text-white transition-colors hover:border-[#8961DA]"
+            >
               <Maximize className="w-4 h-4" />
-            </button>
-            <button className="px-6 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase hover:bg-[#8961DA] hover:text-white transition-colors hover:border-[#8961DA]">
-              DESCANSAR AGORA
             </button>
           </div>
         </div>
 
-        {/* Centro (Timer e Controles) */}
-        <div className="flex flex-col items-center justify-center flex-1 my-10">
-          <div className="text-9xl font-bold tracking-tight text-slate-900 mb-6 font-mono">
+        {/* Centro (Timer e Controles) - Pode ficar em Fullscreen */}
+        <div className={isMaximized ? "fixed inset-0 z-50 bg-white flex flex-col items-center justify-center p-8 animate-in fade-in duration-200" : "flex flex-col items-center justify-center flex-1 my-10"}>
+          
+          {isMaximized && (
+            <button 
+              onClick={() => setIsMaximized(false)}
+              className="absolute top-8 right-8 w-12 h-12 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors shadow-sm"
+              title="Voltar ao normal"
+            >
+              <Minimize className="w-5 h-5" />
+            </button>
+          )}
+
+          {isMaximized && (
+             <div className="mb-10 text-center animate-in slide-in-from-top-4 duration-300">
+               <h2 className="text-2xl font-bold text-slate-900">{selectedMateriaName || 'Nenhuma matéria'}</h2>
+               <p className="text-slate-500 font-medium">{selectedAssuntoName || 'Nenhum assunto'}</p>
+             </div>
+          )}
+
+          <div className="text-[8rem] sm:text-[10rem] font-bold tracking-tight text-slate-900 mb-8 font-mono leading-none">
             {formatTime(seconds)}
           </div>
 
-          <div className="flex gap-4 mb-8">
+          <div className="flex flex-wrap gap-4 justify-center mb-8">
             <button
               onClick={handleStart}
               disabled={isRunning || isLoading}
-              className="px-8 py-3.5 bg-[#8961DA] text-white font-bold rounded-full hover:bg-[#784fcb] focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md"
+              className="px-8 py-3.5 bg-[#8961DA] text-white font-bold rounded-full hover:bg-[#784fcb] focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
             >
-              Iniciar
+              <Play className="w-4 h-4 fill-current" /> Iniciar
             </button>
 
             <button
               onClick={handlePause}
               disabled={!isRunning || isLoading}
-              className="px-8 py-3.5 bg-slate-200 text-slate-800 font-bold rounded-full hover:bg-slate-300 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm"
+              className="px-8 py-3.5 bg-slate-200 text-slate-800 font-bold rounded-full hover:bg-slate-300 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2"
             >
-              Pausar
+              <Pause className="w-4 h-4 fill-current" /> Pausar
             </button>
 
             <button
               onClick={handleFinishRequest}
               disabled={isLoading || seconds === 0}
-              className="px-8 py-3.5 bg-slate-900 text-white font-bold rounded-full hover:bg-[#8961DA] focus:outline-none transition disabled:opacity-50 text-sm uppercase flex items-center gap-2 shadow-md"
+              className="px-8 py-3.5 bg-slate-900 text-white font-bold rounded-full hover:bg-[#8961DA] focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
             >
-              Finalizar
+              <Check className="w-4 h-4 stroke-[3]" /> Finalizar
+            </button>
+
+            <button
+              className="px-8 py-3.5 bg-amber-100 text-amber-800 font-bold rounded-full hover:bg-amber-200 focus:outline-none transition text-sm uppercase shadow-sm flex items-center gap-2 border border-amber-200"
+            >
+              <Coffee className="w-4 h-4" /> Descansar Agora
             </button>
           </div>
           
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium">
-              <HelpCircle className="w-4 h-4 text-[#8961DA]" />
-              <span>Esqueceu de ligar o timer ou estudou fora do app? Envie seu tempo estudado abaixo</span>
+          {!isMaximized && (
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium">
+                <HelpCircle className="w-4 h-4 text-[#8961DA]" />
+                <span>Esqueceu de ligar o timer ou estudou fora do app? Envie seu tempo estudado abaixo</span>
+              </div>
+              <button className="px-6 py-2.5 bg-slate-100 text-slate-700 rounded-full text-xs font-bold uppercase hover:bg-slate-200 transition-colors border border-slate-200">
+                ENVIAR MANUAL
+              </button>
             </div>
-            <button className="px-6 py-2.5 bg-slate-100 text-slate-700 rounded-full text-xs font-bold uppercase hover:bg-slate-200 transition-colors border border-slate-200">
-              ENVIAR MANUAL
-            </button>
-          </div>
+          )}
         </div>
 
         {/* Rodapé (Histórico Dinâmico) */}
@@ -337,8 +378,10 @@ if (result.success) {
           {showHistory && (
             <div className="w-full flex flex-col gap-3 animate-in slide-in-from-bottom-2 fade-in duration-200">
               {Object.keys(groupedHistory).length === 0 ? (
-                <div className="text-sm text-slate-500 bg-slate-50 p-4 rounded-2xl text-center border border-slate-100">
-                  Nenhum estudo registrado.
+                <div className="text-sm text-slate-500 bg-slate-50 p-6 rounded-2xl text-center border border-slate-100 flex flex-col items-center gap-2 shadow-sm">
+                  <Clock className="w-8 h-8 text-slate-300 mb-1" />
+                  <p className="text-slate-600">Até o momento você não tem nada registrado.</p>
+                  <p className="font-medium text-slate-700">Clique em <strong className="text-[#8961DA]">Iniciar o timer</strong> acima ou envie um estudo manual para começar!</p>
                 </div>
               ) : (
                 Object.keys(groupedHistory)
@@ -358,15 +401,25 @@ if (result.success) {
                     {expandedDates.includes(dateStr) && (
                       <div className="flex flex-col gap-3 px-2 pb-2">
                         {groupedHistory[dateStr].map(session => (
-                          <div key={session.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm mx-2">
+                          <div key={session.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm mx-2 group">
                             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                               <div className="flex items-center gap-2">
                                 <Book className="w-4 h-4 text-[#8961DA]" />
                                 <span className="font-bold text-slate-800 text-sm">{session.materias?.name || 'Matéria removida'}</span>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Clock className="w-4 h-4 text-slate-400" />
-                                <span className="text-sm font-bold text-slate-700">{formatTime(session.duration_seconds)}</span>
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                  <Clock className="w-4 h-4 text-slate-400" />
+                                  <span className="text-sm font-bold text-slate-700">{formatTime(session.duration_seconds)}</span>
+                                </div>
+                                <button 
+                                  onClick={() => handleDeleteSession(session.id)}
+                                  disabled={isLoading}
+                                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                                  title="Excluir estudo"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                               </div>
                             </div>
                             <div className="flex items-center justify-between">
