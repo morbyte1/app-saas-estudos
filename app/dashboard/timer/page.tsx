@@ -626,7 +626,7 @@ export default function TimerPage() {
               {/* Opções baseadas no tipo */}
               {draftConfig.type === 'pomodoro' ? (
                 <div className="space-y-3">
-                  <label className="block text-sm font-medium text-slate-700">Selecione o formato (Estudo / Descanso)</label>
+                  <label className="block text-sm font-medium text-slate-700">Selecione o formato</label>
                   <div className="grid grid-cols-1 gap-2">
                     {[
                       { s: 25, r: 5 },
@@ -651,8 +651,8 @@ export default function TimerPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <label className="block text-sm font-medium text-slate-700">Porcentagem de descanso</label>
-                  <p className="text-xs text-slate-500 mb-2">Calculado com base no tempo total estudado ao clicar em "Descansar Agora".</p>
+                  <label className="block text-sm font-medium text-slate-700">Intervalo proporcional</label>
+                  <p className="text-xs text-slate-500 mb-2">O tempo de pausa será calculado automaticamente sempre que você iniciar um descanso.</p>
                   <select
                     value={draftConfig.cronometroRestPerc}
                     onChange={(e) => setDraftConfig({...draftConfig, cronometroRestPerc: Number(e.target.value)})}
