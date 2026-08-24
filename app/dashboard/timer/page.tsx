@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { getMaterias } from '@/app/dashboard/materias/actions'
 import { getTopicosEAssuntos } from '@/app/dashboard/materias/[materia]/actions'
 import { saveTimerSession, getTimerHistory, deleteTimerSession } from './actions'
-import { ChevronDown, Settings, Maximize, Minimize, Plus, ChevronRight, Circle, HelpCircle, X, CheckCircle, XCircle, Clock, Book, FileText, Play, Pause, Check, Coffee, Trash2, RefreshCw } from 'lucide-react'
+import { ChevronDown, Settings, Maximize, Minimize, Plus, ChevronRight, Circle, HelpCircle, X, CheckCircle, XCircle, Clock, Book, FileText, Play, Pause, Check, Coffee, Trash2, RefreshCw, RotateCcw } from 'lucide-react'
 
 interface Materia {
   id: string
@@ -74,7 +74,7 @@ export default function TimerPage() {
   const [historySessions, setHistorySessions] = useState<StudySession[]>([])
   const [expandedDates, setExpandedDates] = useState<string[]>([])
 
-  // Estados para Matérias, Tópicos e Assuntos
+  // Estados para Matérias, Tópicos e Assuntos principais
   const [materias, setMaterias] = useState<Materia[]>([])
   const [selectedMateriaId, setSelectedMateriaId] = useState<string>('')
   const [topicos, setTopicos] = useState<Topico[]>([])
@@ -85,6 +85,18 @@ export default function TimerPage() {
   const [isFinishModalOpen, setIsFinishModalOpen] = useState(false)
   const [questionsDone, setQuestionsDone] = useState<string>('')
   const [questionsWrong, setQuestionsWrong] = useState<string>('')
+
+  // Estados do Modal de Envio Manual
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false)
+  const [modalAssuntos, setModalAssuntos] = useState<Assunto[]>([])
+  const [manualForm, setManualForm] = useState({
+    materiaId: '',
+    assuntoId: '',
+    durationMinutes: '',
+    sessionDate: '',
+    questionsDone: '',
+    questionsWrong: ''
+  })
 
   useEffect(() => {
     totalStudySecondsRef.current = totalStudySeconds
@@ -115,6 +127,7 @@ export default function TimerPage() {
     fetchInitialData()
   }, [])
 
+  // Buscar assuntos para a tela principal
   useEffect(() => {
     const fetchAssuntosForMateria = async () => {
       if (!selectedMateriaId) {
@@ -139,6 +152,30 @@ export default function TimerPage() {
     }
     fetchAssuntosForMateria()
   }, [selectedMateriaId, materias])
+
+  // Buscar assuntos para o modal manual de acordo com a matéria selecionada nele
+  useEffect(() => {
+    const fetchModalAssuntos = async () => {
+      if (!manualForm.materiaId) {
+        setModalAssuntos([])
+        return
+      }
+      const materiaObj = materias.find(m => m.id === manualForm.materiaId)
+      if (!materiaObj) return
+
+      const result = await getTopicosEAssuntos(materiaObj.id)
+      if (!result.error) {
+        setModalAssuntos(result.assuntos || [])
+        // Se o assunto selecionado atualmente não existir na nova matéria, reseta
+        if (!result.assuntos?.find((a: Assunto) => a.id === manualForm.assuntoId)) {
+          setManualForm(prev => ({ ...prev, assuntoId: result.assuntos?.[0]?.id || '' }))
+        }
+      }
+    }
+    if (isManualModalOpen) {
+      fetchModalAssuntos()
+    }
+  }, [manualForm.materiaId, isManualModalOpen, materias])
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
@@ -230,12 +267,9 @@ export default function TimerPage() {
       if (timerConfig.type === 'pomodoro' && currentDisplaySeconds === 0) {
         setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
       } else if (timerConfig.type === 'cronometro' && currentDisplaySeconds === 0) {
-        // Se o cronômetro foi reiniciado ou pausado e mandado para idle, 
-        // força garantir que pegue o total já estudado antes de arrancar.
         setCurrentDisplaySeconds(totalStudySeconds)
       }
     }
-    // Caso a fase já seja 'study' ou 'rest', apenas prossegue (resume).
     setIsRunning(true)
   }
 
@@ -247,6 +281,20 @@ export default function TimerPage() {
     setPhase('rest')
     setCurrentDisplaySeconds(restSecs)
     setIsRunning(true)
+  }
+
+  const handleResetTimer = () => {
+    if (confirm('Deseja realmente zerar o timer atual? O progresso não salvo será perdido.')) {
+      setIsRunning(false)
+      setTotalStudySeconds(0)
+      setPomodoroCycles(0)
+      setPhase('idle')
+      if (timerConfig.type === 'pomodoro') {
+        setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
+      } else {
+        setCurrentDisplaySeconds(0)
+      }
+    }
   }
 
   const handleFinishRequest = () => {
@@ -272,7 +320,7 @@ export default function TimerPage() {
     const result = await saveTimerSession({
       materia_id: selectedMateriaId,
       assunto_id: selectedAssuntoId,
-      duration_seconds: totalStudySeconds, // Salvamos apenas o tempo real de estudo
+      duration_seconds: totalStudySeconds,
       questions_done: qDone,
       questions_wrong: qWrong,
       session_date
@@ -280,7 +328,7 @@ export default function TimerPage() {
 
     if (result.success) {
       setTotalStudySeconds(0)
-      setPomodoroCycles(0) // Reseta os ciclos para a nova sessão
+      setPomodoroCycles(0)
       if (timerConfig.type === 'pomodoro') {
         setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
       } else {
@@ -344,6 +392,59 @@ export default function TimerPage() {
     setIsSettingsOpen(true)
   }
 
+  const openManualModal = () => {
+    const today = new Date()
+    const session_date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+    setManualForm({
+      materiaId: selectedMateriaId,
+      assuntoId: selectedAssuntoId,
+      durationMinutes: '',
+      sessionDate: session_date,
+      questionsDone: '',
+      questionsWrong: ''
+    })
+    setIsManualModalOpen(true)
+  }
+
+  const handleConfirmManual = async () => {
+    if (!manualForm.materiaId || !manualForm.assuntoId || !manualForm.durationMinutes || !manualForm.sessionDate) {
+      alert("Preencha matéria, assunto, data e tempo em minutos.")
+      return
+    }
+
+    setIsLoading(true)
+    const qDone = parseInt(manualForm.questionsDone) || 0
+    const qWrong = parseInt(manualForm.questionsWrong) || 0
+    const durationSeconds = (parseInt(manualForm.durationMinutes) || 0) * 60
+
+    const result = await saveTimerSession({
+      materia_id: manualForm.materiaId,
+      assunto_id: manualForm.assuntoId,
+      duration_seconds: durationSeconds,
+      questions_done: qDone,
+      questions_wrong: qWrong,
+      session_date: manualForm.sessionDate
+    })
+
+    if (result.success) {
+      setIsManualModalOpen(false)
+      
+      const historyResult = await getTimerHistory()
+      if (historyResult.success && historyResult.data) {
+        const formattedHistory = historyResult.data.map((session: any) => ({
+          ...session,
+          materias: Array.isArray(session.materias) ? session.materias[0] : session.materias,
+          assuntos: Array.isArray(session.assuntos) ? session.assuntos[0] : session.assuntos,
+        })) as StudySession[]
+        setHistorySessions(formattedHistory)
+      }
+    } else {
+      alert('Erro ao salvar sessão: ' + result.error)
+    }
+    setIsLoading(false)
+  }
+
   const selectedMateriaName = materias.find(m => m.id === selectedMateriaId)?.name || ''
   const selectedAssuntoName = assuntos.find(a => a.id === selectedAssuntoId)?.name || ''
 
@@ -405,7 +506,7 @@ export default function TimerPage() {
           </div>
         </div>
 
-        {/* Centro (Timer e Controles) - Pode ficar em Fullscreen */}
+        {/* Centro (Timer e Controles) */}
         <div className={isMaximized ? "fixed inset-0 z-50 bg-white flex flex-col items-center justify-center p-8 animate-in fade-in duration-200" : "flex flex-col items-center justify-center flex-1 my-10"}>
           
           {isMaximized && (
@@ -425,7 +526,6 @@ export default function TimerPage() {
              </div>
           )}
 
-          {/* Quantos ciclos passaram (Pomodoro exclusivo) */}
           {timerConfig.type === 'pomodoro' && (
             <div className="mb-2 text-[#8961DA] font-bold uppercase tracking-widest text-sm animate-in fade-in flex items-center gap-2">
               <RefreshCw className="w-5 h-5" />
@@ -478,6 +578,14 @@ export default function TimerPage() {
                 <Coffee className="w-4 h-4" /> Descansar Agora
               </button>
             )}
+
+            <button
+              onClick={handleResetTimer}
+              disabled={isLoading || (totalStudySeconds === 0 && phase === 'idle')}
+              className="px-8 py-3.5 bg-red-100 text-red-800 font-bold rounded-full hover:bg-red-200 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2 border border-red-200"
+            >
+              <RotateCcw className="w-4 h-4" /> Reiniciar
+            </button>
           </div>
           
           {!isMaximized && (
@@ -486,7 +594,11 @@ export default function TimerPage() {
                 <HelpCircle className="w-4 h-4 text-[#8961DA]" />
                 <span>Esqueceu de ligar o timer ou estudou fora do app? Envie seu tempo estudado abaixo</span>
               </div>
-              <button className="px-6 py-2.5 bg-slate-100 text-slate-700 rounded-full text-xs font-bold uppercase hover:bg-slate-200 transition-colors border border-slate-200">
+              <button 
+                onClick={openManualModal}
+                className="px-6 py-2.5 bg-slate-100 text-slate-700 rounded-full text-xs font-bold uppercase hover:bg-slate-200 transition-colors border border-slate-200 flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
                 ENVIAR MANUAL
               </button>
             </div>
@@ -756,6 +868,126 @@ export default function TimerPage() {
                 onClick={handleConfirmFinish}
                 disabled={isLoading}
                 className="flex-1 px-4 py-2.5 bg-[#8961DA] text-white font-bold rounded-xl hover:bg-[#784fcb] transition disabled:opacity-50 shadow-md flex items-center justify-center gap-2"
+              >
+                {isLoading ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Salvando...
+                  </>
+                ) : (
+                  'Salvar Estudo'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE ENVIO MANUAL */}
+      {isManualModalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-slate-900">Enviar Estudo Manual</h3>
+              <button onClick={() => setIsManualModalOpen(false)} disabled={isLoading} className="p-2 hover:bg-slate-100 rounded-lg transition">
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Matéria</label>
+                <select
+                  value={manualForm.materiaId}
+                  onChange={(e) => setManualForm({ ...manualForm, materiaId: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8961DA] bg-white text-sm"
+                >
+                  <option value="" disabled>Selecione uma matéria</option>
+                  {materias.map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Assunto</label>
+                <select
+                  value={manualForm.assuntoId}
+                  onChange={(e) => setManualForm({ ...manualForm, assuntoId: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8961DA] bg-white text-sm"
+                  disabled={!manualForm.materiaId}
+                >
+                  <option value="" disabled>Selecione um assunto</option>
+                  {modalAssuntos.map(a => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Data</label>
+                  <input
+                    type="date"
+                    value={manualForm.sessionDate}
+                    onChange={(e) => setManualForm({ ...manualForm, sessionDate: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8961DA] bg-white text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Tempo (min)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={manualForm.durationMinutes}
+                    onChange={(e) => setManualForm({ ...manualForm, durationMinutes: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8961DA] bg-white text-sm"
+                    placeholder="Ex: 60"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Questões Feitas</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={manualForm.questionsDone}
+                    onChange={(e) => setManualForm({ ...manualForm, questionsDone: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8961DA] bg-white text-sm"
+                    placeholder="Ex: 15"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Questões Erradas</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={manualForm.questionsWrong}
+                    onChange={(e) => setManualForm({ ...manualForm, questionsWrong: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8961DA] bg-white text-sm"
+                    placeholder="Ex: 2"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-8">
+              <button
+                onClick={() => setIsManualModalOpen(false)}
+                disabled={isLoading}
+                className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmManual}
+                disabled={isLoading}
+                className="flex-1 px-4 py-2.5 bg-[#8961DA] text-white font-bold rounded-xl hover:bg-[#784fcb] transition disabled:opacity-50 shadow-md flex items-center justify-center gap-2 text-sm"
               >
                 {isLoading ? (
                   <>
