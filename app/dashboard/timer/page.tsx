@@ -40,11 +40,28 @@ interface StudySession {
 
 export default function TimerPage() {
   // Estados do Timer
-  const [seconds, setSeconds] = useState(0)
+  const [totalStudySeconds, setTotalStudySeconds] = useState(0)
+  const [currentDisplaySeconds, setCurrentDisplaySeconds] = useState(0)
+  const [phase, setPhase] = useState<'idle' | 'study' | 'rest'>('idle')
   const [isRunning, setIsRunning] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
   
+  // Configurações do Timer
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [timerConfig, setTimerConfig] = useState<{
+    type: 'cronometro' | 'pomodoro',
+    pomodoroStudy: number,
+    pomodoroRest: number,
+    cronometroRestPerc: number
+  }>({
+    type: 'cronometro',
+    pomodoroStudy: 25,
+    pomodoroRest: 5,
+    cronometroRestPerc: 20
+  })
+  const [draftConfig, setDraftConfig] = useState(timerConfig)
+
   // Estados de Histórico
   const [showHistory, setShowHistory] = useState(false)
   const [historySessions, setHistorySessions] = useState<StudySession[]>([])
@@ -75,7 +92,6 @@ export default function TimerPage() {
       }
       
       if (historyResult.success && historyResult.data) {
-        // Formata os dados para garantir que a tipagem e o formato estejam corretos
         const formattedHistory = historyResult.data.map((session: any) => ({
           ...session,
           materias: Array.isArray(session.materias) ? session.materias[0] : session.materias,
@@ -118,16 +134,42 @@ export default function TimerPage() {
 
     if (isRunning) {
       interval = setInterval(() => {
-        setSeconds((prevSeconds) => prevSeconds + 1)
+        if (phase === 'study') {
+          setTotalStudySeconds((prev) => prev + 1)
+          
+          if (timerConfig.type === 'cronometro') {
+            setCurrentDisplaySeconds((prev) => prev + 1)
+          } else {
+            setCurrentDisplaySeconds((prev) => {
+              if (prev <= 1) {
+                // Pomodoro: Estudo acabou, inicia o descanso automaticamente
+                setPhase('rest')
+                return timerConfig.pomodoroRest * 60
+              }
+              return prev - 1
+            })
+          }
+        } else if (phase === 'rest') {
+          setCurrentDisplaySeconds((prev) => {
+            if (prev <= 1) {
+              // Descanso finalizado
+              setIsRunning(false)
+              setPhase('idle')
+              if (timerConfig.type === 'pomodoro') {
+                return timerConfig.pomodoroStudy * 60
+              }
+              return 0
+            }
+            return prev - 1
+          })
+        }
       }, 1000)
-    } else if (interval) {
-      clearInterval(interval)
     }
 
     return () => {
       if (interval) clearInterval(interval)
     }
-  }, [isRunning])
+  }, [isRunning, phase, timerConfig])
 
   // Utilitários de Tempo e Data
   const formatTime = (totalSeconds: number) => {
@@ -144,16 +186,14 @@ export default function TimerPage() {
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1)
 
   const formatDateToPortuguese = (dateStr: string) => {
-    // Separa ano, mês e dia para evitar furos de fuso horário
     const [year, month, day] = dateStr.split('-')
     const date = new Date(Number(year), Number(month) - 1, Number(day))
     
     const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
     let formatted = date.toLocaleDateString('pt-BR', options)
-    return capitalize(formatted).replace('-feira', '-feira') // Ajuste semântico
+    return capitalize(formatted).replace('-feira', '-feira')
   }
 
-  // Agrupa sessões por data
   const groupedHistory = historySessions.reduce((acc, session) => {
     if (!acc[session.session_date]) acc[session.session_date] = []
     acc[session.session_date].push(session)
@@ -169,9 +209,34 @@ export default function TimerPage() {
   }
 
   // Controles
-  const handleStart = () => setIsRunning(true)
+  const handleStart = () => {
+    if (phase === 'idle') {
+      setPhase('study')
+      if (timerConfig.type === 'pomodoro' && currentDisplaySeconds === 0) {
+        setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
+      }
+    } else if (phase === 'rest' && currentDisplaySeconds === 0) {
+      // Se acabou o descanso e clicou em iniciar
+      setPhase('study')
+      if (timerConfig.type === 'pomodoro') {
+        setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
+      } else {
+        setCurrentDisplaySeconds(0)
+      }
+    }
+    setIsRunning(true)
+  }
+
   const handlePause = () => setIsRunning(false)
   
+  const handleRestNow = () => {
+    if (timerConfig.type !== 'cronometro' || phase !== 'study') return
+    const restSecs = Math.floor(totalStudySeconds * (timerConfig.cronometroRestPerc / 100))
+    setPhase('rest')
+    setCurrentDisplaySeconds(restSecs)
+    setIsRunning(true)
+  }
+
   const handleFinishRequest = () => {
     if (!selectedMateriaId || !selectedAssuntoId) {
       alert("Selecione uma matéria e um assunto antes de finalizar.")
@@ -189,26 +254,30 @@ export default function TimerPage() {
     const qDone = parseInt(questionsDone) || 0
     const qWrong = parseInt(questionsWrong) || 0
 
-    // Pega a data de hoje formatada em YYYY-MM-DD
     const today = new Date()
     const session_date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
     const result = await saveTimerSession({
       materia_id: selectedMateriaId,
       assunto_id: selectedAssuntoId,
-      duration_seconds: seconds,
+      duration_seconds: totalStudySeconds, // Salvamos apenas o tempo real de estudo
       questions_done: qDone,
       questions_wrong: qWrong,
       session_date
     })
 
     if (result.success) {
-      setSeconds(0)
+      setTotalStudySeconds(0)
+      if (timerConfig.type === 'pomodoro') {
+        setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
+      } else {
+        setCurrentDisplaySeconds(0)
+      }
+      setPhase('idle')
       setIsFinishModalOpen(false)
-      // Recarrega o histórico atualizado
+      
       const historyResult = await getTimerHistory()
       if (historyResult.success && historyResult.data) {
-        // Formata os dados para garantir que a tipagem e o formato estejam corretos
         const formattedHistory = historyResult.data.map((session: any) => ({
           ...session,
           materias: Array.isArray(session.materias) ? session.materias[0] : session.materias,
@@ -236,6 +305,29 @@ export default function TimerPage() {
       }
       setIsLoading(false)
     }
+  }
+
+  const handleSaveSettings = () => {
+    if (isRunning || totalStudySeconds > 0 || currentDisplaySeconds > 0) {
+      if (!confirm('Alterar as configurações reiniciará o timer atual. Deseja continuar?')) {
+        return
+      }
+    }
+    setTimerConfig(draftConfig)
+    setIsSettingsOpen(false)
+    setIsRunning(false)
+    setPhase('idle')
+    setTotalStudySeconds(0)
+    if (draftConfig.type === 'pomodoro') {
+      setCurrentDisplaySeconds(draftConfig.pomodoroStudy * 60)
+    } else {
+      setCurrentDisplaySeconds(0)
+    }
+  }
+
+  const openSettings = () => {
+    setDraftConfig(timerConfig)
+    setIsSettingsOpen(true)
   }
 
   const selectedMateriaName = materias.find(m => m.id === selectedMateriaId)?.name || ''
@@ -284,7 +376,10 @@ export default function TimerPage() {
           </div>
 
           <div className="flex gap-3 items-center">
-            <button className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 hover:bg-[#8961DA] hover:text-white transition-colors hover:border-[#8961DA]">
+            <button 
+              onClick={openSettings}
+              className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 hover:bg-[#8961DA] hover:text-white transition-colors hover:border-[#8961DA]"
+            >
               <Settings className="w-4 h-4" />
             </button>
             <button 
@@ -316,8 +411,15 @@ export default function TimerPage() {
              </div>
           )}
 
-          <div className="text-[8rem] sm:text-[10rem] font-bold tracking-tight text-slate-900 mb-8 font-mono leading-none">
-            {formatTime(seconds)}
+          {phase === 'rest' && (
+            <div className="mb-4 text-emerald-500 font-bold uppercase tracking-widest text-sm animate-pulse flex items-center gap-2">
+              <Coffee className="w-5 h-5" />
+              Tempo de Descanso
+            </div>
+          )}
+
+          <div className={`text-[8rem] sm:text-[10rem] font-bold tracking-tight mb-8 font-mono leading-none ${phase === 'rest' ? 'text-emerald-500' : 'text-slate-900'}`}>
+            {formatTime(currentDisplaySeconds)}
           </div>
 
           <div className="flex flex-wrap gap-4 justify-center mb-8">
@@ -339,17 +441,21 @@ export default function TimerPage() {
 
             <button
               onClick={handleFinishRequest}
-              disabled={isLoading || seconds === 0}
+              disabled={isLoading || totalStudySeconds === 0}
               className="px-8 py-3.5 bg-slate-900 text-white font-bold rounded-full hover:bg-[#8961DA] focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
             >
               <Check className="w-4 h-4 stroke-[3]" /> Finalizar
             </button>
 
-            <button
-              className="px-8 py-3.5 bg-amber-100 text-amber-800 font-bold rounded-full hover:bg-amber-200 focus:outline-none transition text-sm uppercase shadow-sm flex items-center gap-2 border border-amber-200"
-            >
-              <Coffee className="w-4 h-4" /> Descansar Agora
-            </button>
+            {timerConfig.type === 'cronometro' && phase === 'study' && (
+              <button
+                onClick={handleRestNow}
+                disabled={totalStudySeconds === 0}
+                className="px-8 py-3.5 bg-amber-100 text-amber-800 font-bold rounded-full hover:bg-amber-200 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2 border border-amber-200"
+              >
+                <Coffee className="w-4 h-4" /> Descansar Agora
+              </button>
+            )}
           </div>
           
           {!isMaximized && (
@@ -385,7 +491,7 @@ export default function TimerPage() {
                 </div>
               ) : (
                 Object.keys(groupedHistory)
-                  .sort((a, b) => b.localeCompare(a)) // Ordena dias decrescente
+                  .sort((a, b) => b.localeCompare(a))
                   .map(dateStr => (
                   <div key={dateStr} className="flex flex-col gap-2">
                     <button
@@ -467,6 +573,97 @@ export default function TimerPage() {
         </div>
       </div>
 
+      {/* MODAL DE CONFIGURAÇÕES */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-slate-900">Configurações do Timer</h3>
+              <button onClick={() => setIsSettingsOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg transition">
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Tipo de Timer */}
+              <div className="flex bg-slate-100 p-1 rounded-xl">
+                <button
+                  onClick={() => setDraftConfig({...draftConfig, type: 'cronometro'})}
+                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${draftConfig.type === 'cronometro' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Cronômetro
+                </button>
+                <button
+                  onClick={() => setDraftConfig({...draftConfig, type: 'pomodoro'})}
+                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${draftConfig.type === 'pomodoro' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Pomodoro
+                </button>
+              </div>
+
+              {/* Opções baseadas no tipo */}
+              {draftConfig.type === 'pomodoro' ? (
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-slate-700">Selecione o formato (Estudo / Descanso)</label>
+                  <div className="grid grid-cols-1 gap-2">
+                    {[
+                      { s: 25, r: 5 },
+                      { s: 30, r: 5 },
+                      { s: 45, r: 10 },
+                      { s: 50, r: 10 },
+                      { s: 60, r: 15 }
+                    ].map((preset, idx) => {
+                      const isSelected = draftConfig.pomodoroStudy === preset.s && draftConfig.pomodoroRest === preset.r;
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => setDraftConfig({...draftConfig, pomodoroStudy: preset.s, pomodoroRest: preset.r})}
+                          className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${isSelected ? 'border-[#8961DA] bg-purple-50 text-[#8961DA]' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}
+                        >
+                          <span className="font-bold">{preset.s} min estudo</span>
+                          <span className="text-sm font-medium opacity-80">{preset.r} min descanso</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-slate-700">Porcentagem de descanso</label>
+                  <p className="text-xs text-slate-500 mb-2">Calculado com base no tempo total estudado ao clicar em "Descansar Agora".</p>
+                  <select
+                    value={draftConfig.cronometroRestPerc}
+                    onChange={(e) => setDraftConfig({...draftConfig, cronometroRestPerc: Number(e.target.value)})}
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8961DA] bg-white text-slate-900 font-medium"
+                  >
+                    <option value={10}>10% do tempo de estudo</option>
+                    <option value={15}>15% do tempo de estudo</option>
+                    <option value={20}>20% do tempo de estudo</option>
+                    <option value={25}>25% do tempo de estudo</option>
+                    <option value={30}>30% do tempo de estudo</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-8">
+              <button
+                onClick={() => setIsSettingsOpen(false)}
+                className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveSettings}
+                className="flex-1 px-4 py-2.5 bg-[#8961DA] text-white font-bold rounded-xl hover:bg-[#784fcb] transition shadow-md"
+              >
+                Salvar 
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL DE FINALIZAÇÃO DA SESSÃO */}
       {isFinishModalOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -490,7 +687,7 @@ export default function TimerPage() {
               </div>
               <div className="flex items-center justify-between pt-3 border-t border-slate-200">
                 <span className="text-xs text-slate-500 font-bold uppercase">Tempo Estudado</span>
-                <span className="text-lg font-bold text-[#8961DA]">{formatTime(seconds)}</span>
+                <span className="text-lg font-bold text-[#8961DA]">{formatTime(totalStudySeconds)}</span>
               </div>
             </div>
 
