@@ -62,7 +62,7 @@ export default function TimerPage() {
   const [questionsWrong, setQuestionsWrong] = useState<string>('')
 
   useEffect(() => {
-    const fetchInitialData = async () => {
+const fetchInitialData = async () => {
       const [materiasResult, historyResult] = await Promise.all([
         getMaterias(),
         getTimerHistory()
@@ -72,8 +72,16 @@ export default function TimerPage() {
         setMaterias(materiasResult.data)
         setSelectedMateriaId(materiasResult.data[0].id)
       }
+      
       if (historyResult.success && historyResult.data) {
-        setHistorySessions(historyResult.data)
+        // Formata os dados para garantir que a tipagem e o formato estejam corretos
+        const formattedHistory = historyResult.data.map((session: any) => ({
+          ...session,
+          materias: Array.isArray(session.materias) ? session.materias[0] : session.materias,
+          assuntos: Array.isArray(session.assuntos) ? session.assuntos[0] : session.assuntos,
+        })) as StudySession[]
+        
+        setHistorySessions(formattedHistory)
       }
     }
     fetchInitialData()
@@ -193,13 +201,20 @@ export default function TimerPage() {
       session_date
     })
 
-    if (result.success) {
+if (result.success) {
       setSeconds(0)
       setIsFinishModalOpen(false)
       // Recarrega o histórico atualizado
       const historyResult = await getTimerHistory()
       if (historyResult.success && historyResult.data) {
-        setHistorySessions(historyResult.data)
+        // Formata os dados para garantir que a tipagem e o formato estejam corretos
+        const formattedHistory = historyResult.data.map((session: any) => ({
+          ...session,
+          materias: Array.isArray(session.materias) ? session.materias[0] : session.materias,
+          assuntos: Array.isArray(session.assuntos) ? session.assuntos[0] : session.assuntos,
+        })) as StudySession[]
+        
+        setHistorySessions(formattedHistory)
       }
     } else {
       alert('Erro ao salvar sessão: ' + result.error)
