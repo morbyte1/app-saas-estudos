@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, Clock, Plus, MoreVertical, Check, X, Copy, Edit2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, Plus, MoreVertical, Check, X, Copy, Edit2, Target } from 'lucide-react'
 import {
   getCalendarData,
   createEvent,
@@ -408,33 +408,32 @@ export default function CalendarioPage() {
           </div>
         ) : (
           <>
-            <div className="flex justify-between items-start mb-6">
+<div className="flex justify-between items-start mb-6">
               <div>
                 <h1 className="text-3xl font-extrabold text-slate-900">Planejamento</h1>
                 <p className="text-slate-500 mt-2">Gerencie seu cronograma de estudos</p>
               </div>
               <div className="flex gap-4">
-                <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col justify-center min-w-[240px]">
-                  <div className="flex justify-between items-center mb-1">
-                    <p className="text-xs text-slate-400 font-semibold uppercase">Meta diária de horas</p>
-                    <button 
-                      onClick={() => {
-                        setNewDailyGoal(dailyStats.goal.toString())
-                        setIsDailyGoalModalOpen(true)
-                      }} 
-                      className="text-slate-400 hover:text-primary-600 hover:bg-primary-50 p-1.5 rounded-md transition"
-                    >
-                      <Edit2 className="w-3.5 h-3.5"/>
-                    </button>
+                <div className="bg-white rounded-full px-5 py-2.5 border border-slate-200 shadow-sm flex items-center gap-4">
+                  <div className="flex items-center gap-3 border-r border-slate-100 pr-4">
+                    <div className="bg-primary-100 p-1.5 rounded-full">
+                      <Target className="w-4 h-4 text-primary-600" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none mb-0.5">Meta Diária</span>
+                      <span className="text-sm font-bold text-slate-700 leading-none">{studiedDec}h / {dailyStats.goal}h</span>
+                    </div>
                   </div>
-                  <p className="text-2xl font-bold text-slate-900 leading-tight">
-                    {studiedDec} <span className="text-sm font-medium text-slate-500">horas de {dailyStats.goal}</span>
-                  </p>
-                  <p className="text-[11px] text-slate-400 font-medium mt-1">
-                    {remainingMinutes > 0 
-                      ? `Falta ${remH > 0 ? `${remH}h ` : ''}${remM}min para atingir sua meta diária.` 
-                      : 'Você atingiu sua meta diária!'}
-                  </p>
+                  <button 
+                    onClick={() => {
+                      setNewDailyGoal(dailyStats.goal.toString())
+                      setIsDailyGoalModalOpen(true)
+                    }} 
+                    className="text-slate-400 hover:text-primary-600 bg-slate-50 hover:bg-primary-50 p-1.5 rounded-full transition"
+                    title="Editar meta diária"
+                  >
+                    <Edit2 className="w-3.5 h-3.5"/>
+                  </button>
                 </div>
               </div>
             </div>

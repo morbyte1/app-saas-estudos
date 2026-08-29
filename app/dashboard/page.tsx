@@ -6,49 +6,21 @@ import { Calendar, Clock, Target, TrendingUp, Plus, Flame, Check, X, Edit2, Tras
 import { getCalendarData, createSubject } from './calendario/actions'
 import { getTasks, createTask, updateTask, deleteTask, toggleTaskStatus, getDashboardStats, createExamGoal, updateExamGoal, deleteExamGoal } from './actions'
 
-interface Event {
-  id: string
-  title: string
-  time: string
-  duration: number
-  subject_id: string
-  is_done: boolean
-  event_date: string
-}
+// --- INTERFACES (mantenha iguais às originais) ---
+interface Event { id: string; title: string; time: string; duration: number; subject_id: string; is_done: boolean; event_date: string }
+interface Subject { id: string; name: string; color: string }
+interface Task { id: string; title: string; subject_id: string; priority: 'baixa' | 'normal' | 'alta'; is_done: boolean }
+interface TopSubject { id: string; name: string; goalHours: number; studiedHours: number; studiedMinutes: number; progress: number }
+interface DashboardStats { todayMinutes: number; totalHours: number; totalDurationFormatted: string; currentStreak: number; maxStreak: number; examGoal: { id: string, name: string, target_date: string } | null; topSubjects: TopSubject[]; dailyGoalHours: number }
 
-interface Subject {
-  id: string
-  name: string
-  color: string
-}
-
-interface Task {
-  id: string
-  title: string
-  subject_id: string
-  priority: 'baixa' | 'normal' | 'alta'
-  is_done: boolean
-}
-
-interface TopSubject {
-  id: string
-  name: string
-  goalHours: number
-  studiedHours: number
-  studiedMinutes: number
-  progress: number
-}
-
-interface DashboardStats {
-  todayMinutes: number
-  totalHours: number
-  totalDurationFormatted: string
-  currentStreak: number
-  maxStreak: number
-  examGoal: { id: string, name: string, target_date: string } | null
-  topSubjects: TopSubject[]
-  dailyGoalHours: number
-}
+const QUOTES = [
+  "“A excelência é um hábito.” — Aristóteles",
+  "“A educação é a arma mais poderosa que você pode usar para mudar o mundo.” — Nelson Mandela",
+  "“Não é que eu seja tão inteligente; é que fico com os problemas por mais tempo.” — Albert Einstein",
+  "“O sucesso é a soma de pequenos esforços, repetidos dia após dia.” — Robert Collier",
+  "“A maneira de começar é parar de falar e começar a fazer.” — Walt Disney",
+  "“Você nunca sabe que resultados virão da sua ação. Mas se não fizer nada, não existirão resultados.” — Mahatma Gandhi"
+]
 
 export default function DashboardPage() {
   const [events, setEvents] = useState<Event[]>([])
@@ -56,19 +28,12 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [quoteOfDay, setQuoteOfDay] = useState(QUOTES[0])
 
   // Estados do Modal de Tarefas
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
-  const [taskModalData, setTaskModalData] = useState<{
-    title: string;
-    subjectId: string;
-    priority: 'baixa' | 'normal' | 'alta';
-  }>({
-    title: '',
-    subjectId: '',
-    priority: 'normal'
-  })
+  const [taskModalData, setTaskModalData] = useState<{title: string; subjectId: string; priority: 'baixa' | 'normal' | 'alta';}>({title: '', subjectId: '', priority: 'normal'})
 
   // Estados para nova Tag
   const [showNewSubject, setShowNewSubject] = useState(false)
@@ -83,6 +48,13 @@ export default function DashboardPage() {
   const [examCountdown, setExamCountdown] = useState({ days: 0, hours: 0, minutes: 0 })
 
   useEffect(() => {
+    // Calculadora para rotacionar a frase diariamente
+    const now = new Date()
+    const start = new Date(now.getFullYear(), 0, 0)
+    const diff = now.getTime() - start.getTime()
+    const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24))
+    setQuoteOfDay(QUOTES[dayOfYear % QUOTES.length])
+
     const fetchData = async () => {
       setIsLoading(true)
       
@@ -96,15 +68,12 @@ export default function DashboardPage() {
         setEvents(calendarResult.events || [])
         setSubjects(calendarResult.subjects || [])
       }
-
       if (!tasksResult.error) {
         setTasks(tasksResult.tasks || [])
       }
-
       if (statsResult?.success && statsResult.data) {
         setStats(statsResult.data as DashboardStats)
       }
-
       setIsLoading(false)
     }
     fetchData()
@@ -317,10 +286,11 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-8">
       <div className="max-w-7xl mx-auto">
+        // Substitua o header pelo bloco abaixo:
         <div className="flex justify-between items-start mb-8">
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Seja bem-vindo!</h1>
-            <p className="text-sm text-slate-500 mt-2 font-medium">"O sucesso é a soma de pequenos esforços repetidos dia após dia." — Robert Collier</p>
+            <p className="text-sm text-slate-500 mt-2 font-medium">{quoteOfDay}</p>
           </div>
           <button className="flex items-center gap-2 px-4 py-2 bg-white text-primary-700 font-medium rounded-lg border border-slate-200 hover:bg-slate-50 transition">
             <Calendar className="w-4 h-4" />
@@ -383,7 +353,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-center">
+<div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-center">
             <div className="flex justify-between items-start mb-2">
               <span className="text-xs text-slate-400 font-semibold uppercase">Meta Prova</span>
               <div className="bg-primary-100 p-2 rounded-lg">
@@ -394,7 +364,7 @@ export default function DashboardPage() {
               <div className="flex flex-col mt-1 group">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-bold text-slate-700 truncate">{stats.examGoal.name}</p>
-                  <button onClick={() => openExamModal(stats.examGoal!)} className="text-slate-400 hover:text-primary-600 opacity-0 group-hover:opacity-100 transition-opacity p-1">
+                  <button onClick={() => openExamModal(stats.examGoal!)} className="text-slate-400 hover:text-primary-600 transition-colors p-1">
                     <Edit2 className="w-3 h-3" />
                   </button>
                 </div>

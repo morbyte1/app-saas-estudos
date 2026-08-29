@@ -56,7 +56,7 @@ const SubjectCard = ({ materia, onEdit }: { materia: Materia, onEdit: (m: Materi
         <span className="text-sm font-bold text-primary-600">{materia.progress}%</span>
       </div>
       <div className="w-full bg-slate-100 rounded-full h-2">
-        <div className="text-primary-600 h-2 rounded-full transition-all duration-500" style={{ width: `${materia.progress}%` }}></div>
+        <div className="bg-primary-600 h-2 rounded-full transition-all duration-500" style={{ width: `${materia.progress}%` }}></div>
       </div>
     </div>
   </div>
