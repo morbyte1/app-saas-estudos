@@ -17,7 +17,7 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 h-screen bg-white border-r border-slate-200 flex flex-col">
-      <div className="p-6">
+      <div className="px-6 pt-6 pb-2">
         <div className="flex items-center justify-center">
           <Image
             src="/logo.png"
@@ -30,7 +30,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 mt-2">
+      <nav className="flex-1">
         <ul className="space-y-1">
           {navigation.map((item) => {
             const isActive = pathname === item.href
