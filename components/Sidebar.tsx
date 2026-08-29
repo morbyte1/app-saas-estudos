@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
-import { Book, LayoutGrid, BookOpen, Calendar, Clock, BarChart2, Settings } from 'lucide-react'
+import { LayoutGrid, BookOpen, Calendar, Clock, BarChart2, Settings } from 'lucide-react'
 
 const navigation = [
   { name: 'Painel Geral', href: '/dashboard', icon: LayoutGrid },
@@ -18,19 +18,19 @@ export default function Sidebar() {
   return (
     <aside className="w-64 h-screen bg-white border-r border-slate-200 flex flex-col">
       <div className="p-6">
-        <div className="flex items-center">
+        <div className="flex items-center justify-center">
           <Image
             src="/logo.png"
             alt="Logo do Focus App"
-            width={150}
-            height={40}
+            width={180}
+            height={60}
             priority
-            className="h-10 w-auto object-contain"
+            className="w-40 h-auto object-contain"
           />
         </div>
       </div>
 
-      <nav className="flex-1">
+      <nav className="flex-1 mt-2">
         <ul className="space-y-1">
           {navigation.map((item) => {
             const isActive = pathname === item.href
