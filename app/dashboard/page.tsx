@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Calendar, Clock, Target, TrendingUp, Plus, Medal, Flame, Check, X, Edit2, Trash2 } from 'lucide-react'
 import { getCalendarData, createSubject } from './calendario/actions'
-import { getTasks, createTask, updateTask, deleteTask, toggleTaskStatus } from './actions'
+import { getTasks, createTask, updateTask, deleteTask, toggleTaskStatus, getDashboardStats, createExamGoal } from './actions'
 
 interface Event {
   id: string
@@ -30,10 +30,29 @@ interface Task {
   is_done: boolean
 }
 
+interface TopSubject {
+  id: string
+  name: string
+  color: string
+  progress: number
+  timeFormatted: string
+  studiedSeconds: number
+}
+
+interface DashboardStats {
+  todayMinutes: number
+  totalHours: number
+  currentStreak: number
+  maxStreak: number
+  examGoal: { name: string, target_date: string } | null
+  topSubjects: TopSubject[]
+}
+
 export default function DashboardPage() {
   const [events, setEvents] = useState<Event[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
+  const [stats, setStats] = useState<DashboardStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   // Estados do Modal de Tarefas
@@ -49,27 +68,38 @@ export default function DashboardPage() {
     priority: 'normal'
   })
 
-  // Estados para nova Tag (Subject) no modal de Tarefas
+  // Estados para nova Tag
   const [showNewSubject, setShowNewSubject] = useState(false)
   const [newSubjectName, setNewSubjectName] = useState('')
   const [newSubjectColor, setNewSubjectColor] = useState('#8b5cf6')
   const [isSavingSubject, setIsSavingSubject] = useState(false)
 
+  // Estados para Meta de Prova
+  const [isExamModalOpen, setIsExamModalOpen] = useState(false)
+  const [examForm, setExamForm] = useState({ name: '', date: '', time: '' })
+  const [examCountdown, setExamCountdown] = useState({ days: 0, hours: 0, minutes: 0 })
+
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true)
       
-      // Busca dados do calendário (e subjects)
-      const calendarResult = await getCalendarData()
+      const [calendarResult, tasksResult, statsResult] = await Promise.all([
+        getCalendarData(),
+        getTasks(),
+        getDashboardStats()
+      ])
+
       if (!calendarResult.error) {
         setEvents(calendarResult.events || [])
         setSubjects(calendarResult.subjects || [])
       }
 
-      // Busca tarefas
-      const tasksResult = await getTasks()
       if (!tasksResult.error) {
         setTasks(tasksResult.tasks || [])
+      }
+
+      if (statsResult.success && statsResult.data) {
+        setStats(statsResult.data as DashboardStats)
       }
 
       setIsLoading(false)
@@ -77,19 +107,45 @@ export default function DashboardPage() {
     fetchData()
   }, [])
 
-  // Pega a data de hoje para filtrar os estudos do dia atual
+  // Atualização do Countdown da Prova
+  useEffect(() => {
+    if (!stats?.examGoal?.target_date) return
+
+    const calculateCountdown = () => {
+      const target = new Date(stats.examGoal!.target_date).getTime()
+      const now = new Date().getTime()
+      const distance = target - now
+
+      if (distance > 0) {
+        setExamCountdown({
+          days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+          minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
+        })
+      } else {
+        setExamCountdown({ days: 0, hours: 0, minutes: 0 })
+      }
+    }
+
+    calculateCountdown()
+    const interval = setInterval(calculateCountdown, 60000) // Atualiza a cada minuto
+    return () => clearInterval(interval)
+  }, [stats?.examGoal])
+
+  // Data atual formatada (Ex: Sábado, 29 de Agosto)
   const today = new Date()
+  const formattedToday = today.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
+  const capitalizedToday = formattedToday.charAt(0).toUpperCase() + formattedToday.slice(1)
+
   const year = today.getFullYear()
   const month = String(today.getMonth() + 1).padStart(2, '0')
   const day = String(today.getDate()).padStart(2, '0')
   const dateString = `${year}-${month}-${day}`
 
-  // Filtra eventos de hoje e ordena por horário
   const todaysEvents = events
     .filter(e => e.event_date && e.event_date.startsWith(dateString))
     .sort((a, b) => a.time.localeCompare(b.time))
 
-  // Lógica para determinar status da tarefa ("Feito", "Próxima", "Depois")
   let foundNext = false
   const eventsWithStatus = todaysEvents.map(event => {
     let status = ''
@@ -104,19 +160,24 @@ export default function DashboardPage() {
     return { ...event, status }
   })
 
-  // Ordenação das Tarefas (Alta > Normal > Baixa)
   const priorityWeight = { alta: 3, normal: 2, baixa: 1 }
   const sortedTasks = [...tasks].sort((a, b) => {
     return priorityWeight[b.priority] - priorityWeight[a.priority]
   })
 
-  // Funções utilitárias
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60)
     const mins = minutes % 60
     if (hours === 0) return `${mins}min`
     if (mins === 0) return `${hours}h`
     return `${hours}h ${mins}min`
+  }
+
+  const formatTodayMinutes = (totalMinutes: number) => {
+    const hours = Math.floor(totalMinutes / 60)
+    const mins = totalMinutes % 60
+    if (hours > 0) return `${hours}h ${mins}min`
+    return `${mins}min`
   }
 
   const getSubjectColorStyle = (color: string) => {
@@ -126,11 +187,7 @@ export default function DashboardPage() {
 
   const getSubjectColorClass = (color: string) => {
     const colors: Record<string, string> = {
-      purple: 'bg-primary-500',
-      blue: 'bg-blue-500',
-      green: 'bg-green-500',
-      orange: 'bg-orange-500',
-      red: 'bg-red-500'
+      purple: 'bg-primary-500', blue: 'bg-blue-500', green: 'bg-green-500', orange: 'bg-orange-500', red: 'bg-red-500'
     }
     if (color && color.startsWith('#')) return ''
     return colors[color || 'purple'] || colors.purple
@@ -138,63 +195,39 @@ export default function DashboardPage() {
 
   const getSubjectTextColorClass = (color: string) => {
     const colors: Record<string, string> = {
-      purple: 'text-primary-600',
-      blue: 'text-blue-600',
-      green: 'text-green-600',
-      orange: 'text-orange-600',
-      red: 'text-red-600'
+      purple: 'text-primary-600', blue: 'text-blue-600', green: 'text-green-600', orange: 'text-orange-600', red: 'text-red-600'
     }
     if (color && color.startsWith('#')) return ''
     return colors[color || 'purple'] || colors.purple
   }
 
-  // --- Lógica de CRUD para Tarefas ---
+  // --- Funções Auxiliares e Actions de Tarefas (mantidas intactas) ---
 
   const openTaskModal = () => {
     setIsTaskModalOpen(true)
-    setTaskModalData({
-      title: '',
-      subjectId: subjects.length > 0 ? subjects[0].id : '',
-      priority: 'normal'
-    })
+    setTaskModalData({ title: '', subjectId: subjects.length > 0 ? subjects[0].id : '', priority: 'normal' })
     setEditingTaskId(null)
     setShowNewSubject(false)
   }
-
-  const closeTaskModal = () => {
-    setIsTaskModalOpen(false)
-    setEditingTaskId(null)
-  }
+  const closeTaskModal = () => { setIsTaskModalOpen(false); setEditingTaskId(null) }
 
   const handleSaveSubjectForTask = async () => {
     if (!newSubjectName.trim()) return
     setIsSavingSubject(true)
-    
     try {
-      const result = await createSubject({
-        name: newSubjectName,
-        color: newSubjectColor
-      })
-      
+      const result = await createSubject({ name: newSubjectName, color: newSubjectColor })
       if (result.success) {
         const dataResult = await getCalendarData()
         if (!dataResult.error) {
           setSubjects(dataResult.subjects || [])
           const createdSubject = result.subject || dataResult.subjects?.find((s: Subject) => s.name === newSubjectName)
-          setTaskModalData(prev => ({ 
-            ...prev, 
-            subjectId: createdSubject ? createdSubject.id : (dataResult.subjects?.[0]?.id || '')
-          }))
+          setTaskModalData(prev => ({ ...prev, subjectId: createdSubject ? createdSubject.id : (dataResult.subjects?.[0]?.id || '') }))
           setNewSubjectName('')
           setNewSubjectColor('#8b5cf6')
         }
         setShowNewSubject(false)
-      } else {
-        alert('Não foi possível criar a matéria/tag.')
-      }
-    } finally {
-      setIsSavingSubject(false)
-    }
+      } else { alert('Não foi possível criar a matéria/tag.') }
+    } finally { setIsSavingSubject(false) }
   }
 
   const handleSaveTask = async () => {
@@ -202,42 +235,19 @@ export default function DashboardPage() {
       alert("Por favor, preencha o nome da tarefa e selecione uma matéria (tag).")
       return
     }
-
     if (editingTaskId) {
-      const result = await updateTask(editingTaskId, {
-        title: taskModalData.title,
-        subject_id: taskModalData.subjectId,
-        priority: taskModalData.priority
-      })
-      
-      if (result.success && result.task) {
-        setTasks(tasks.map(t => t.id === editingTaskId ? result.task : t))
-        closeTaskModal()
-      } else {
-        alert("Erro ao atualizar a tarefa.")
-      }
+      const result = await updateTask(editingTaskId, { title: taskModalData.title, subject_id: taskModalData.subjectId, priority: taskModalData.priority })
+      if (result.success && result.task) { setTasks(tasks.map(t => t.id === editingTaskId ? result.task : t)); closeTaskModal() } 
+      else { alert("Erro ao atualizar a tarefa.") }
     } else {
-      const result = await createTask({
-        title: taskModalData.title,
-        subject_id: taskModalData.subjectId,
-        priority: taskModalData.priority
-      })
-      
-      if (result.success && result.task) {
-        setTasks([...tasks, result.task])
-        closeTaskModal()
-      } else {
-        alert("Erro ao criar a tarefa.")
-      }
+      const result = await createTask({ title: taskModalData.title, subject_id: taskModalData.subjectId, priority: taskModalData.priority })
+      if (result.success && result.task) { setTasks([...tasks, result.task]); closeTaskModal() } 
+      else { alert("Erro ao criar a tarefa.") }
     }
   }
 
   const handleEditTask = (task: Task) => {
-    setTaskModalData({
-      title: task.title,
-      subjectId: task.subject_id,
-      priority: task.priority
-    })
+    setTaskModalData({ title: task.title, subjectId: task.subject_id, priority: task.priority })
     setEditingTaskId(task.id)
     setIsTaskModalOpen(true)
     setShowNewSubject(false)
@@ -252,8 +262,22 @@ export default function DashboardPage() {
 
   const handleToggleTask = async (id: string, currentStatus: boolean) => {
     const result = await toggleTaskStatus(id, !currentStatus)
-    if(result.success) {
-      setTasks(tasks.map(t => t.id === id ? { ...t, is_done: !currentStatus } : t))
+    if(result.success) { setTasks(tasks.map(t => t.id === id ? { ...t, is_done: !currentStatus } : t)) }
+  }
+
+  const handleSaveExamGoal = async () => {
+    if (!examForm.name || !examForm.date || !examForm.time) {
+      alert("Preencha todos os campos da meta.")
+      return
+    }
+    const targetDate = new Date(`${examForm.date}T${examForm.time}:00`).toISOString()
+    const result = await createExamGoal({ name: examForm.name, target_date: targetDate })
+    
+    if (result.success && result.goal) {
+      setStats(prev => prev ? { ...prev, examGoal: { name: result.goal.name, target_date: result.goal.target_date } } : null)
+      setIsExamModalOpen(false)
+    } else {
+      alert("Erro ao criar a meta.")
     }
   }
 
@@ -262,12 +286,12 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-start mb-8">
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Seja bem-vindo, Lucas!</h1>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Seja bem-vindo!</h1>
             <p className="text-sm text-slate-500 mt-2 font-medium">"O sucesso é a soma de pequenos esforços repetidos dia após dia." — Robert Collier</p>
           </div>
           <button className="flex items-center gap-2 px-4 py-2 bg-white text-primary-700 font-medium rounded-lg border border-slate-200 hover:bg-slate-50 transition">
             <Calendar className="w-4 h-4" />
-            Hoje, 24 de Outubro
+            {capitalizedToday}
           </button>
         </div>
 
@@ -279,7 +303,9 @@ export default function DashboardPage() {
                 <Clock className="w-4 h-4 text-primary-600" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-slate-900">2h 35min</p>
+            <p className="text-2xl font-bold text-slate-900">
+              {isLoading || !stats ? '...' : formatTodayMinutes(stats.todayMinutes)}
+            </p>
           </div>
 
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col">
@@ -289,7 +315,9 @@ export default function DashboardPage() {
                 <TrendingUp className="w-4 h-4 text-blue-600" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-slate-900">48h</p>
+            <p className="text-2xl font-bold text-slate-900">
+              {isLoading || !stats ? '...' : `${stats.totalHours}h`}
+            </p>
           </div>
 
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col">
@@ -299,7 +327,14 @@ export default function DashboardPage() {
                 <Flame className="w-5 h-5 text-amber-500" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-slate-900">12 dias</p>
+            <div className="flex flex-col">
+              <p className="text-2xl font-bold text-slate-900">
+                {isLoading || !stats ? '...' : `${stats.currentStreak} dias`}
+              </p>
+              {!isLoading && stats && (
+                <span className="text-[10px] text-slate-400 font-medium">Máxima: {stats.maxStreak} dias</span>
+              )}
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col">
@@ -315,14 +350,32 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col">
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-center">
             <div className="flex justify-between items-start mb-2">
               <span className="text-xs text-slate-400 font-semibold uppercase">Meta Prova</span>
               <div className="bg-primary-100 p-2 rounded-lg">
                 <Target className="w-4 h-4 text-primary-600" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-slate-900">Faltam 5 dias</p>
+            {!isLoading && stats && stats.examGoal ? (
+              <div className="flex flex-col mt-1">
+                <p className="text-sm font-bold text-slate-700 truncate">{stats.examGoal.name}</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-slate-900">{examCountdown.days}</span>
+                  <span className="text-xs text-slate-500 font-medium uppercase">dias</span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium">
+                  {examCountdown.hours}h {examCountdown.minutes}min restantes
+                </p>
+              </div>
+            ) : (
+              <button 
+                onClick={() => setIsExamModalOpen(true)}
+                className="mt-2 w-full py-1.5 border border-dashed border-slate-300 rounded-lg text-xs font-medium text-slate-500 hover:text-primary-600 hover:border-primary-300 hover:bg-primary-50 transition"
+              >
+                Adicionar nova meta
+              </button>
+            )}
           </div>
         </div>
 
@@ -331,52 +384,42 @@ export default function DashboardPage() {
             <div>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold text-slate-900">Matérias em Destaque</h2>
-                <Link href="#" className="text-primary-600 text-sm font-medium hover:text-primary-700">
+                <Link href="/dashboard/materias" className="text-primary-600 text-sm font-medium hover:text-primary-700">
                   Ver todas
                 </Link>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="bg-primary-100 text-primary-700 px-2 py-1 rounded-md text-xs font-bold">Matemática</span>
-                    <span className="text-slate-500 text-xs font-medium">2h 15min</span>
+                {isLoading || !stats ? (
+                  <div className="col-span-3 text-center text-sm text-slate-500 py-4">Carregando...</div>
+                ) : stats.topSubjects.length === 0 ? (
+                  <div className="col-span-3 bg-white border border-dashed border-slate-200 rounded-2xl p-6 text-center text-sm text-slate-500">
+                    Nenhum estudo registrado nesta semana.
                   </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-slate-600 text-sm">Meta semanal</span>
-                    <span className="text-slate-900 text-sm font-bold">80%</span>
-                  </div>
-                  <div className="h-2 w-full bg-slate-100 rounded-full mt-2">
-                    <div className="h-full text-primary-600 rounded-full w-[80%]"></div>
-                  </div>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded-md text-xs font-bold">Física</span>
-                    <span className="text-slate-500 text-xs font-medium">1h 45min</span>
-                  </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-slate-600 text-sm">Meta semanal</span>
-                    <span className="text-slate-900 text-sm font-bold">65%</span>
-                  </div>
-                  <div className="h-2 w-full bg-slate-100 rounded-full mt-2">
-                    <div className="h-full bg-green-600 rounded-full w-[65%]"></div>
-                  </div>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="bg-primary-100 text-primary-700 px-2 py-1 rounded-md text-xs font-bold">Química</span>
-                    <span className="text-slate-500 text-xs font-medium">1h 20min</span>
-                  </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-slate-600 text-sm">Meta semanal</span>
-                    <span className="text-slate-900 text-sm font-bold">50%</span>
-                  </div>
-                  <div className="h-2 w-full bg-slate-100 rounded-full mt-2">
-                    <div className="h-full text-primary-600 rounded-full w-[50%]"></div>
-                  </div>
-                </div>
+                ) : (
+                  stats.topSubjects.map(subject => (
+                    <div key={subject.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                      <div className="flex justify-between items-center mb-3">
+                        <span 
+                          className="px-2 py-1 rounded-md text-xs font-bold"
+                          style={{ backgroundColor: `${subject.color}20`, color: subject.color }}
+                        >
+                          {subject.name}
+                        </span>
+                        <span className="text-slate-500 text-xs font-medium">{subject.timeFormatted}</span>
+                      </div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-slate-600 text-sm">Meta semanal</span>
+                        <span className="text-slate-900 text-sm font-bold">{subject.progress}%</span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-100 rounded-full mt-2 overflow-hidden">
+                        <div 
+                          className="h-full rounded-full transition-all duration-500" 
+                          style={{ width: `${subject.progress}%`, backgroundColor: subject.color }}
+                        ></div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -393,7 +436,7 @@ export default function DashboardPage() {
                     Carregando cronograma...
                   </div>
                 ) : eventsWithStatus.length === 0 ? (
-                  <div className="text-center text-slate-500 py-6 text-sm font-medium">
+                  <div className="text-center text-slate-500 py-6 text-sm font-medium border border-dashed border-slate-200 rounded-xl">
                     Nenhum estudo planejado para hoje no calendário.
                   </div>
                 ) : (
@@ -493,7 +536,6 @@ export default function DashboardPage() {
                           </div>
                         </div>
 
-                        {/* Ações aparecerão no hover (em telas grandes) */}
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={() => handleEditTask(task)}
@@ -615,9 +657,7 @@ export default function DashboardPage() {
                       </button>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">
-                        Nome
-                      </label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Nome</label>
                       <input
                         type="text"
                         value={newSubjectName}
@@ -628,9 +668,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex items-end gap-3">
                       <div className="flex-1">
-                        <label className="block text-xs font-medium text-slate-700 mb-1">
-                          Cor
-                        </label>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Cor</label>
                         <input
                           type="color"
                           value={newSubjectColor}
@@ -664,6 +702,69 @@ export default function DashboardPage() {
                 className="flex-1 px-4 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition"
               >
                 Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE META DE PROVA */}
+      {isExamModalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-slate-900">Nova Meta de Prova</h3>
+              <button onClick={() => setIsExamModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg">
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Nome da Meta</label>
+                <input
+                  type="text"
+                  value={examForm.name}
+                  onChange={(e) => setExamForm({ ...examForm, name: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Ex: ENEM, Concurso BB..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Data da Prova</label>
+                <input
+                  type="date"
+                  value={examForm.date}
+                  onChange={(e) => setExamForm({ ...examForm, date: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Horário</label>
+                <input
+                  type="time"
+                  value={examForm.time}
+                  onChange={(e) => setExamForm({ ...examForm, time: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-8">
+              <button
+                onClick={() => setIsExamModalOpen(false)}
+                className="flex-1 px-4 py-2 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveExamGoal}
+                disabled={!examForm.name || !examForm.date || !examForm.time}
+                className="flex-1 px-4 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
+              >
+                Salvar Meta
               </button>
             </div>
           </div>
