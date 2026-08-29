@@ -6,7 +6,7 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-zinc-950 text-white p-4">
       <div className="w-full max-w-md bg-zinc-900 p-8 rounded-2xl shadow-xl border border-zinc-800">
-        <h1 className="text-3xl font-bold text-center mb-6">Focus App</h1>
+        <h1 className="text-3xl font-bold text-center mb-6">Revyza</h1>
 
         <form className="flex flex-col gap-4">
           <input

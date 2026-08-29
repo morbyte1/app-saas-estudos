@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Focus App",
+  title: "Revyza",
   description: "Gerencie seus estudos",
 };
 

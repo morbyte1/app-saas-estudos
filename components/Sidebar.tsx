@@ -17,20 +17,19 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 h-screen bg-white border-r border-slate-200 flex flex-col">
-      <div className="px-6 pt-6 pb-2">
-        <div className="flex items-center justify-center">
-          <Image
-            src="/logo.png"
-            alt="Logo do Focus App"
-            width={180}
-            height={60}
-            priority
-            className="w-40 h-auto object-contain"
-          />
-        </div>
+      <div className="px-6 pt-4 flex items-center justify-center">
+        <Image
+          src="/logo.png"
+          alt="Logo do Focus App"
+          width={180}
+          height={60}
+          priority
+          /* Margens negativas (-my-4) e scale forçam a remoção do espaço transparente da imagem original */
+          className="w-44 h-auto object-contain -my-4 scale-110"
+        />
       </div>
 
-      <nav className="flex-1">
+      <nav className="flex-1 mt-4">
         <ul className="space-y-1">
           {navigation.map((item) => {
             const isActive = pathname === item.href
