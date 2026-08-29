@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { 
   Clock, CheckCircle2, Target, BookOpen, 
   TrendingUp, TrendingDown, Library, Award, 
-  AlertTriangle, XCircle, Brain, AlertCircle,
+  AlertTriangle, Brain, AlertCircle,
   Book, FileQuestion
 } from 'lucide-react'
 import { 
@@ -12,39 +12,6 @@ import {
   LineChart, Line, PieChart, Pie, Cell
 } from 'recharts'
 import { getRealEstatisticas } from './actions'
-
-// ==========================================
-// DADOS MOCKADOS (Mantidos conforme solicitado)
-// ==========================================
-
-const annualData = [
-  { name: 'Jan', horas: 12 }, { name: 'Fev', horas: 15 }, { name: 'Mar', horas: 22 },
-  { name: 'Abr', horas: 18 }, { name: 'Mai', horas: 25 }, { name: 'Jun', horas: 30 },
-  { name: 'Jul', horas: 28 }, { name: 'Ago', horas: 35 }, { name: 'Set', horas: 40 },
-  { name: 'Out', horas: 45 }, { name: 'Nov', horas: 55 }, { name: 'Dez', horas: 50 },
-]
-
-const monthlyData = [
-  { name: 'Semana 1', atividade: 8 },
-  { name: 'Semana 2', atividade: 12 },
-  { name: 'Semana 3', atividade: 15 },
-  { name: 'Semana 4', atividade: 18 },
-]
-
-const finishedTopicsData = [
-  { name: 'Matemática', value: 25, fill: '#243E36' }, // primary-900
-  { name: 'Português', value: 20, fill: '#436E4B' }, // primary-700
-  { name: 'Biologia', value: 18, fill: '#5F8C65' }, // primary-600
-  { name: 'História', value: 12, fill: '#9DBF97' }, // primary-400
-]
-
-const wrongQuestionsData = [
-  { name: 'Física', value: 35, fill: '#152620' }, // primary-950
-  { name: 'Química', value: 25, fill: '#33553E' }, // primary-800
-  { name: 'Matemática', value: 20, fill: '#5F8C65' }, // primary-600
-  { name: 'Geografia', value: 12, fill: '#7CA982' }, // primary-500
-  { name: 'História', value: 8, fill: '#BED6AC' }, // primary-300
-]
 
 const errorReasons = [
   { id: 1, name: 'Falta de Atenção', percent: 45, icon: AlertCircle },
@@ -58,6 +25,7 @@ export default function EstatisticasPage() {
     totalQuestions: 0,
     globalPrecision: 0,
     totalTopicosFeitos: 0,
+    totalErros: 0,
     destaques: {
       maisEstudada: '-',
       menosEstudada: '-',
@@ -67,7 +35,11 @@ export default function EstatisticasPage() {
       piorPrecisao: '-',
       maisQuestoes: '-',
       menosQuestoes: '-'
-    }
+    },
+    annualData: [] as any[],
+    monthlyData: [] as any[],
+    finishedTopicsData: [] as any[],
+    wrongQuestionsData: [] as any[]
   })
   const [isLoading, setIsLoading] = useState(true)
 
@@ -83,11 +55,27 @@ export default function EstatisticasPage() {
     loadStats()
   }, [])
 
-  // Função para determinar a cor do motivo do erro baseado na porcentagem
   const getErrorColorClass = (percent: number) => {
     if (percent >= 40) return { bg: 'bg-red-600', text: 'text-red-700', track: 'bg-red-100' }
     if (percent >= 26 && percent <= 39) return { bg: 'bg-red-400', text: 'text-red-600', track: 'bg-red-50' }
     return { bg: 'bg-red-200', text: 'text-red-500', track: 'bg-slate-100' }
+  }
+
+  // Componente Customizado para renderizar a Semana + Período no XAxis
+  const CustomXAxisTick = ({ x, y, payload }: any) => {
+    const dataPoint = stats.monthlyData.find(d => d.name === payload.value)
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text x={0} y={0} dy={16} textAnchor="middle" fill="#64748b" fontSize={12} className="font-semibold">
+          {payload.value}
+        </text>
+        {dataPoint && (
+          <text x={0} y={0} dy={32} textAnchor="middle" fill="#94a3b8" fontSize={10}>
+            {dataPoint.label}
+          </text>
+        )}
+      </g>
+    )
   }
 
   return (
@@ -156,7 +144,6 @@ export default function EstatisticasPage() {
           <h2 className="text-lg font-bold text-slate-900 mb-4">Destaques</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             
-            {/* Mais Estudada x Menos Estudada */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <TrendingUp className="w-5 h-5 text-emerald-500" />
               <span className="text-xs text-slate-500 font-medium">Mais Estudada</span>
@@ -168,7 +155,6 @@ export default function EstatisticasPage() {
               <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.menosEstudada}</span>
             </div>
 
-            {/* Mais Tópicos x Menos Tópicos */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <Library className="w-5 h-5 text-blue-500" />
               <span className="text-xs text-slate-500 font-medium">Mais Tópicos</span>
@@ -180,7 +166,6 @@ export default function EstatisticasPage() {
               <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.menosTopicos}</span>
             </div>
 
-            {/* Melhor Precisão x Pior Precisão */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <Award className="w-5 h-5 text-amber-500" />
               <span className="text-xs text-slate-500 font-medium">Melhor Precisão</span>
@@ -192,7 +177,6 @@ export default function EstatisticasPage() {
               <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.piorPrecisao}</span>
             </div>
 
-            {/* Mais Questões x Menos Questões */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <FileQuestion className="w-5 h-5 text-indigo-500" />
               <span className="text-xs text-slate-500 font-medium">Mais Questões</span>
@@ -204,7 +188,6 @@ export default function EstatisticasPage() {
               <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.menosQuestoes}</span>
             </div>
 
-            {/* Melhor em Provas x Pior em Provas (Fixos Vazios) */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
               <span className="text-xs text-slate-500 font-medium">Melhor em Provas</span>
@@ -215,7 +198,6 @@ export default function EstatisticasPage() {
               <span className="text-xs text-slate-500 font-medium">Pior em Provas</span>
               <span className="text-sm font-bold text-slate-900">-</span>
             </div>
-
           </div>
         </div>
 
@@ -225,7 +207,7 @@ export default function EstatisticasPage() {
             <h2 className="text-lg font-bold text-slate-900 mb-6">Evolução Anual (Horas)</h2>
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={annualData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={stats.annualData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
@@ -243,9 +225,9 @@ export default function EstatisticasPage() {
             <h2 className="text-lg font-bold text-slate-900 mb-6">Atividade Mensal (30 dias)</h2>
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <LineChart data={stats.monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={<CustomXAxisTick />} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
                   <Tooltip 
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
@@ -260,7 +242,6 @@ export default function EstatisticasPage() {
         {/* 4. DISTRIBUIÇÃO E 5. MOTIVOS DE ERRO */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Gráficos de Rosca */}
           <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col items-center">
               <h2 className="text-lg font-bold text-slate-900 mb-2 self-start">Tópicos Finalizados</h2>
@@ -268,14 +249,14 @@ export default function EstatisticasPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={finishedTopicsData}
+                      data={stats.finishedTopicsData}
                       innerRadius={60}
                       outerRadius={80}
                       paddingAngle={2}
                       dataKey="value"
                       stroke="none"
                     >
-                      {finishedTopicsData.map((entry, index) => (
+                      {stats.finishedTopicsData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
                     </Pie>
@@ -283,12 +264,12 @@ export default function EstatisticasPage() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-3xl font-bold text-slate-900">75</span>
+                  <span className="text-3xl font-bold text-slate-900">{isLoading ? '...' : stats.totalTopicosFeitos}</span>
                   <span className="text-xs font-medium text-slate-500 uppercase">Total</span>
                 </div>
               </div>
               <div className="flex flex-wrap gap-3 justify-center mt-2">
-                {finishedTopicsData.map((item, i) => (
+                {stats.finishedTopicsData.map((item, i) => (
                   <div key={i} className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.fill }}></div>
                     {item.name}
@@ -303,14 +284,14 @@ export default function EstatisticasPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={wrongQuestionsData}
+                      data={stats.wrongQuestionsData}
                       innerRadius={60}
                       outerRadius={80}
                       paddingAngle={2}
                       dataKey="value"
                       stroke="none"
                     >
-                      {wrongQuestionsData.map((entry, index) => (
+                      {stats.wrongQuestionsData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
                     </Pie>
@@ -318,12 +299,12 @@ export default function EstatisticasPage() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-3xl font-bold text-slate-900">100</span>
+                  <span className="text-3xl font-bold text-slate-900">{isLoading ? '...' : stats.totalErros}</span>
                   <span className="text-xs font-medium text-slate-500 uppercase">Total</span>
                 </div>
               </div>
               <div className="flex flex-wrap gap-3 justify-center mt-2">
-                {wrongQuestionsData.map((item, i) => (
+                {stats.wrongQuestionsData.map((item, i) => (
                   <div key={i} className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.fill }}></div>
                     {item.name}
@@ -333,7 +314,6 @@ export default function EstatisticasPage() {
             </div>
           </div>
 
-          {/* Motivos de Erro */}
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
             <h2 className="text-lg font-bold text-slate-900 mb-6">Motivos de Erro</h2>
             <div className="space-y-6">
