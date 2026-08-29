@@ -189,47 +189,62 @@ export async function toggleTaskStatus(id: string, is_done: boolean) {
   revalidatePath('/dashboard')
   return { success: true }
 }
+
 // ==========================================
-// AÇÕES DO DASHBOARD (ESTATÍSTICAS E META)
+// AÇÕES DO DASHBOARD (ESTATÍSTICAS E METAS)
 // ==========================================
 
 export async function getDashboardStats() {
   const supabase = await createClient()
 
   const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) return { error: 'Usuário não autenticado' }
+  if (userError || !user) {
+    return {
+      success: false,
+      error: 'Usuário não autenticado',
+      data: {
+        todayMinutes: 0,
+        totalHours: 0,
+        currentStreak: 0,
+        maxStreak: 0,
+        examGoal: null,
+        topSubjects: []
+      }
+    }
+  }
 
-  // 1. Busca todas as sessões de estudo do usuário
-  const { data: sessions } = await supabase
-    .from('study_sessions')
-    .select('session_date, duration_seconds, materia_id')
-    .eq('user_id', user.id)
+  const [
+    { data: sessions },
+    { data: materias },
+    { data: examGoals }
+  ] = await Promise.all([
+    supabase
+      .from('study_sessions')
+      .select('session_date, duration_seconds, materia_id')
+      .eq('user_id', user.id),
+    supabase
+      .from('materias')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('exam_goals')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('target_date', new Date().toISOString())
+      .order('target_date', { ascending: true })
+      .limit(1)
+  ])
 
-  // 2. Busca todas as matérias para as "Matérias em destaque"
-  const { data: materias } = await supabase
-    .from('materias')
-    .select('*')
-    .eq('user_id', user.id)
-
-  // 3. Busca a meta de prova mais próxima
-  const { data: examGoal } = await supabase
-    .from('exam_goals')
-    .select('*')
-    .eq('user_id', user.id)
-    .gte('target_date', new Date().toISOString())
-    .order('target_date', { ascending: true })
-    .limit(1)
-    .single()
+  const examGoal = examGoals && examGoals.length > 0 ? examGoals[0] : null
 
   let totalSeconds = 0
   let todaySeconds = 0
   const sessionDates = new Set<string>()
 
-  // Data atual no fuso local no formato YYYY-MM-DD
   const today = new Date()
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   
-  // Data de início da semana
   const startOfWeek = new Date(today)
   startOfWeek.setDate(today.getDate() - today.getDay())
   const startOfWeekStr = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`
@@ -263,7 +278,6 @@ export async function getDashboardStats() {
     return new Date(Number(y), Number(m) - 1, Number(d))
   }
 
-  // Calcula sequência máxima
   if (uniqueDates.length > 0) {
     let tempStreak = 1
     maxStreak = 1
@@ -278,7 +292,6 @@ export async function getDashboardStats() {
     }
   }
 
-  // Calcula sequência atual
   const yesterday = new Date(today)
   yesterday.setDate(today.getDate() - 1)
   const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`
@@ -297,28 +310,24 @@ export async function getDashboardStats() {
     }
   }
 
-  // Prepara Matérias em Destaque
-  let topSubjects = []
+  let topSubjects: any[] = []
   if (materias) {
     topSubjects = materias.map(m => {
       const weeklySecs = subjectWeeklyDuration[m.id] || 0
-      const studiedHours = weeklySecs / 3600
+      const studiedHours = Math.floor(weeklySecs / 3600)
+      const studiedMinutes = Math.floor((weeklySecs % 3600) / 60)
       const goalHours = m.goal_hours || 1
-      const progress = Math.min(Math.round((studiedHours / goalHours) * 100), 100)
-      
-      const hours = Math.floor(weeklySecs / 3600)
-      const mins = Math.floor((weeklySecs % 3600) / 60)
-      const timeFormatted = hours > 0 ? `${hours}h ${mins}min` : `${mins}min`
+      const progress = Math.min(Math.round(((weeklySecs / 3600) / goalHours) * 100), 100)
 
       return {
         id: m.id,
         name: m.name,
-        color: m.color || '#8b5cf6', // Fallback se não tiver cor
-        progress,
-        timeFormatted,
-        studiedSeconds: weeklySecs
+        goalHours: m.goal_hours || 1,
+        studiedHours,
+        studiedMinutes,
+        progress
       }
-    }).sort((a, b) => b.progress - a.progress).slice(0, 3) // Pega as 3 com mais progresso
+    }).slice(0, 3)
   }
 
   const todayMinutes = Math.floor(todaySeconds / 60)
@@ -332,6 +341,7 @@ export async function getDashboardStats() {
       currentStreak,
       maxStreak,
       examGoal: examGoal || null,
+      topSubjects: topSubjects || []
     }
   }
 }

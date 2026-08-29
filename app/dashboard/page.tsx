@@ -33,10 +33,10 @@ interface Task {
 interface TopSubject {
   id: string
   name: string
-  color: string
+  goalHours: number
+  studiedHours: number
+  studiedMinutes: number
   progress: number
-  timeFormatted: string
-  studiedSeconds: number
 }
 
 interface DashboardStats {
@@ -98,7 +98,7 @@ export default function DashboardPage() {
         setTasks(tasksResult.tasks || [])
       }
 
-      if (statsResult.success && statsResult.data) {
+      if (statsResult?.success && statsResult.data) {
         setStats(statsResult.data as DashboardStats)
       }
 
@@ -128,11 +128,11 @@ export default function DashboardPage() {
     }
 
     calculateCountdown()
-    const interval = setInterval(calculateCountdown, 60000) // Atualiza a cada minuto
+    const interval = setInterval(calculateCountdown, 60000)
     return () => clearInterval(interval)
   }, [stats?.examGoal])
 
-  // Data atual formatada (Ex: Sábado, 29 de Agosto)
+  // Data formatada
   const today = new Date()
   const formattedToday = today.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
   const capitalizedToday = formattedToday.charAt(0).toUpperCase() + formattedToday.slice(1)
@@ -200,8 +200,6 @@ export default function DashboardPage() {
     if (color && color.startsWith('#')) return ''
     return colors[color || 'purple'] || colors.purple
   }
-
-  // --- Funções Auxiliares e Actions de Tarefas (mantidas intactas) ---
 
   const openTaskModal = () => {
     setIsTaskModalOpen(true)
@@ -391,30 +389,29 @@ export default function DashboardPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 {isLoading || !stats ? (
                   <div className="col-span-3 text-center text-sm text-slate-500 py-4">Carregando...</div>
-                ) : stats.topSubjects.length === 0 ? (
+                ) : (stats.topSubjects || []).length === 0 ? (
                   <div className="col-span-3 bg-white border border-dashed border-slate-200 rounded-2xl p-6 text-center text-sm text-slate-500">
-                    Nenhum estudo registrado nesta semana.
+                    Nenhuma matéria cadastrada ou estudada.
                   </div>
                 ) : (
-                  stats.topSubjects.map(subject => (
-                    <div key={subject.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                  stats.topSubjects.map(materia => (
+                    <div key={materia.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
                       <div className="flex justify-between items-center mb-3">
-                        <span 
-                          className="px-2 py-1 rounded-md text-xs font-bold"
-                          style={{ backgroundColor: `${subject.color}20`, color: subject.color }}
-                        >
-                          {subject.name}
+                        <span className="bg-primary-100 text-primary-700 px-2 py-1 rounded-md text-xs font-bold">
+                          {materia.name}
                         </span>
-                        <span className="text-slate-500 text-xs font-medium">{subject.timeFormatted}</span>
+                        <span className="text-slate-500 text-xs font-medium">
+                          {materia.studiedHours}h {materia.studiedMinutes}min
+                        </span>
                       </div>
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-slate-600 text-sm">Meta semanal</span>
-                        <span className="text-slate-900 text-sm font-bold">{subject.progress}%</span>
+                        <span className="text-slate-900 text-sm font-bold">{materia.progress}%</span>
                       </div>
                       <div className="h-2 w-full bg-slate-100 rounded-full mt-2 overflow-hidden">
                         <div 
-                          className="h-full rounded-full transition-all duration-500" 
-                          style={{ width: `${subject.progress}%`, backgroundColor: subject.color }}
+                          className="h-full bg-primary-600 rounded-full transition-all duration-500" 
+                          style={{ width: `${materia.progress}%` }}
                         ></div>
                       </div>
                     </div>
@@ -657,7 +654,9 @@ export default function DashboardPage() {
                       </button>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Nome</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
+                        Nome
+                      </label>
                       <input
                         type="text"
                         value={newSubjectName}
@@ -668,7 +667,9 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex items-end gap-3">
                       <div className="flex-1">
-                        <label className="block text-xs font-medium text-slate-700 mb-1">Cor</label>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">
+                          Cor
+                        </label>
                         <input
                           type="color"
                           value={newSubjectColor}
