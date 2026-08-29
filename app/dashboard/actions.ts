@@ -7,10 +7,7 @@ import { redirect } from 'next/navigation'
 export async function saveStudySession(duration_seconds: number) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
 
   if (userError || !user) {
     console.error('Error getting user:', userError?.message)
@@ -46,10 +43,7 @@ export async function signout() {
 export async function getTasks() {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
 
   if (userError || !user) {
     console.error('Error getting user:', userError?.message)
@@ -76,15 +70,9 @@ export async function createTask(data: {
   priority: 'baixa' | 'normal' | 'alta'
 }) {
   const supabase = await createClient()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    return { error: 'User not authenticated' }
-  }
+  if (userError || !user) return { error: 'User not authenticated' }
 
   const { data: newTask, error } = await supabase.from('tasks').insert({
     user_id: user.id,
@@ -94,10 +82,7 @@ export async function createTask(data: {
     is_done: false,
   }).select().single()
 
-  if (error) {
-    console.error('Error creating task:', error.message)
-    return { error: error.message }
-  }
+  if (error) return { error: error.message }
 
   revalidatePath('/dashboard')
   return { success: true, task: newTask }
@@ -109,15 +94,9 @@ export async function updateTask(id: string, data: {
   priority?: 'baixa' | 'normal' | 'alta'
 }) {
   const supabase = await createClient()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    return { error: 'User not authenticated' }
-  }
+  if (userError || !user) return { error: 'User not authenticated' }
 
   const { data: updatedTask, error } = await supabase
     .from('tasks')
@@ -127,10 +106,7 @@ export async function updateTask(id: string, data: {
     .select()
     .single()
 
-  if (error) {
-    console.error('Error updating task:', error.message)
-    return { error: error.message }
-  }
+  if (error) return { error: error.message }
 
   revalidatePath('/dashboard')
   return { success: true, task: updatedTask }
@@ -138,15 +114,9 @@ export async function updateTask(id: string, data: {
 
 export async function deleteTask(id: string) {
   const supabase = await createClient()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    return { error: 'User not authenticated' }
-  }
+  if (userError || !user) return { error: 'User not authenticated' }
 
   const { error } = await supabase
     .from('tasks')
@@ -154,10 +124,7 @@ export async function deleteTask(id: string) {
     .eq('id', id)
     .eq('user_id', user.id)
 
-  if (error) {
-    console.error('Error deleting task:', error.message)
-    return { error: error.message }
-  }
+  if (error) return { error: error.message }
 
   revalidatePath('/dashboard')
   return { success: true }
@@ -165,15 +132,9 @@ export async function deleteTask(id: string) {
 
 export async function toggleTaskStatus(id: string, is_done: boolean) {
   const supabase = await createClient()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    return { error: 'User not authenticated' }
-  }
+  if (userError || !user) return { error: 'User not authenticated' }
 
   const { error } = await supabase
     .from('tasks')
@@ -181,10 +142,7 @@ export async function toggleTaskStatus(id: string, is_done: boolean) {
     .eq('id', id)
     .eq('user_id', user.id)
 
-  if (error) {
-    console.error('Error toggling task status:', error.message)
-    return { error: error.message }
-  }
+  if (error) return { error: error.message }
 
   revalidatePath('/dashboard')
   return { success: true }
@@ -202,21 +160,15 @@ export async function getDashboardStats() {
     return {
       success: false,
       error: 'Usuário não autenticado',
-      data: {
-        todayMinutes: 0,
-        totalHours: 0,
-        currentStreak: 0,
-        maxStreak: 0,
-        examGoal: null,
-        topSubjects: []
-      }
+      data: null
     }
   }
 
   const [
     { data: sessions },
     { data: materias },
-    { data: examGoals }
+    { data: examGoals },
+    { data: userSettings }
   ] = await Promise.all([
     supabase
       .from('study_sessions')
@@ -233,10 +185,16 @@ export async function getDashboardStats() {
       .eq('user_id', user.id)
       .gte('target_date', new Date().toISOString())
       .order('target_date', { ascending: true })
-      .limit(1)
+      .limit(1),
+    supabase
+      .from('user_settings')
+      .select('daily_goal_hours')
+      .eq('user_id', user.id)
+      .maybeSingle()
   ])
 
   const examGoal = examGoals && examGoals.length > 0 ? examGoals[0] : null
+  const dailyGoalHours = userSettings?.daily_goal_hours || 3
 
   let totalSeconds = 0
   let todaySeconds = 0
@@ -331,24 +289,31 @@ export async function getDashboardStats() {
   }
 
   const todayMinutes = Math.floor(todaySeconds / 60)
+  
+  // Formatando as horas totais para sincronizar com as Estatísticas
   const totalHours = Math.floor(totalSeconds / 3600)
+  const totalMinutesRemaining = Math.floor((totalSeconds % 3600) / 60)
+  const totalDurationFormatted = totalHours > 0 
+    ? `${totalHours}h ${totalMinutesRemaining}min` 
+    : `${totalMinutesRemaining}min`
 
   return {
     success: true,
     data: {
       todayMinutes,
       totalHours,
+      totalDurationFormatted,
       currentStreak,
       maxStreak,
       examGoal: examGoal || null,
-      topSubjects: topSubjects || []
+      topSubjects: topSubjects || [],
+      dailyGoalHours
     }
   }
 }
 
 export async function createExamGoal(data: { name: string, target_date: string }) {
   const supabase = await createClient()
-
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) return { error: 'User not authenticated' }
 
@@ -361,4 +326,48 @@ export async function createExamGoal(data: { name: string, target_date: string }
   if (error) return { error: error.message }
   revalidatePath('/dashboard')
   return { success: true, goal: newGoal }
+}
+
+export async function updateExamGoal(id: string, data: { name: string, target_date: string }) {
+  const supabase = await createClient()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) return { error: 'User not authenticated' }
+
+  const { data: updatedGoal, error } = await supabase.from('exam_goals').update({
+    name: data.name,
+    target_date: data.target_date,
+  }).eq('id', id).eq('user_id', user.id).select().single()
+
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard')
+  return { success: true, goal: updatedGoal }
+}
+
+export async function deleteExamGoal(id: string) {
+  const supabase = await createClient()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) return { error: 'User not authenticated' }
+
+  const { error } = await supabase.from('exam_goals').delete().eq('id', id).eq('user_id', user.id)
+
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard')
+  return { success: true }
+}
+
+export async function updateDailyGoal(hours: number) {
+  const supabase = await createClient()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) return { error: 'User not authenticated' }
+
+  const { error } = await supabase.from('user_settings').upsert({
+    user_id: user.id,
+    daily_goal_hours: hours,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'user_id' })
+
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard')
+  revalidatePath('/dashboard/calendario')
+  return { success: true }
 }

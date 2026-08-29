@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, Clock, Plus, MoreVertical, Check, X, Copy } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, Plus, MoreVertical, Check, X, Copy, Edit2 } from 'lucide-react'
 import {
   getCalendarData,
   createEvent,
@@ -11,6 +11,7 @@ import {
   createSubject,
   duplicateEvents
 } from './actions'
+import { getDashboardStats, updateDailyGoal } from '../actions'
 
 interface Event {
   id: string
@@ -33,6 +34,7 @@ export default function CalendarioPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [events, setEvents] = useState<Event[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
+  const [dailyStats, setDailyStats] = useState({ goal: 3, todayMinutes: 0 })
   const [isLoading, setIsLoading] = useState(true)
   
   // Modal de Evento
@@ -54,6 +56,10 @@ export default function CalendarioPage() {
   const [repeatFuture, setRepeatFuture] = useState(false)
   const [isDuplicating, setIsDuplicating] = useState(false)
 
+  // Modal de Meta Diária
+  const [isDailyGoalModalOpen, setIsDailyGoalModalOpen] = useState(false)
+  const [newDailyGoal, setNewDailyGoal] = useState('')
+
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null)
   const [editingEventId, setEditingEventId] = useState<string | null>(null)
 
@@ -63,11 +69,23 @@ export default function CalendarioPage() {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true)
-      const result = await getCalendarData()
+      const [result, statsResult] = await Promise.all([
+        getCalendarData(),
+        getDashboardStats()
+      ])
+      
       if (!result.error) {
         setEvents(result.events || [])
         setSubjects(result.subjects || [])
       }
+      
+      if (statsResult?.success && statsResult.data) {
+        setDailyStats({
+          goal: statsResult.data.dailyGoalHours,
+          todayMinutes: statsResult.data.todayMinutes
+        })
+      }
+      
       setIsLoading(false)
     }
     fetchData()
@@ -188,11 +206,9 @@ export default function CalendarioPage() {
         }
         setShowNewSubject(false)
       } else {
-        console.error('Error creating subject:', result.error)
         alert('Não foi possível criar a matéria/tag. Detalhe do erro: ' + result.error)
       }
     } catch (err) {
-      console.error('Unexpected error:', err)
       alert('Erro inesperado ao tentar salvar a matéria.')
     } finally {
       setIsSavingSubject(false)
@@ -303,9 +319,7 @@ export default function CalendarioPage() {
     setIsDuplicateModalOpen(true)
   }
 
-  const closeDuplicateModal = () => {
-    setIsDuplicateModalOpen(false)
-  }
+  const closeDuplicateModal = () => setIsDuplicateModalOpen(false)
 
   const handleDuplicate = async () => {
     if (selectedEventsToDuplicate.length === 0) return
@@ -331,6 +345,21 @@ export default function CalendarioPage() {
     setIsDuplicating(false)
   }
 
+  const handleSaveDailyGoal = async () => {
+    const num = parseFloat(newDailyGoal)
+    if (isNaN(num) || num <= 0) {
+      alert("Informe um número de horas válido.")
+      return
+    }
+    const result = await updateDailyGoal(num)
+    if (result.success) {
+      setDailyStats(prev => ({ ...prev, goal: num }))
+      setIsDailyGoalModalOpen(false)
+    } else {
+      alert("Erro ao salvar meta.")
+    }
+  }
+
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60)
     const mins = minutes % 60
@@ -341,33 +370,17 @@ export default function CalendarioPage() {
 
   const getSubjectColorClass = (color: string) => {
     const colors: Record<string, string> = {
-      purple: 'bg-primary-100 text-primary-700',
-      blue: 'bg-blue-100 text-blue-700',
-      green: 'bg-green-100 text-green-700',
-      orange: 'bg-orange-100 text-orange-700',
-      red: 'bg-red-100 text-red-700'
+      purple: 'bg-primary-100 text-primary-700', blue: 'bg-blue-100 text-blue-700', green: 'bg-green-100 text-green-700', orange: 'bg-orange-100 text-orange-700', red: 'bg-red-100 text-red-700'
     }
-
-    if (color && color.startsWith('#')) {
-      return { backgroundColor: color + '20', color: color }
-    }
-
+    if (color && color.startsWith('#')) return { backgroundColor: color + '20', color: color }
     return colors[color || 'purple'] || colors.purple
   }
 
   const getSubjectDotColorClass = (color: string) => {
     const colors: Record<string, string> = {
-      purple: 'bg-primary-400',
-      blue: 'bg-blue-400',
-      green: 'bg-green-400',
-      orange: 'bg-orange-400',
-      red: 'bg-red-400'
+      purple: 'bg-primary-400', blue: 'bg-blue-400', green: 'bg-green-400', orange: 'bg-orange-400', red: 'bg-red-400'
     }
-
-    if (color && color.startsWith('#')) {
-      return '' // Retorna vazio para usar inline style
-    }
-
+    if (color && color.startsWith('#')) return '' 
     return colors[color || 'purple'] || colors.purple
   }
 
@@ -377,6 +390,14 @@ export default function CalendarioPage() {
     date.setDate(date.getDate() + diff)
     return date
   })
+
+  // Formatadores de Meta Diária
+  const formatDecimal = (mins: number) => (mins / 60).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+  
+  const studiedDec = formatDecimal(dailyStats.todayMinutes)
+  const remainingMinutes = Math.max((dailyStats.goal * 60) - dailyStats.todayMinutes, 0)
+  const remH = Math.floor(remainingMinutes / 60)
+  const remM = remainingMinutes % 60
 
   return (
     <div className="p-8 min-h-screen bg-slate-50">
@@ -393,13 +414,27 @@ export default function CalendarioPage() {
                 <p className="text-slate-500 mt-2">Gerencie seu cronograma de estudos</p>
               </div>
               <div className="flex gap-4">
-                <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
-                  <p className="text-xs text-slate-400 font-semibold uppercase">Horas essa semana</p>
-                  <p className="text-2xl font-bold text-slate-900">12h 30min</p>
-                </div>
-                <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
-                  <p className="text-xs text-slate-400 font-semibold uppercase">Meta diária</p>
-                  <p className="text-2xl font-bold text-slate-900">3h</p>
+                <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col justify-center min-w-[240px]">
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="text-xs text-slate-400 font-semibold uppercase">Meta diária de horas</p>
+                    <button 
+                      onClick={() => {
+                        setNewDailyGoal(dailyStats.goal.toString())
+                        setIsDailyGoalModalOpen(true)
+                      }} 
+                      className="text-slate-400 hover:text-primary-600 hover:bg-primary-50 p-1.5 rounded-md transition"
+                    >
+                      <Edit2 className="w-3.5 h-3.5"/>
+                    </button>
+                  </div>
+                  <p className="text-2xl font-bold text-slate-900 leading-tight">
+                    {studiedDec} <span className="text-sm font-medium text-slate-500">horas de {dailyStats.goal}</span>
+                  </p>
+                  <p className="text-[11px] text-slate-400 font-medium mt-1">
+                    {remainingMinutes > 0 
+                      ? `Falta ${remH > 0 ? `${remH}h ` : ''}${remM}min para atingir sua meta diária.` 
+                      : 'Você atingiu sua meta diária!'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -441,7 +476,7 @@ export default function CalendarioPage() {
                     const today = isToday(date)
                     const selected = isSelected(date)
                     const dayEvents = getEventsForDate(date)
-                    const displayEvents = dayEvents.slice(0, 3) // Limita a 3 bolinhas
+                    const displayEvents = dayEvents.slice(0, 3) 
 
                     return (
                       <button
@@ -829,6 +864,51 @@ export default function CalendarioPage() {
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
                     >
                       {isDuplicating ? 'Sincronizando...' : 'Sincronizar'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal de Meta Diária */}
+            {isDailyGoalModalOpen && (
+              <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold text-slate-900">Configurar Meta Diária</h3>
+                    <button onClick={() => setIsDailyGoalModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg">
+                      <X className="w-5 h-5 text-slate-600" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Horas por dia</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0.5"
+                        value={newDailyGoal}
+                        onChange={(e) => setNewDailyGoal(e.target.value)}
+                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        placeholder="Ex: 3"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 mt-8">
+                    <button
+                      onClick={() => setIsDailyGoalModalOpen(false)}
+                      className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleSaveDailyGoal}
+                      disabled={!newDailyGoal}
+                      className="flex-1 px-4 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
+                    >
+                      Salvar Meta
                     </button>
                   </div>
                 </div>

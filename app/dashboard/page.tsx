@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Calendar, Clock, Target, TrendingUp, Plus, Medal, Flame, Check, X, Edit2, Trash2 } from 'lucide-react'
+import { Calendar, Clock, Target, TrendingUp, Plus, Flame, Check, X, Edit2, Trash2 } from 'lucide-react'
 import { getCalendarData, createSubject } from './calendario/actions'
-import { getTasks, createTask, updateTask, deleteTask, toggleTaskStatus, getDashboardStats, createExamGoal } from './actions'
+import { getTasks, createTask, updateTask, deleteTask, toggleTaskStatus, getDashboardStats, createExamGoal, updateExamGoal, deleteExamGoal } from './actions'
 
 interface Event {
   id: string
@@ -42,10 +42,12 @@ interface TopSubject {
 interface DashboardStats {
   todayMinutes: number
   totalHours: number
+  totalDurationFormatted: string
   currentStreak: number
   maxStreak: number
-  examGoal: { name: string, target_date: string } | null
+  examGoal: { id: string, name: string, target_date: string } | null
   topSubjects: TopSubject[]
+  dailyGoalHours: number
 }
 
 export default function DashboardPage() {
@@ -76,6 +78,7 @@ export default function DashboardPage() {
 
   // Estados para Meta de Prova
   const [isExamModalOpen, setIsExamModalOpen] = useState(false)
+  const [editingExamId, setEditingExamId] = useState<string | null>(null)
   const [examForm, setExamForm] = useState({ name: '', date: '', time: '' })
   const [examCountdown, setExamCountdown] = useState({ days: 0, hours: 0, minutes: 0 })
 
@@ -263,21 +266,53 @@ export default function DashboardPage() {
     if(result.success) { setTasks(tasks.map(t => t.id === id ? { ...t, is_done: !currentStatus } : t)) }
   }
 
+  const openExamModal = (existingGoal?: { id: string, name: string, target_date: string }) => {
+    if (existingGoal) {
+      const d = new Date(existingGoal.target_date)
+      const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+      setExamForm({ name: existingGoal.name, date, time })
+      setEditingExamId(existingGoal.id)
+    } else {
+      setExamForm({ name: '', date: '', time: '' })
+      setEditingExamId(null)
+    }
+    setIsExamModalOpen(true)
+  }
+
   const handleSaveExamGoal = async () => {
     if (!examForm.name || !examForm.date || !examForm.time) {
       alert("Preencha todos os campos da meta.")
       return
     }
     const targetDate = new Date(`${examForm.date}T${examForm.time}:00`).toISOString()
-    const result = await createExamGoal({ name: examForm.name, target_date: targetDate })
     
-    if (result.success && result.goal) {
-      setStats(prev => prev ? { ...prev, examGoal: { name: result.goal.name, target_date: result.goal.target_date } } : null)
-      setIsExamModalOpen(false)
+    if (editingExamId) {
+      const result = await updateExamGoal(editingExamId, { name: examForm.name, target_date: targetDate })
+      if (result.success && result.goal) {
+        setStats(prev => prev ? { ...prev, examGoal: { id: result.goal.id, name: result.goal.name, target_date: result.goal.target_date } } : null)
+      } else alert("Erro ao atualizar a meta.")
     } else {
-      alert("Erro ao criar a meta.")
+      const result = await createExamGoal({ name: examForm.name, target_date: targetDate })
+      if (result.success && result.goal) {
+        setStats(prev => prev ? { ...prev, examGoal: { id: result.goal.id, name: result.goal.name, target_date: result.goal.target_date } } : null)
+      } else alert("Erro ao criar a meta.")
+    }
+    setIsExamModalOpen(false)
+  }
+
+  const handleDeleteExamGoal = async (id: string) => {
+    if(confirm("Tem certeza que deseja excluir sua meta de prova?")) {
+      const result = await deleteExamGoal(id)
+      if(result.success) {
+        setStats(prev => prev ? { ...prev, examGoal: null } : null)
+        setIsExamModalOpen(false)
+      }
     }
   }
+
+  // Progresso da Meta Diária (em %)
+  const dailyProgressPercent = stats ? Math.min(Math.round((stats.todayMinutes / (stats.dailyGoalHours * 60)) * 100), 100) : 0
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-8">
@@ -314,7 +349,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <p className="text-2xl font-bold text-slate-900">
-              {isLoading || !stats ? '...' : `${stats.totalHours}h`}
+              {isLoading || !stats ? '...' : stats.totalDurationFormatted}
             </p>
           </div>
 
@@ -342,9 +377,9 @@ export default function DashboardPage() {
                 <Target className="w-4 h-4 text-orange-600" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-slate-900 mb-2">85%</p>
+            <p className="text-2xl font-bold text-slate-900 mb-2">{isLoading ? '...' : `${dailyProgressPercent}%`}</p>
             <div className="w-full bg-slate-100 rounded-full h-2">
-              <div className="bg-orange-500 h-2 rounded-full" style={{ width: '85%' }}></div>
+              <div className="bg-orange-500 h-2 rounded-full transition-all duration-500" style={{ width: `${dailyProgressPercent}%` }}></div>
             </div>
           </div>
 
@@ -356,9 +391,14 @@ export default function DashboardPage() {
               </div>
             </div>
             {!isLoading && stats && stats.examGoal ? (
-              <div className="flex flex-col mt-1">
-                <p className="text-sm font-bold text-slate-700 truncate">{stats.examGoal.name}</p>
-                <div className="flex items-baseline gap-1">
+              <div className="flex flex-col mt-1 group">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-slate-700 truncate">{stats.examGoal.name}</p>
+                  <button onClick={() => openExamModal(stats.examGoal!)} className="text-slate-400 hover:text-primary-600 opacity-0 group-hover:opacity-100 transition-opacity p-1">
+                    <Edit2 className="w-3 h-3" />
+                  </button>
+                </div>
+                <div className="flex items-baseline gap-1 mt-1">
                   <span className="text-2xl font-bold text-slate-900">{examCountdown.days}</span>
                   <span className="text-xs text-slate-500 font-medium uppercase">dias</span>
                 </div>
@@ -368,7 +408,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <button 
-                onClick={() => setIsExamModalOpen(true)}
+                onClick={() => openExamModal()}
                 className="mt-2 w-full py-1.5 border border-dashed border-slate-300 rounded-lg text-xs font-medium text-slate-500 hover:text-primary-600 hover:border-primary-300 hover:bg-primary-50 transition"
               >
                 Adicionar nova meta
@@ -553,23 +593,6 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
-
-            <div className="bg-primary-50 border border-primary-200 rounded-2xl p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-primary-100 p-3 rounded-full">
-                  <Medal className="w-6 h-6 text-primary-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">Próxima Conquista</h3>
-                  <p className="text-slate-500 text-sm">Falta muito pouco!</p>
-                </div>
-              </div>
-              <p className="font-bold text-slate-900 mb-2">Maratonista de Estudos</p>
-              <div className="w-full bg-primary-200 rounded-full h-2 mb-2">
-                <div className="text-primary-600 h-2 rounded-full" style={{ width: '90%' }}></div>
-              </div>
-              <p className="text-primary-600 text-sm font-medium">9/10 horas</p>
-            </div>
           </div>
         </div>
       </div>
@@ -714,7 +737,7 @@ export default function DashboardPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-slate-900">Nova Meta de Prova</h3>
+              <h3 className="text-xl font-bold text-slate-900">{editingExamId ? 'Editar Meta' : 'Nova Meta de Prova'}</h3>
               <button onClick={() => setIsExamModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg">
                 <X className="w-5 h-5 text-slate-600" />
               </button>
@@ -753,17 +776,26 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="flex gap-3 mt-8">
+            <div className="flex gap-2 mt-8">
+              {editingExamId && (
+                <button
+                  onClick={() => handleDeleteExamGoal(editingExamId)}
+                  className="flex items-center justify-center p-2.5 border border-red-200 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition"
+                  title="Excluir Meta"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              )}
               <button
                 onClick={() => setIsExamModalOpen(false)}
-                className="flex-1 px-4 py-2 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition"
+                className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSaveExamGoal}
                 disabled={!examForm.name || !examForm.date || !examForm.time}
-                className="flex-1 px-4 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
               >
                 Salvar Meta
               </button>
