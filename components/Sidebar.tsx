@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import Image from 'next/image'
 import { Book, LayoutGrid, BookOpen, Calendar, Clock, BarChart2, Settings } from 'lucide-react'
 
 const navigation = [
@@ -17,11 +18,15 @@ export default function Sidebar() {
   return (
     <aside className="w-64 h-screen bg-white border-r border-slate-200 flex flex-col">
       <div className="p-6">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary-100 p-2 rounded-lg">
-            <Book className="w-6 h-6 text-primary-600" />
-          </div>
-          <span className="text-xl font-bold text-slate-900">Focus App</span>
+        <div className="flex items-center">
+          <Image
+            src="/logo.png"
+            alt="Logo do Focus App"
+            width={150}
+            height={40}
+            priority
+            className="h-10 w-auto object-contain"
+          />
         </div>
       </div>
 
