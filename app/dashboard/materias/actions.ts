@@ -12,6 +12,14 @@ export interface Materia {
   progress: number
 }
 
+// Utilitário para pegar a data do início da semana (Domingo) no formato YYYY-MM-DD
+const getStartOfWeekString = () => {
+  const now = new Date()
+  const startOfWeek = new Date(now)
+  startOfWeek.setDate(now.getDate() - now.getDay()) 
+  return `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`
+}
+
 export async function getEstatisticas() {
   const supabase = await createClient()
 
@@ -26,7 +34,7 @@ export async function getEstatisticas() {
 
   const { data: materias, error } = await supabase
     .from('materias')
-    .select('studied_hours, studied_minutes, progress')
+    .select('id, goal_hours')
     .eq('user_id', user.id)
 
   if (error) {
@@ -45,18 +53,41 @@ export async function getEstatisticas() {
     }
   }
 
-  let totalHours = 0
-  let totalMinutes = 0
-  let totalProgress = 0
+  // Busca as sessões de estudo da semana atual
+  const startOfWeekStr = getStartOfWeekString()
+  const { data: sessions } = await supabase
+    .from('study_sessions')
+    .select('materia_id, duration_seconds')
+    .eq('user_id', user.id)
+    .gte('session_date', startOfWeekStr)
+
+  let totalSeconds = 0
+  const progressPorMateria = new Map<string, { duration: number, goal: number }>()
 
   materias.forEach(m => {
-    totalHours += m.studied_hours || 0
-    totalMinutes += m.studied_minutes || 0
-    totalProgress += Number(m.progress) || 0
+    progressPorMateria.set(m.id, { duration: 0, goal: m.goal_hours || 0 })
   })
 
-  totalHours += Math.floor(totalMinutes / 60)
-  const remainingMinutes = totalMinutes % 60
+  if (sessions) {
+    sessions.forEach(s => {
+      totalSeconds += s.duration_seconds || 0
+      if (s.materia_id && progressPorMateria.has(s.materia_id)) {
+        progressPorMateria.get(s.materia_id)!.duration += s.duration_seconds || 0
+      }
+    })
+  }
+
+  let totalProgress = 0
+  progressPorMateria.forEach(val => {
+    if (val.goal > 0) {
+      const studiedHours = val.duration / 3600
+      const p = Math.min((studiedHours / val.goal) * 100, 100)
+      totalProgress += p
+    }
+  })
+
+  const totalHours = Math.floor(totalSeconds / 3600)
+  const remainingMinutes = Math.floor((totalSeconds % 3600) / 60)
 
   const averageProgress = materias.length > 0 
     ? (totalProgress / materias.length).toFixed(1) 
@@ -95,14 +126,39 @@ export async function getMaterias() {
     return { error: error.message }
   }
 
-  const formattedMaterias: Materia[] = (materias || []).map(m => ({
-    id: m.id,
-    name: m.name,
-    goalHours: m.goal_hours,
-    studiedHours: m.studied_hours,
-    studiedMinutes: m.studied_minutes,
-    progress: Number(m.progress)
-  }))
+  // Busca o histórico da semana para calcular horas e progresso
+  const startOfWeekStr = getStartOfWeekString()
+  const { data: sessions } = await supabase
+    .from('study_sessions')
+    .select('materia_id, duration_seconds')
+    .eq('user_id', user.id)
+    .gte('session_date', startOfWeekStr)
+
+  const sessionDurations = new Map<string, number>()
+  if (sessions) {
+    sessions.forEach(s => {
+      if (s.materia_id) {
+        sessionDurations.set(s.materia_id, (sessionDurations.get(s.materia_id) || 0) + (s.duration_seconds || 0))
+      }
+    })
+  }
+
+  const formattedMaterias: Materia[] = (materias || []).map(m => {
+    const totalSeconds = sessionDurations.get(m.id) || 0
+    const studiedHours = Math.floor(totalSeconds / 3600)
+    const studiedMinutes = Math.floor((totalSeconds % 3600) / 60)
+    const goalHours = m.goal_hours || 1 // evita divisão por zero
+    const progress = Math.min(Math.round(((totalSeconds / 3600) / goalHours) * 100), 100)
+
+    return {
+      id: m.id,
+      name: m.name,
+      goalHours: m.goal_hours,
+      studiedHours,
+      studiedMinutes,
+      progress
+    }
+  })
 
   return { success: true, data: formattedMaterias }
 }
@@ -143,9 +199,9 @@ export async function createMateria(data: { name: string, goalHours: number }) {
     id: newMateria.id,
     name: newMateria.name,
     goalHours: newMateria.goal_hours,
-    studiedHours: newMateria.studied_hours,
-    studiedMinutes: newMateria.studied_minutes,
-    progress: Number(newMateria.progress)
+    studiedHours: 0,
+    studiedMinutes: 0,
+    progress: 0
   }
 
   return { success: true, data: formattedMateria }
@@ -181,6 +237,8 @@ export async function updateMateria(id: string, data: { name: string, goalHours:
 
   revalidatePath('/dashboard/materias')
 
+  // Ao invés de buscar os cálculos novamente aqui, a tela já recarrega via revalidatePath,
+  // mas fornecemos um fallback funcional na resposta:
   const formattedMateria: Materia = {
     id: updatedMateria.id,
     name: updatedMateria.name,

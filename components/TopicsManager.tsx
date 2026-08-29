@@ -135,7 +135,7 @@ export default function TopicsManager({
       {/* Cards de Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 flex items-center gap-4">
-          <div className="bg-secondary-50 p-3 rounded-xl text-secondary-600">
+          <div className="bg-primary-50 p-3 rounded-xl text-primary-600">
             <Folder className="w-6 h-6" />
           </div>
           <div>
@@ -145,7 +145,7 @@ export default function TopicsManager({
         </div>
 
         <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 flex items-center gap-4">
-          <div className="bg-secondary-50 p-3 rounded-xl text-secondary-600">
+          <div className="bg-primary-50 p-3 rounded-xl text-primary-600">
             <BookOpen className="w-6 h-6" />
           </div>
           <div>
@@ -166,7 +166,7 @@ export default function TopicsManager({
           </div>
           <div className="w-full bg-slate-100 rounded-full h-2">
             <div 
-              className="text-primary-600 h-2 rounded-full transition-all duration-500" 
+              className="bg-primary-600 h-2 rounded-full transition-all duration-500" 
               style={{ width: `${progresso}%` }}
             ></div>
           </div>
@@ -188,7 +188,7 @@ export default function TopicsManager({
                 {/* Cabeçalho do Tópico */}
                 <div className="p-5 border-b border-slate-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="h-6 w-1 text-primary-600 rounded-full"></div>
+                    <div className="h-6 w-1 bg-primary-600 rounded-full"></div>
                     <h2 className="text-lg font-bold text-slate-900">{topico.name}</h2>
                     <span className="bg-slate-100 text-slate-600 text-xs font-medium px-2.5 py-1 rounded-md">
                       {assuntosDoTopico.length} assuntos
@@ -218,7 +218,7 @@ export default function TopicsManager({
                             onClick={() => handleToggleAssunto(assunto.id, assunto.is_done)}
                             className={`w-5 h-5 border-2 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
                               assunto.is_done 
-                                ? 'text-primary-600 border-primary-600' 
+                                ? 'bg-primary-600 border-primary-600' 
                                 : 'border-slate-300 hover:border-primary-400'
                             }`}
                           >
