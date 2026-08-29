@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { 
   Clock, CheckCircle2, Target, BookOpen, 
   TrendingUp, TrendingDown, Library, Award, 
@@ -10,9 +11,10 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell
 } from 'recharts'
+import { getRealEstatisticas } from './actions'
 
 // ==========================================
-// DADOS MOCKADOS
+// DADOS MOCKADOS (Mantidos conforme solicitado)
 // ==========================================
 
 const annualData = [
@@ -51,7 +53,36 @@ const errorReasons = [
 ]
 
 export default function EstatisticasPage() {
-  
+  const [stats, setStats] = useState({
+    totalDurationFormatted: '0min',
+    totalQuestions: 0,
+    globalPrecision: 0,
+    totalTopicosFeitos: 0,
+    destaques: {
+      maisEstudada: '-',
+      menosEstudada: '-',
+      maisTopicos: '-',
+      menosTopicos: '-',
+      melhorPrecisao: '-',
+      piorPrecisao: '-',
+      maisQuestoes: '-',
+      menosQuestoes: '-'
+    }
+  })
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadStats() {
+      setIsLoading(true)
+      const res = await getRealEstatisticas()
+      if (res.success && res.data) {
+        setStats(res.data)
+      }
+      setIsLoading(false)
+    }
+    loadStats()
+  }, [])
+
   // Função para determinar a cor do motivo do erro baseado na porcentagem
   const getErrorColorClass = (percent: number) => {
     if (percent >= 40) return { bg: 'bg-red-600', text: 'text-red-700', track: 'bg-red-100' }
@@ -69,7 +100,7 @@ export default function EstatisticasPage() {
           <p className="text-sm text-slate-500 mt-2 font-medium">Acompanhe seu desempenho geral</p>
         </div>
 
-        {/* 1. KPIs */}
+        {/* 1. KPIs REAIS */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
             <div className="bg-primary-100 p-3 rounded-xl text-primary-600">
@@ -77,7 +108,9 @@ export default function EstatisticasPage() {
             </div>
             <div>
               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Tempo Total</p>
-              <p className="text-2xl font-bold text-slate-900">150.1h</p>
+              <p className="text-2xl font-bold text-slate-900">
+                {isLoading ? '...' : stats.totalDurationFormatted}
+              </p>
             </div>
           </div>
 
@@ -87,7 +120,9 @@ export default function EstatisticasPage() {
             </div>
             <div>
               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Questões Feitas</p>
-              <p className="text-2xl font-bold text-slate-900">1.061</p>
+              <p className="text-2xl font-bold text-slate-900">
+                {isLoading ? '...' : stats.totalQuestions}
+              </p>
             </div>
           </div>
 
@@ -97,7 +132,9 @@ export default function EstatisticasPage() {
             </div>
             <div>
               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Precisão Global</p>
-              <p className="text-2xl font-bold text-slate-900">78%</p>
+              <p className="text-2xl font-bold text-slate-900">
+                {isLoading ? '...' : `${stats.globalPrecision}%`}
+              </p>
             </div>
           </div>
 
@@ -107,81 +144,76 @@ export default function EstatisticasPage() {
             </div>
             <div>
               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Tópicos Feitos</p>
-              <p className="text-2xl font-bold text-slate-900">65</p>
+              <p className="text-2xl font-bold text-slate-900">
+                {isLoading ? '...' : stats.totalTopicosFeitos}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* 2. DESTAQUES */}
+        {/* 2. DESTAQUES REAIS */}
         <div>
           <h2 className="text-lg font-bold text-slate-900 mb-4">Destaques</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             
             {/* Mais Estudada x Menos Estudada */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <TrendingUp className="w-5 h-5 text-emerald-500" />
               <span className="text-xs text-slate-500 font-medium">Mais Estudada</span>
-              <span className="text-sm font-bold text-slate-900">Matemática</span>
+              <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.maisEstudada}</span>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <TrendingDown className="w-5 h-5 text-red-500" />
               <span className="text-xs text-slate-500 font-medium">Menos Estudada</span>
-              <span className="text-sm font-bold text-slate-900">Geografia</span>
+              <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.menosEstudada}</span>
             </div>
 
             {/* Mais Tópicos x Menos Tópicos */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <Library className="w-5 h-5 text-blue-500" />
               <span className="text-xs text-slate-500 font-medium">Mais Tópicos</span>
-              <span className="text-sm font-bold text-slate-900">Português</span>
+              <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.maisTopicos}</span>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <Book className="w-5 h-5 text-slate-400" />
               <span className="text-xs text-slate-500 font-medium">Menos Tópicos</span>
-              <span className="text-sm font-bold text-slate-900">Física</span>
+              <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.menosTopicos}</span>
             </div>
 
             {/* Melhor Precisão x Pior Precisão */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <Award className="w-5 h-5 text-amber-500" />
               <span className="text-xs text-slate-500 font-medium">Melhor Precisão</span>
-              <span className="text-sm font-bold text-slate-900">Biologia - 85%</span>
+              <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.melhorPrecisao}</span>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <AlertCircle className="w-5 h-5 text-red-500" />
               <span className="text-xs text-slate-500 font-medium">Pior Precisão</span>
-              <span className="text-sm font-bold text-slate-900">Matemática - 40%</span>
+              <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.piorPrecisao}</span>
             </div>
 
             {/* Mais Questões x Menos Questões */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <FileQuestion className="w-5 h-5 text-indigo-500" />
               <span className="text-xs text-slate-500 font-medium">Mais Questões</span>
-              <span className="text-sm font-bold text-slate-900">Química - 320</span>
+              <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.maisQuestoes}</span>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <FileQuestion className="w-5 h-5 text-slate-400" />
               <span className="text-xs text-slate-500 font-medium">Menos Questões</span>
-              <span className="text-sm font-bold text-slate-900">Filosofia - 15</span>
+              <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.menosQuestoes}</span>
             </div>
 
-            {/* Melhor em Provas x Pior em Provas */}
+            {/* Melhor em Provas x Pior em Provas (Fixos Vazios) */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
               <span className="text-xs text-slate-500 font-medium">Melhor em Provas</span>
-              <span className="text-sm font-bold text-slate-900">História</span>
+              <span className="text-sm font-bold text-slate-900">-</span>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <AlertTriangle className="w-5 h-5 text-orange-500" />
               <span className="text-xs text-slate-500 font-medium">Pior em Provas</span>
-              <span className="text-sm font-bold text-slate-900">Física</span>
-            </div>
-
-            {/* Mais Erros */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
-              <XCircle className="w-5 h-5 text-red-600" />
-              <span className="text-xs text-slate-500 font-medium">Mais Erros</span>
-              <span className="text-sm font-bold text-slate-900">Química</span>
+              <span className="text-sm font-bold text-slate-900">-</span>
             </div>
 
           </div>
