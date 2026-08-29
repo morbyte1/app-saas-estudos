@@ -3,7 +3,8 @@
 import { 
   Clock, CheckCircle2, Target, BookOpen, 
   TrendingUp, TrendingDown, Library, Award, 
-  AlertTriangle, XCircle, Brain, AlertCircle
+  AlertTriangle, XCircle, Brain, AlertCircle,
+  Book, FileQuestion
 } from 'lucide-react'
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -115,6 +116,8 @@ export default function EstatisticasPage() {
         <div>
           <h2 className="text-lg font-bold text-slate-900 mb-4">Destaques</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            
+            {/* Mais Estudada x Menos Estudada */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <TrendingUp className="w-5 h-5 text-emerald-500" />
               <span className="text-xs text-slate-500 font-medium">Mais Estudada</span>
@@ -125,26 +128,62 @@ export default function EstatisticasPage() {
               <span className="text-xs text-slate-500 font-medium">Menos Estudada</span>
               <span className="text-sm font-bold text-slate-900">Geografia</span>
             </div>
+
+            {/* Mais Tópicos x Menos Tópicos */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <Library className="w-5 h-5 text-blue-500" />
               <span className="text-xs text-slate-500 font-medium">Mais Tópicos</span>
               <span className="text-sm font-bold text-slate-900">Português</span>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
+              <Book className="w-5 h-5 text-slate-400" />
+              <span className="text-xs text-slate-500 font-medium">Menos Tópicos</span>
+              <span className="text-sm font-bold text-slate-900">Física</span>
+            </div>
+
+            {/* Melhor Precisão x Pior Precisão */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <Award className="w-5 h-5 text-amber-500" />
               <span className="text-xs text-slate-500 font-medium">Melhor Precisão</span>
               <span className="text-sm font-bold text-slate-900">Biologia - 85%</span>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
+              <AlertCircle className="w-5 h-5 text-red-500" />
+              <span className="text-xs text-slate-500 font-medium">Pior Precisão</span>
+              <span className="text-sm font-bold text-slate-900">Matemática - 40%</span>
+            </div>
+
+            {/* Mais Questões x Menos Questões */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
+              <FileQuestion className="w-5 h-5 text-indigo-500" />
+              <span className="text-xs text-slate-500 font-medium">Mais Questões</span>
+              <span className="text-sm font-bold text-slate-900">Química - 320</span>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
+              <FileQuestion className="w-5 h-5 text-slate-400" />
+              <span className="text-xs text-slate-500 font-medium">Menos Questões</span>
+              <span className="text-sm font-bold text-slate-900">Filosofia - 15</span>
+            </div>
+
+            {/* Melhor em Provas x Pior em Provas */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              <span className="text-xs text-slate-500 font-medium">Melhor em Provas</span>
+              <span className="text-sm font-bold text-slate-900">História</span>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <AlertTriangle className="w-5 h-5 text-orange-500" />
               <span className="text-xs text-slate-500 font-medium">Pior em Provas</span>
               <span className="text-sm font-bold text-slate-900">Física</span>
             </div>
+
+            {/* Mais Erros */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <XCircle className="w-5 h-5 text-red-600" />
               <span className="text-xs text-slate-500 font-medium">Mais Erros</span>
               <span className="text-sm font-bold text-slate-900">Química</span>
             </div>
+
           </div>
         </div>
 
