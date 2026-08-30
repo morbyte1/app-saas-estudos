@@ -8,7 +8,8 @@ export default function DashboardLayout({
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">{children}</main>
+      {/* Adicionado pt-16 apenas no mobile (md:pt-0) para acomodar o cabeçalho mobile do Sidebar */}
+      <main className="flex-1 overflow-y-auto pt-16 md:pt-0">{children}</main>
     </div>
   )
 }

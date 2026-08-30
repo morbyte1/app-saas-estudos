@@ -40,7 +40,6 @@ interface StudySession {
 }
 
 export default function TimerPage() {
-  // Estados do Timer
   const [totalStudySeconds, setTotalStudySeconds] = useState(0)
   const [currentDisplaySeconds, setCurrentDisplaySeconds] = useState(0)
   const [phase, setPhase] = useState<'idle' | 'study' | 'rest'>('idle')
@@ -49,14 +48,9 @@ export default function TimerPage() {
   const [isMaximized, setIsMaximized] = useState(false)
   const { toast } = useToast()
   
-  // Estado para contagem de ciclos (exclusivo Pomodoro)
   const [pomodoroCycles, setPomodoroCycles] = useState(0)
-  
-  // Ref para garantir o resgate seguro do tempo total estudado no Cronômetro 
-  // após o término de um descanso (evita a stale closure dentro do setInterval)
   const totalStudySecondsRef = useRef(totalStudySeconds)
   
-  // Configurações do Timer
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [timerConfig, setTimerConfig] = useState<{
     type: 'cronometro' | 'pomodoro',
@@ -71,24 +65,20 @@ export default function TimerPage() {
   })
   const [draftConfig, setDraftConfig] = useState(timerConfig)
 
-  // Estados de Histórico
   const [showHistory, setShowHistory] = useState(false)
   const [historySessions, setHistorySessions] = useState<StudySession[]>([])
   const [expandedDates, setExpandedDates] = useState<string[]>([])
 
-  // Estados para Matérias, Tópicos e Assuntos principais
   const [materias, setMaterias] = useState<Materia[]>([])
   const [selectedMateriaId, setSelectedMateriaId] = useState<string>('')
   const [topicos, setTopicos] = useState<Topico[]>([])
   const [assuntos, setAssuntos] = useState<Assunto[]>([])
   const [selectedAssuntoId, setSelectedAssuntoId] = useState<string>('')
 
-  // Estados do Modal de Finalização
   const [isFinishModalOpen, setIsFinishModalOpen] = useState(false)
   const [questionsDone, setQuestionsDone] = useState<string>('')
   const [questionsWrong, setQuestionsWrong] = useState<string>('')
 
-  // Estados do Modal de Envio Manual
   const [isManualModalOpen, setIsManualModalOpen] = useState(false)
   const [modalAssuntos, setModalAssuntos] = useState<Assunto[]>([])
   const [manualForm, setManualForm] = useState({
@@ -129,7 +119,6 @@ export default function TimerPage() {
     fetchInitialData()
   }, [])
 
-  // Buscar assuntos para a tela principal
   useEffect(() => {
     const fetchAssuntosForMateria = async () => {
       if (!selectedMateriaId) {
@@ -155,7 +144,6 @@ export default function TimerPage() {
     fetchAssuntosForMateria()
   }, [selectedMateriaId, materias])
 
-  // Buscar assuntos para o modal manual de acordo com a matéria selecionada nele
   useEffect(() => {
     const fetchModalAssuntos = async () => {
       if (!manualForm.materiaId) {
@@ -168,7 +156,6 @@ export default function TimerPage() {
       const result = await getTopicosEAssuntos(materiaObj.id)
       if (!result.error) {
         setModalAssuntos(result.assuntos || [])
-        // Se o assunto selecionado atualmente não existir na nova matéria, reseta
         if (!result.assuntos?.find((a: Assunto) => a.id === manualForm.assuntoId)) {
           setManualForm(prev => ({ ...prev, assuntoId: result.assuntos?.[0]?.id || '' }))
         }
@@ -192,7 +179,6 @@ export default function TimerPage() {
           } else {
             setCurrentDisplaySeconds((prev) => {
               if (prev <= 1) {
-                // Pomodoro: Estudo acabou, inicia o descanso automaticamente
                 setPhase('rest')
                 return timerConfig.pomodoroRest * 60
               }
@@ -202,16 +188,13 @@ export default function TimerPage() {
         } else if (phase === 'rest') {
           setCurrentDisplaySeconds((prev) => {
             if (prev <= 1) {
-              // Descanso finalizado
               setIsRunning(false)
               setPhase('idle')
               
               if (timerConfig.type === 'pomodoro') {
-                // Pomodoro: Incrementa o ciclo (estudo + descanso concluído) e prepara o próximo
                 setPomodoroCycles((c) => c + 1)
                 return timerConfig.pomodoroStudy * 60
               }
-              // Cronômetro: Retorna à exata marca de onde parou para continuar a contagem progressiva
               return totalStudySecondsRef.current
             }
             return prev - 1
@@ -225,7 +208,6 @@ export default function TimerPage() {
     }
   }, [isRunning, phase, timerConfig])
 
-  // Utilitários de Tempo e Data
   const formatTime = (totalSeconds: number) => {
     const hours = Math.floor(totalSeconds / 3600)
     const minutes = Math.floor((totalSeconds % 3600) / 60)
@@ -262,7 +244,6 @@ export default function TimerPage() {
     }
   }
 
-  // Controles
   const handleStart = () => {
     if (phase === 'idle') {
       setPhase('study')
@@ -454,19 +435,19 @@ export default function TimerPage() {
   const selectedAssuntoName = assuntos.find(a => a.id === selectedAssuntoId)?.name || ''
 
   return (
-    <div className="h-screen flex bg-white text-slate-900 overflow-hidden relative">
+    <div className="h-full min-h-screen md:h-screen flex flex-col md:flex-row bg-white text-slate-900 overflow-x-hidden relative">
       
       {/* SEÇÃO ESQUERDA (PRINCIPAL) */}
-      <div className="flex-1 p-8 flex flex-col justify-between h-full relative overflow-y-auto">
+      <div className="flex-1 p-4 md:p-8 flex flex-col justify-between relative md:overflow-y-auto">
         
         {/* Header (Topo) */}
-        <div className="flex justify-between items-start w-full">
-          <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start w-full gap-4">
+          <div className="flex flex-col w-full sm:w-auto gap-3">
             <div className="relative">
               <select
                 value={selectedMateriaId}
                 onChange={(e) => setSelectedMateriaId(e.target.value)}
-                className="appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none"
+                className="w-full sm:w-auto appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none"
               >
                 <option value="" disabled>Selecione a matéria</option>
                 {materias.map(m => (
@@ -482,7 +463,7 @@ export default function TimerPage() {
               <select
                 value={selectedAssuntoId}
                 onChange={(e) => setSelectedAssuntoId(e.target.value)}
-                className="appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none"
+                className="w-full sm:w-auto appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none"
               >
                 <option value="" disabled>Selecione o assunto</option>
                 {assuntos.map(a => (
@@ -495,7 +476,7 @@ export default function TimerPage() {
             </div>
           </div>
 
-          <div className="flex gap-3 items-center">
+          <div className="flex gap-3 items-center self-end sm:self-auto">
             <button 
               onClick={openSettings}
               className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600"
@@ -512,7 +493,7 @@ export default function TimerPage() {
         </div>
 
         {/* Centro (Timer e Controles) */}
-        <div className={isMaximized ? "fixed inset-0 z-50 bg-white flex flex-col items-center justify-center p-8 animate-in fade-in duration-200" : "flex flex-col items-center justify-center flex-1 my-10"}>
+        <div className={isMaximized ? "fixed inset-0 z-50 bg-white flex flex-col items-center justify-center p-4 md:p-8 animate-in fade-in duration-200" : "flex flex-col items-center justify-center flex-1 my-10"}>
           
           {isMaximized && (
             <button 
@@ -545,7 +526,7 @@ export default function TimerPage() {
             </div>
           )}
 
-          <div className={`text-[8rem] sm:text-[10rem] font-bold tracking-tight mb-8 font-mono leading-none ${phase === 'rest' ? 'text-emerald-500' : 'text-slate-900'}`}>
+          <div className={`text-6xl sm:text-[8rem] md:text-[10rem] font-bold tracking-tight mb-8 font-mono leading-none ${phase === 'rest' ? 'text-emerald-500' : 'text-slate-900'}`}>
             {formatTime(currentDisplaySeconds)}
           </div>
 
@@ -553,7 +534,7 @@ export default function TimerPage() {
             <button
               onClick={handleStart}
               disabled={isRunning || isLoading}
-              className="px-8 py-3.5 bg-primary-600 text-white font-bold rounded-full hover:bg-primary-700 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
+              className="px-6 py-3 md:px-8 md:py-3.5 bg-primary-600 text-white font-bold rounded-full hover:bg-primary-700 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
             >
               <Play className="w-4 h-4 fill-current" /> Iniciar
             </button>
@@ -561,7 +542,7 @@ export default function TimerPage() {
             <button
               onClick={handlePause}
               disabled={!isRunning || isLoading}
-              className="px-8 py-3.5 bg-slate-200 text-slate-800 font-bold rounded-full hover:bg-slate-300 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2"
+              className="px-6 py-3 md:px-8 md:py-3.5 bg-slate-200 text-slate-800 font-bold rounded-full hover:bg-slate-300 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2"
             >
               <Pause className="w-4 h-4 fill-current" /> Pausar
             </button>
@@ -569,7 +550,7 @@ export default function TimerPage() {
             <button
               onClick={handleFinishRequest}
               disabled={isLoading || totalStudySeconds === 0}
-              className="px-8 py-3.5 bg-slate-900 text-white font-bold rounded-full hover:bg-primary-600 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
+              className="px-6 py-3 md:px-8 md:py-3.5 bg-slate-900 text-white font-bold rounded-full hover:bg-primary-600 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
             >
               <Check className="w-4 h-4 stroke-[3]" /> Finalizar
             </button>
@@ -578,7 +559,7 @@ export default function TimerPage() {
               <button
                 onClick={handleRestNow}
                 disabled={totalStudySeconds === 0}
-                className="px-8 py-3.5 bg-amber-100 text-amber-800 font-bold rounded-full hover:bg-amber-200 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2 border border-amber-200"
+                className="px-6 py-3 md:px-8 md:py-3.5 bg-amber-100 text-amber-800 font-bold rounded-full hover:bg-amber-200 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2 border border-amber-200"
               >
                 <Coffee className="w-4 h-4" /> Descansar Agora
               </button>
@@ -587,16 +568,16 @@ export default function TimerPage() {
             <button
               onClick={handleResetTimer}
               disabled={isLoading || (totalStudySeconds === 0 && phase === 'idle')}
-              className="px-8 py-3.5 bg-red-100 text-red-800 font-bold rounded-full hover:bg-red-200 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2 border border-red-200"
+              className="px-6 py-3 md:px-8 md:py-3.5 bg-red-100 text-red-800 font-bold rounded-full hover:bg-red-200 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2 border border-red-200"
             >
               <RotateCcw className="w-4 h-4" /> Reiniciar
             </button>
           </div>
           
           {!isMaximized && (
-            <div className="flex flex-col items-center gap-2">
-              <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium">
-                <HelpCircle className="w-4 h-4 text-primary-600" />
+            <div className="flex flex-col items-center gap-2 px-2 text-center">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 text-slate-500 text-xs font-medium">
+                <HelpCircle className="w-4 h-4 text-primary-600 hidden sm:block" />
                 <span>Esqueceu de ligar o timer ou estudou fora daqui? Manda seu tempo aí embaixo</span>
               </div>
               <button 
@@ -614,7 +595,7 @@ export default function TimerPage() {
         <div className="w-full pb-8">
           <button 
             onClick={() => setShowHistory(!showHistory)}
-            className="flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity"
+            className="flex items-center justify-center w-full md:w-auto gap-2 mb-4 hover:opacity-80 transition-opacity"
           >
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">HISTÓRICO</h3>
             <Plus className={`w-4 h-4 text-slate-900 transition-transform duration-300 ${showHistory ? 'rotate-45' : ''}`} />
@@ -637,24 +618,24 @@ export default function TimerPage() {
                       onClick={() => toggleDate(dateStr)}
                       className="w-full flex items-center justify-between px-6 py-4 rounded-full border border-slate-200 hover:border-primary-600 transition-colors group bg-white shadow-sm hover:shadow"
                     >
-                      <span className="text-sm font-bold text-slate-700 uppercase">
+                      <span className="text-sm font-bold text-slate-700 uppercase truncate pr-4">
                         {formatDateToPortuguese(dateStr)}
                       </span>
-                      <ChevronRight className={`w-5 h-5 text-slate-400 group-hover:text-primary-600 transition-transform ${expandedDates.includes(dateStr) ? 'rotate-90' : ''}`} />
+                      <ChevronRight className={`w-5 h-5 flex-shrink-0 text-slate-400 group-hover:text-primary-600 transition-transform ${expandedDates.includes(dateStr) ? 'rotate-90' : ''}`} />
                     </button>
                     
                     {expandedDates.includes(dateStr) && (
                       <div className="flex flex-col gap-3 px-2 pb-2">
                         {groupedHistory[dateStr].map(session => (
-                          <div key={session.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm mx-2 group">
+                          <div key={session.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm mx-1 sm:mx-2 group">
                             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                               <div className="flex items-center gap-2">
-                                <Book className="w-4 h-4 text-primary-600" />
-                                <span className="font-bold text-slate-800 text-sm">{session.materias?.name || 'Matéria removida'}</span>
+                                <Book className="w-4 h-4 flex-shrink-0 text-primary-600" />
+                                <span className="font-bold text-slate-800 text-sm truncate max-w-[120px] sm:max-w-xs">{session.materias?.name || 'Matéria removida'}</span>
                               </div>
                               <div className="flex items-center gap-3">
                                 <div className="flex items-center gap-2">
-                                  <Clock className="w-4 h-4 text-slate-400" />
+                                  <Clock className="w-4 h-4 flex-shrink-0 text-slate-400" />
                                   <span className="text-sm font-bold text-slate-700">{formatTime(session.duration_seconds)}</span>
                                 </div>
                                 <button 
@@ -667,12 +648,12 @@ export default function TimerPage() {
                                 </button>
                               </div>
                             </div>
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                               <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
-                                <FileText className="w-4 h-4 text-slate-400" />
-                                <span>{session.assuntos?.name || 'Assunto removido'}</span>
+                                <FileText className="w-4 h-4 flex-shrink-0 text-slate-400" />
+                                <span className="truncate">{session.assuntos?.name || 'Assunto removido'}</span>
                               </div>
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                                 <div className="flex items-center gap-1.5 bg-emerald-100 text-emerald-800 px-2 py-1 rounded-md text-xs font-bold border border-emerald-200">
                                   <CheckCircle className="w-3.5 h-3.5" />
                                   {session.questions_done} FEITAS
@@ -697,7 +678,7 @@ export default function TimerPage() {
       </div>
 
       {/* SEÇÃO DIREITA (SIDEBAR DE TAREFAS PRESERVADO) */}
-      <div className="w-80 p-8 flex flex-col gap-6 border-l border-slate-100 h-full bg-white flex-shrink-0 overflow-y-auto">
+      <div className="w-full md:w-80 p-6 md:p-8 flex flex-col gap-6 border-t md:border-t-0 md:border-l border-slate-100 h-auto md:h-full bg-white flex-shrink-0 md:overflow-y-auto">
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">TAREFAS</h2>
         
         <div className="flex flex-col gap-4">
@@ -724,7 +705,6 @@ export default function TimerPage() {
             </div>
 
             <div className="space-y-6">
-              {/* Tipo de Timer */}
               <div className="flex bg-slate-100 p-1 rounded-xl">
                 <button
                   onClick={() => setDraftConfig({...draftConfig, type: 'cronometro'})}
@@ -740,7 +720,6 @@ export default function TimerPage() {
                 </button>
               </div>
 
-              {/* Opções baseadas no tipo */}
               {draftConfig.type === 'pomodoro' ? (
                 <div className="space-y-3">
                   <label className="block text-sm font-medium text-slate-700">Selecione o formato</label>
@@ -814,23 +793,21 @@ export default function TimerPage() {
               </button>
             </div>
 
-            {/* Informações Read-only */}
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-6 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500 font-bold uppercase">Matéria</span>
-                <span className="text-sm font-bold text-slate-900">{selectedMateriaName}</span>
+                <span className="text-xs text-slate-500 font-bold uppercase truncate max-w-[100px]">Matéria</span>
+                <span className="text-sm font-bold text-slate-900 text-right">{selectedMateriaName}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500 font-bold uppercase">Assunto</span>
-                <span className="text-sm font-bold text-slate-900">{selectedAssuntoName}</span>
+                <span className="text-xs text-slate-500 font-bold uppercase truncate max-w-[100px]">Assunto</span>
+                <span className="text-sm font-bold text-slate-900 text-right">{selectedAssuntoName}</span>
               </div>
               <div className="flex items-center justify-between pt-3 border-t border-slate-200">
-                <span className="text-xs text-slate-500 font-bold uppercase">Tempo Estudado</span>
+                <span className="text-xs text-slate-500 font-bold uppercase">Tempo</span>
                 <span className="text-lg font-bold text-primary-600">{formatTime(totalStudySeconds)}</span>
               </div>
             </div>
 
-            {/* Campos Preenchíveis */}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -874,17 +851,7 @@ export default function TimerPage() {
                 disabled={isLoading}
                 className="flex-1 px-4 py-2.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50 shadow-md flex items-center justify-center gap-2"
               >
-                {isLoading ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Salvando...
-                  </>
-                ) : (
-                  'Salvar Estudo'
-                )}
+                {isLoading ? 'Salvando...' : 'Salvar Estudo'}
               </button>
             </div>
           </div>
@@ -994,17 +961,7 @@ export default function TimerPage() {
                 disabled={isLoading}
                 className="flex-1 px-4 py-2.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50 shadow-md flex items-center justify-center gap-2 text-sm"
               >
-                {isLoading ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Salvando...
-                  </>
-                ) : (
-                  'Salvar Estudo'
-                )}
+                {isLoading ? 'Salvando...' : 'Salvar Estudo'}
               </button>
             </div>
           </div>

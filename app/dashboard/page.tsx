@@ -293,16 +293,16 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-start mb-8">
-          <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Bora estudar, Arthur?</h1>
-            <p className="text-sm text-slate-500 mt-2 font-medium">{quoteOfDay}</p>
-          </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-white text-primary-700 font-medium rounded-lg border border-slate-200 hover:bg-slate-50 transition">
-            <Calendar className="w-4 h-4" />
-            {capitalizedToday}
-          </button>
-        </div>
+<div className="flex flex-col sm:flex-row justify-between sm:items-center items-start mb-8 gap-4">
+  <div>
+    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Bora estudar, Arthur?</h1>
+    <p className="text-sm text-slate-500 mt-2 font-medium">{quoteOfDay}</p>
+  </div>
+  <button className="flex items-center gap-2 px-4 py-2 bg-white text-primary-700 font-medium rounded-lg border border-slate-200 hover:bg-slate-50 transition w-full sm:w-auto justify-center">
+    <Calendar className="w-4 h-4" />
+    {capitalizedToday}
+  </button>
+</div>
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-8">
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col">
