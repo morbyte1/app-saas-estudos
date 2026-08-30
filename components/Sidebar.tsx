@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { createClient } from '@/utils/supabase/client'
 import { 
   LayoutGrid, 
   BookOpen, 
@@ -31,6 +32,8 @@ export default function Sidebar() {
   const router = useRouter()
   const [isMinimized, setIsMinimized] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [userName, setUserName] = useState('Carregando...')
+  const [userInitials, setUserInitials] = useState('--')
 
   // Recupera o estado salvo no navegador assim que o componente é montado
   useEffect(() => {
@@ -38,6 +41,43 @@ export default function Sidebar() {
     if (savedState === 'true') {
       setIsMinimized(true)
     }
+  }, [])
+
+  // Sincronização do Usuário Autenticado
+  useEffect(() => {
+    const supabase = createClient()
+
+    const updateUserData = (user: any) => {
+      if (user) {
+        const full = user.user_metadata?.full_name || user.email || 'Estudante'
+        const names = full.trim().split(' ').filter(Boolean)
+        const first = names[0] || 'Estudante'
+        const last = names.length > 1 ? names[names.length - 1] : ''
+        
+        setUserName(last ? `${first} ${last}` : first)
+
+        let initials = ''
+        if (last) {
+          initials = `${first[0]}${last[0]}`.toUpperCase()
+        } else {
+          initials = first.substring(0, 2).toUpperCase()
+        }
+        setUserInitials(initials)
+      }
+    }
+
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      updateUserData(user)
+    }
+
+    fetchUser()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      updateUserData(session?.user)
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   // Fecha o menu mobile automaticamente ao trocar de tela
@@ -188,22 +228,23 @@ export default function Sidebar() {
         <div className="mt-auto p-4 border-t border-slate-100">
           <div className={`flex items-center ${isMinimized ? 'md:flex-col md:gap-4 md:justify-center justify-between' : 'justify-between'}`}>
             <div className={`flex items-center gap-3 ${isMinimized ? 'md:justify-center' : ''}`}>
-              <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-slate-600 font-semibold">LS</span>
+              <div className="w-10 h-10 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="font-bold text-sm">{userInitials}</span>
               </div>
               {(!isMinimized || isMobileOpen) && (
                 <div className="overflow-hidden">
-                  <p className="font-medium text-slate-900 truncate">Lucas Silva</p>
+                  <p className="font-medium text-slate-900 truncate">{userName}</p>
                   <p className="text-xs text-slate-500">Estudante</p>
                 </div>
               )}
             </div>
-            <button 
-              className={`p-2 text-slate-400 hover:text-slate-600 transition-colors rounded-lg hover:bg-slate-50`}
+            <Link 
+              href="/dashboard/configuracoes"
+              className={`p-2 text-slate-400 hover:text-primary-600 transition-colors rounded-lg hover:bg-slate-50 ${pathname.startsWith('/dashboard/configuracoes') ? 'bg-primary-50 text-primary-600' : ''}`}
               title="Configurações"
             >
               <Settings className="w-5 h-5" />
-            </button>
+            </Link>
           </div>
         </div>
       </aside>
