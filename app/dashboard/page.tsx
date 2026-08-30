@@ -301,7 +301,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-8">
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col">
             <div className="flex justify-between items-start mb-2">
-              <span className="text-xs text-slate-400 font-semibold uppercase">Tempo Hoje</span>
+              <span className="text-xs text-slate-400 font-semibold uppercase">Foco de hoje</span>
               <div className="bg-primary-100 p-2 rounded-lg">
                 <Clock className="w-4 h-4 text-primary-600" />
               </div>
@@ -313,7 +313,7 @@ export default function DashboardPage() {
 
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col">
             <div className="flex justify-between items-start mb-2">
-              <span className="text-xs text-slate-400 font-semibold uppercase">Horas Totais</span>
+              <span className="text-xs text-slate-400 font-semibold uppercase">Sua jornada</span>
               <div className="bg-blue-100 p-2 rounded-lg">
                 <TrendingUp className="w-4 h-4 text-blue-600" />
               </div>
@@ -325,7 +325,7 @@ export default function DashboardPage() {
 
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col">
             <div className="flex justify-between items-start mb-2">
-              <span className="text-xs text-slate-400 font-semibold uppercase">Sequência</span>
+              <span className="text-xs text-slate-400 font-semibold uppercase">Ofensiva</span>
               <div className="bg-amber-100 p-1.5 rounded-lg">
                 <Flame className="w-5 h-5 text-amber-500" />
               </div>
@@ -342,7 +342,7 @@ export default function DashboardPage() {
 
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col">
             <div className="flex justify-between items-start mb-2">
-              <span className="text-xs text-slate-400 font-semibold uppercase">Meta Diária</span>
+              <span className="text-xs text-slate-400 font-semibold uppercase">Meta do dia</span>
               <div className="bg-orange-100 p-2 rounded-lg">
                 <Target className="w-4 h-4 text-orange-600" />
               </div>
@@ -355,7 +355,7 @@ export default function DashboardPage() {
 
 <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-center">
             <div className="flex justify-between items-start mb-2">
-              <span className="text-xs text-slate-400 font-semibold uppercase">Meta Prova</span>
+              <span className="text-xs text-slate-400 font-semibold uppercase">Meu objetivo</span>
               <div className="bg-primary-100 p-2 rounded-lg">
                 <Target className="w-4 h-4 text-primary-600" />
               </div>
@@ -391,7 +391,7 @@ export default function DashboardPage() {
           <div className="lg:col-span-2 space-y-8">
             <div>
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-slate-900">Matérias em Destaque</h2>
+                <h2 className="text-lg font-semibold text-slate-900">Minhas matérias</h2>
                 <Link href="/dashboard/materias" className="text-primary-600 text-sm font-medium hover:text-primary-700">
                   Ver todas
                 </Link>
@@ -432,7 +432,7 @@ export default function DashboardPage() {
 
             <div className="bg-white border border-slate-200 rounded-3xl p-6 mt-8 shadow-sm">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-bold text-slate-900">Cronograma de Hoje</h2>
+                <h2 className="text-lg font-bold text-slate-900">Meu dia</h2>
                 <Link href="/dashboard/calendario" className="text-sm text-primary-600 font-medium hover:text-primary-700 transition">
                   Ir ao calendário →
                 </Link>
@@ -444,7 +444,7 @@ export default function DashboardPage() {
                   </div>
                 ) : eventsWithStatus.length === 0 ? (
                   <div className="text-center text-slate-500 py-6 text-sm font-medium border border-dashed border-slate-200 rounded-xl">
-                    Nenhum estudo planejado para hoje no calendário.
+                    Nada agendado para hoje. Aproveite para descansar ou adiantar revisões!
                   </div>
                 ) : (
                   eventsWithStatus.map((event) => {
@@ -487,7 +487,7 @@ export default function DashboardPage() {
           <div className="lg:col-span-1 space-y-8">
             <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-bold text-slate-900">Lista de Tarefas</h2>
+                <h2 className="text-lg font-bold text-slate-900">O que preciso fazer</h2>
                 <button 
                   onClick={openTaskModal}
                   className="bg-primary-600 text-white p-2 rounded-lg hover:bg-primary-700 transition"
@@ -501,7 +501,7 @@ export default function DashboardPage() {
                   <div className="text-center text-slate-500 py-4 text-sm">Carregando tarefas...</div>
                 ) : sortedTasks.length === 0 ? (
                   <div className="text-center text-slate-500 py-4 text-sm border border-dashed border-slate-200 rounded-xl">
-                    Nenhuma tarefa pendente
+                    Tudo em dia por aqui 👍
                   </div>
                 ) : (
                   sortedTasks.map(task => {

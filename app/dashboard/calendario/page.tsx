@@ -411,7 +411,7 @@ export default function CalendarioPage() {
 <div className="flex justify-between items-start mb-6">
               <div>
                 <h1 className="text-3xl font-extrabold text-slate-900">Planejamento</h1>
-                <p className="text-slate-500 mt-2">Gerencie seu cronograma de estudos</p>
+                <p className="text-slate-500 mt-2">Organize seu cronograma de estudos</p>
               </div>
               <div className="flex gap-4">
                 <div className="bg-white rounded-full px-5 py-2.5 border border-slate-200 shadow-sm flex items-center gap-4">
@@ -420,7 +420,7 @@ export default function CalendarioPage() {
                       <Target className="w-4 h-4 text-primary-600" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none mb-0.5">Meta Diária</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none mb-0.5">Minha meta do dia</span>
                       <span className="text-sm font-bold text-slate-700 leading-none">{studiedDec}h / {dailyStats.goal}h</span>
                     </div>
                   </div>
@@ -513,8 +513,8 @@ export default function CalendarioPage() {
               <div className="lg:col-span-2">
                 <div className="flex justify-between items-center mb-6">
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900">Cronograma Semanal</h2>
-                    <p className="text-slate-500 text-sm mt-1">O que você planejou para os próximos dias</p>
+                    <h2 className="text-xl font-bold text-slate-900">Minha semana</h2>
+                    <p className="text-slate-500 text-sm mt-1">O que você tem planejado pros próximos dias</p>
                   </div>
                   <div className="flex gap-2">
                     {getEventsForSelectedDate().length > 0 && (
@@ -531,7 +531,7 @@ export default function CalendarioPage() {
                       className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition"
                     >
                       <Plus className="w-4 h-4" />
-                      Novo Estudo
+                      Adicionar estudo
                     </button>
                   </div>
                 </div>
@@ -562,7 +562,7 @@ export default function CalendarioPage() {
                 <div className="space-y-3">
                   {getEventsForSelectedDate().length === 0 ? (
                     <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center">
-                      <p className="text-slate-500">Nenhum estudo agendado para este dia</p>
+                      <p className="text-slate-500">Nada marcado por aqui ainda</p>
                     </div>
                   ) : (
                     getEventsForSelectedDate().map(event => {

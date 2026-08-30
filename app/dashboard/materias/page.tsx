@@ -155,14 +155,14 @@ export default function MateriasPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Minhas Matérias</h1>
-            <p className="text-sm text-slate-500 mt-2 font-medium">Gerencie seus objetivos de estudo e acompanhe sua consistência semanal</p>
+            <p className="text-sm text-slate-500 mt-2 font-medium">Organize seus objetivos e acompanhe sua consistência a cada semana</p>
           </div>
           <button 
             onClick={openCreateModal}
             className="flex items-center justify-center gap-2 px-5 py-2.5 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition shadow-sm"
           >
             <Plus className="w-4.5 h-4.5" />
-            Criar matéria
+            Adicionar matéria
           </button>
         </div>
 
@@ -175,17 +175,17 @@ export default function MateriasPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               <StatCard 
                 icon={<Clock className="w-6 h-6" />} 
-                label="FOCO TOTAL NA SEMANA" 
+                label="Meu foco na semana" 
                 value={estatisticas.totalFocus} 
               />
               <StatCard 
                 icon={<Percent className="w-6 h-6" />} 
-                label="MÉDIA DE PROGRESSO" 
+                label="Meu progresso médio" 
                 value={estatisticas.progress} 
               />
               <StatCard 
                 icon={<Book className="w-6 h-6" />} 
-                label="DISCIPLINAS ATIVAS" 
+                label="Minhas matérias ativas" 
                 value={`${estatisticas.activeSubjects} Matérias`} 
               />
             </div>

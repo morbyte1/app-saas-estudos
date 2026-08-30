@@ -463,10 +463,10 @@ export default function TimerPage() {
                 onChange={(e) => setSelectedMateriaId(e.target.value)}
                 className="appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none"
               >
-                <option value="" disabled>SELECIONE A MATÉRIA</option>
+                <option value="" disabled>Selecione a matéria</option>
                 {materias.map(m => (
                   <option key={m.id} value={m.id} className="text-slate-900 bg-white">
-                    MATÉRIA: {m.name}
+                    Matéria: {m.name}
                   </option>
                 ))}
               </select>
@@ -479,10 +479,10 @@ export default function TimerPage() {
                 onChange={(e) => setSelectedAssuntoId(e.target.value)}
                 className="appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none"
               >
-                <option value="" disabled>SELECIONE O ASSUNTO</option>
+                <option value="" disabled>Selecione o assunto</option>
                 {assuntos.map(a => (
                   <option key={a.id} value={a.id} className="text-slate-900 bg-white">
-                    ASSUNTO: {a.name}
+                    Assunto: {a.name}
                   </option>
                 ))}
               </select>
@@ -592,14 +592,14 @@ export default function TimerPage() {
             <div className="flex flex-col items-center gap-2">
               <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium">
                 <HelpCircle className="w-4 h-4 text-primary-600" />
-                <span>Esqueceu de ligar o timer ou estudou fora do app? Envie seu tempo estudado abaixo</span>
+                <span>Esqueceu de ligar o timer ou estudou fora daqui? Manda seu tempo aí embaixo</span>
               </div>
               <button 
                 onClick={openManualModal}
                 className="px-6 py-2.5 bg-slate-100 text-slate-700 rounded-full text-xs font-bold uppercase hover:bg-slate-200 transition-colors border border-slate-200 flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
-                ENVIAR MANUAL
+                Enviar tempo manual
               </button>
             </div>
           )}
@@ -620,8 +620,8 @@ export default function TimerPage() {
               {Object.keys(groupedHistory).length === 0 ? (
                 <div className="text-sm text-slate-500 bg-slate-50 p-6 rounded-2xl text-center border border-slate-100 flex flex-col items-center gap-2 shadow-sm">
                   <Clock className="w-8 h-8 text-slate-300 mb-1" />
-                  <p className="text-slate-600">Até o momento você não tem nada registrado.</p>
-                  <p className="font-medium text-slate-700">Clique em <strong className="text-primary-600">Iniciar o timer</strong> acima ou envie um estudo manual para começar!</p>
+                  <p className="text-slate-600">Até agora você ainda não tem nada por aqui.</p>
+                  <p className="font-medium text-slate-700">Clique em <strong className="text-primary-600">Iniciar</strong> acima ou envie um estudo manual para começar!</p>
                 </div>
               ) : (
                 Object.keys(groupedHistory)

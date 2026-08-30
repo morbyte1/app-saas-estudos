@@ -121,14 +121,14 @@ export default function TopicsManager({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Assuntos e temas</h1>
-          <p className="text-sm text-slate-500 mt-2 font-medium">Gerencie e organize os conteúdos para estudar em {materia.name}</p>
+          <p className="text-sm text-slate-500 mt-2 font-medium">Organize os conteúdos que você vai estudar em {materia.name}</p>
         </div>
         <button 
           onClick={() => setIsTopicoModalOpen(true)}
           className="flex items-center justify-center gap-2 px-5 py-2.5 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition shadow-sm"
         >
           <Plus className="w-4.5 h-4.5" />
-          Criar tópico
+          Adicionar tópico
         </button>
       </div>
 
@@ -139,7 +139,7 @@ export default function TopicsManager({
             <Folder className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs text-slate-500 font-medium">Total de tópicos</p>
+            <p className="text-xs text-slate-500 font-medium">Meus tópicos</p>
             <p className="text-xl font-bold text-slate-900">{topicos.length} Tópicos</p>
           </div>
         </div>
@@ -149,7 +149,7 @@ export default function TopicsManager({
             <BookOpen className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs text-slate-500 font-medium">Total de assuntos</p>
+            <p className="text-xs text-slate-500 font-medium">Meus assuntos</p>
             <p className="text-xl font-bold text-slate-900">{totalAssuntos} Assuntos</p>
           </div>
         </div>
@@ -160,7 +160,7 @@ export default function TopicsManager({
               <PieChart className="w-5 h-5" />
             </div>
             <div className="flex-1 flex justify-between items-center">
-              <p className="text-xs text-slate-500 font-medium">Média de progresso</p>
+              <p className="text-xs text-slate-500 font-medium">Meu progresso</p>
               <p className="text-sm font-bold text-slate-900">{progresso}%</p>
             </div>
           </div>
@@ -199,7 +199,7 @@ export default function TopicsManager({
                     className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition"
                   >
                     <Plus className="w-4 h-4" />
-                    Criar assunto
+                    Adicionar assunto
                   </button>
                 </div>
 

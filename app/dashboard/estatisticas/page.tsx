@@ -85,7 +85,7 @@ export default function EstatisticasPage() {
         {/* CABEÇALHO */}
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight">Estatísticas</h1>
-          <p className="text-sm text-slate-500 mt-2 font-medium">Acompanhe seu desempenho geral</p>
+          <p className="text-sm text-slate-500 mt-2 font-medium">Veja como você tá evoluindo</p>
         </div>
 
         {/* 1. KPIs REAIS */}
@@ -95,7 +95,7 @@ export default function EstatisticasPage() {
               <Clock className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Tempo Total</p>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Meu tempo total</p>
               <p className="text-2xl font-bold text-slate-900">
                 {isLoading ? '...' : stats.totalDurationFormatted}
               </p>
@@ -107,7 +107,7 @@ export default function EstatisticasPage() {
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Questões Feitas</p>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Minhas questões feitas</p>
               <p className="text-2xl font-bold text-slate-900">
                 {isLoading ? '...' : stats.totalQuestions}
               </p>
@@ -119,7 +119,7 @@ export default function EstatisticasPage() {
               <Target className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Precisão Global</p>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Minha precisão</p>
               <p className="text-2xl font-bold text-slate-900">
                 {isLoading ? '...' : `${stats.globalPrecision}%`}
               </p>
@@ -131,7 +131,7 @@ export default function EstatisticasPage() {
               <BookOpen className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Tópicos Feitos</p>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Meus tópicos concluídos</p>
               <p className="text-2xl font-bold text-slate-900">
                 {isLoading ? '...' : stats.totalTopicosFeitos}
               </p>
@@ -141,28 +141,28 @@ export default function EstatisticasPage() {
 
         {/* 2. DESTAQUES REAIS */}
         <div>
-          <h2 className="text-lg font-bold text-slate-900 mb-4">Destaques</h2>
+          <h2 className="text-lg font-bold text-slate-900 mb-4">Meus destaques</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <TrendingUp className="w-5 h-5 text-emerald-500" />
-              <span className="text-xs text-slate-500 font-medium">Mais Estudada</span>
+              <span className="text-xs text-slate-500 font-medium">Matéria mais estudada</span>
               <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.maisEstudada}</span>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <TrendingDown className="w-5 h-5 text-red-500" />
-              <span className="text-xs text-slate-500 font-medium">Menos Estudada</span>
+              <span className="text-xs text-slate-500 font-medium">Matéria menos estudada</span>
               <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.menosEstudada}</span>
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <Library className="w-5 h-5 text-blue-500" />
-              <span className="text-xs text-slate-500 font-medium">Mais Tópicos</span>
+              <span className="text-xs text-slate-500 font-medium">Matéria com mais tópicos</span>
               <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.maisTopicos}</span>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <Book className="w-5 h-5 text-slate-400" />
-              <span className="text-xs text-slate-500 font-medium">Menos Tópicos</span>
+              <span className="text-xs text-slate-500 font-medium">Matéria com menos tópicos</span>
               <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.menosTopicos}</span>
             </div>
 
@@ -173,29 +173,29 @@ export default function EstatisticasPage() {
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <AlertCircle className="w-5 h-5 text-red-500" />
-              <span className="text-xs text-slate-500 font-medium">Pior Precisão</span>
+              <span className="text-xs text-slate-500 font-medium">Precisão mais baixa</span>
               <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.piorPrecisao}</span>
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <FileQuestion className="w-5 h-5 text-indigo-500" />
-              <span className="text-xs text-slate-500 font-medium">Mais Questões</span>
+              <span className="text-xs text-slate-500 font-medium">Matéria com mais questões feitas</span>
               <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.maisQuestoes}</span>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <FileQuestion className="w-5 h-5 text-slate-400" />
-              <span className="text-xs text-slate-500 font-medium">Menos Questões</span>
+              <span className="text-xs text-slate-500 font-medium">Matéria com menos questões feitas</span>
               <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.menosQuestoes}</span>
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              <span className="text-xs text-slate-500 font-medium">Melhor em Provas</span>
+              <span className="text-xs text-slate-500 font-medium">Melhor resultado em provas</span>
               <span className="text-sm font-bold text-slate-900">-</span>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <AlertTriangle className="w-5 h-5 text-orange-500" />
-              <span className="text-xs text-slate-500 font-medium">Pior em Provas</span>
+              <span className="text-xs text-slate-500 font-medium">Resultado a melhorar em provas</span>
               <span className="text-sm font-bold text-slate-900">-</span>
             </div>
           </div>
@@ -244,7 +244,7 @@ export default function EstatisticasPage() {
           
           <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col items-center">
-              <h2 className="text-lg font-bold text-slate-900 mb-2 self-start">Tópicos Finalizados</h2>
+              <h2 className="text-lg font-bold text-slate-900 mb-2 self-start">Meus tópicos finalizados</h2>
               <div className="relative h-56 w-full flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -279,7 +279,7 @@ export default function EstatisticasPage() {
             </div>
 
             <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col items-center">
-              <h2 className="text-lg font-bold text-slate-900 mb-2 self-start">Erros por Matéria</h2>
+              <h2 className="text-lg font-bold text-slate-900 mb-2 self-start">Meus erros por matéria</h2>
               <div className="relative h-56 w-full flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -315,7 +315,7 @@ export default function EstatisticasPage() {
           </div>
 
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-900 mb-6">Motivos de Erro</h2>
+            <h2 className="text-lg font-bold text-slate-900 mb-6">Por que eu erro</h2>
             <div className="space-y-6">
               {errorReasons.map((reason) => {
                 const colors = getErrorColorClass(reason.percent)
