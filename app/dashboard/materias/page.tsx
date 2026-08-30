@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Clock, Percent, Book, BookOpen, Settings, Target, X, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { useToast } from '@/components/ToastContext'
 import { getEstatisticas, getMaterias, createMateria, updateMateria, deleteMateria, Materia } from './actions'
 
 const StatCard = ({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number }) => (
@@ -71,6 +72,7 @@ export default function MateriasPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [modalData, setModalData] = useState({ name: '', goalHours: '' })
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchData()
@@ -111,7 +113,7 @@ export default function MateriasPage() {
 
   const handleSave = async () => {
     if (!modalData.name.trim() || !modalData.goalHours) {
-      alert('Preencha todos os campos.')
+      toast('Preencha todos os campos.', 'error')
       return
     }
 
@@ -122,12 +124,18 @@ export default function MateriasPage() {
       const result = await updateMateria(editingId, { name: modalData.name, goalHours: goalNum })
       if (result.success) {
         setMaterias(materias.map(m => m.id === editingId ? { ...m, name: modalData.name, goalHours: goalNum } : m))
+        toast('Matéria atualizada com sucesso!', 'success')
+      } else {
+        toast('Erro ao atualizar a matéria.', 'error')
       }
     } else {
       const result = await createMateria({ name: modalData.name, goalHours: goalNum })
       if (result.success && result.data) {
         setMaterias([...materias, result.data])
         setEstatisticas(prev => ({ ...prev, activeSubjects: prev.activeSubjects + 1 }))
+        toast('Matéria criada com sucesso!', 'success')
+      } else {
+        toast('Erro ao criar a matéria.', 'error')
       }
     }
 
@@ -141,9 +149,10 @@ export default function MateriasPage() {
       const result = await deleteMateria(id)
       if (result.success) {
         setMaterias(materias.filter(m => m.id !== id))
+        toast('Matéria excluída com sucesso.', 'success')
         closeModal()
       } else {
-        alert("Erro ao excluir matéria.")
+        toast('Erro ao excluir matéria.', 'error')
       }
       setIsSaving(false)
     }

@@ -91,7 +91,47 @@ export async function createTopico(materiaId: string, name: string) {
   return { topico: data }
 }
 
-// Alterado o default para 0 para refletir o tempo real estudado na criação
+export async function updateTopico(topicoId: string, name: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+
+  const { data, error } = await supabase
+    .from('topicos')
+    .update({ name })
+    .eq('id', topicoId)
+    .eq('user_id', user.id)
+    .select()
+    .single()
+
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard/materias/[materia]', 'page')
+  return { topico: data }
+}
+
+export async function deleteTopico(topicoId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+
+  // Exclui os assuntos vinculados primeiro para evitar conflitos de Foreign Key (caso não haja CASCADE no banco)
+  await supabase
+    .from('assuntos')
+    .delete()
+    .eq('topico_id', topicoId)
+    .eq('user_id', user.id)
+
+  const { error } = await supabase
+    .from('topicos')
+    .delete()
+    .eq('id', topicoId)
+    .eq('user_id', user.id)
+
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard/materias/[materia]', 'page')
+  return { success: true }
+}
+
 export async function createAssunto(topicoId: string, name: string, durationMinutes: number = 0) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

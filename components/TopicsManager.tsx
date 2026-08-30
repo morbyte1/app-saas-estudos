@@ -2,8 +2,11 @@
 
 import { useState } from 'react'
 import { Folder, BookOpen, PieChart, Plus, Clock, Check, Pencil, Trash2, X } from 'lucide-react'
+import { useToast } from '@/components/ToastContext'
 import { 
   createTopico, 
+  updateTopico,
+  deleteTopico,
   createAssunto, 
   updateAssunto, 
   deleteAssunto, 
@@ -39,10 +42,15 @@ export default function TopicsManager({
 }) {
   const [topicos, setTopicos] = useState<Topico[]>(initialTopicos)
   const [assuntos, setAssuntos] = useState<Assunto[]>(initialAssuntos)
+  const { toast } = useToast()
 
   // Estados de Criação de Tópico
   const [isTopicoModalOpen, setIsTopicoModalOpen] = useState(false)
   const [newTopicoName, setNewTopicoName] = useState('')
+
+  // Estados de Edição de Tópico
+  const [editingTopico, setEditingTopico] = useState<Topico | null>(null)
+  const [editTopicoName, setEditTopicoName] = useState('')
 
   // Estados de Criação de Assunto
   const [activeTopicoId, setActiveTopicoId] = useState<string | null>(null)
@@ -65,43 +73,90 @@ export default function TopicsManager({
     return `${hours}h ${String(mins).padStart(2, '0')}min`
   }
 
-  // --- Handlers ---
+  // --- Handlers Tópicos ---
   const handleCreateTopico = async () => {
-    if (!newTopicoName.trim()) return
+    if (!newTopicoName.trim()) {
+      toast('Insira o nome do tópico.', 'error')
+      return
+    }
     const result = await createTopico(materia.id, newTopicoName)
     if (result.topico) {
       setTopicos([...topicos, result.topico])
       setIsTopicoModalOpen(false)
       setNewTopicoName('')
+      toast('Tópico criado com sucesso!', 'success')
+    } else {
+      toast('Erro ao criar tópico.', 'error')
     }
   }
 
+  const handleEditTopico = async () => {
+    if (!editingTopico || !editTopicoName.trim()) {
+      toast('Insira um nome válido para o tópico.', 'error')
+      return
+    }
+    const result = await updateTopico(editingTopico.id, editTopicoName)
+    if (result.topico) {
+      setTopicos(topicos.map(t => t.id === editingTopico.id ? { ...t, name: editTopicoName } : t))
+      setEditingTopico(null)
+      toast('Tópico atualizado!', 'success')
+    } else {
+      toast('Erro ao atualizar tópico.', 'error')
+    }
+  }
+
+  const handleDeleteTopico = async (topicoId: string) => {
+    if (confirm("Tem certeza que deseja excluir este tópico? Todos os assuntos vinculados a ele também serão apagados.")) {
+      const result = await deleteTopico(topicoId)
+      if (result.success) {
+        setTopicos(topicos.filter(t => t.id !== topicoId))
+        setAssuntos(assuntos.filter(a => a.topico_id !== topicoId))
+        if (editingTopico?.id === topicoId) setEditingTopico(null)
+        toast('Tópico e seus assuntos excluídos!', 'success')
+      } else {
+        toast('Erro ao excluir tópico.', 'error')
+      }
+    }
+  }
+
+  // --- Handlers Assuntos ---
   const handleCreateAssunto = async () => {
-    if (!newAssuntoName.trim() || !activeTopicoId) return
+    if (!newAssuntoName.trim() || !activeTopicoId) {
+      toast('Insira o nome do assunto.', 'error')
+      return
+    }
     const result = await createAssunto(activeTopicoId, newAssuntoName)
     if (result.assunto) {
       setAssuntos([...assuntos, result.assunto])
       setActiveTopicoId(null)
       setNewAssuntoName('')
+      toast('Assunto adicionado!', 'success')
+    } else {
+      toast('Erro ao adicionar assunto.', 'error')
     }
   }
 
   const handleToggleAssunto = async (assuntoId: string, currentStatus: boolean) => {
-    // Optimistic UI update
     setAssuntos(assuntos.map(a => a.id === assuntoId ? { ...a, is_done: !currentStatus } : a))
     const result = await toggleAssunto(assuntoId, !currentStatus)
     if (result.error) {
-      // Revert if error
       setAssuntos(assuntos.map(a => a.id === assuntoId ? { ...a, is_done: currentStatus } : a))
+      toast('Não foi possível alterar o status do assunto.', 'error')
     }
   }
 
   const handleEditAssunto = async () => {
-    if (!editingAssunto || !editAssuntoName.trim()) return
+    if (!editingAssunto || !editAssuntoName.trim()) {
+      toast('Insira um nome válido para o assunto.', 'error')
+      return
+    }
     const result = await updateAssunto(editingAssunto.id, editAssuntoName)
     if (result.assunto) {
       setAssuntos(assuntos.map(a => a.id === editingAssunto.id ? { ...a, name: editAssuntoName } : a))
       setEditingAssunto(null)
+      toast('Assunto atualizado!', 'success')
+    } else {
+      toast('Erro ao atualizar assunto.', 'error')
     }
   }
 
@@ -111,6 +166,9 @@ export default function TopicsManager({
       if (result.success) {
         setAssuntos(assuntos.filter(a => a.id !== assuntoId))
         if (editingAssunto?.id === assuntoId) setEditingAssunto(null)
+        toast('Assunto excluído com sucesso.', 'success')
+      } else {
+        toast('Erro ao excluir assunto.', 'error')
       }
     }
   }
@@ -190,16 +248,27 @@ export default function TopicsManager({
                   <div className="flex items-center gap-3">
                     <div className="h-6 w-1 bg-primary-600 rounded-full"></div>
                     <h2 className="text-lg font-bold text-slate-900">{topico.name}</h2>
-                    <span className="bg-slate-100 text-slate-600 text-xs font-medium px-2.5 py-1 rounded-md">
+                    <span className="bg-slate-100 text-slate-600 text-xs font-medium px-2.5 py-1 rounded-md hidden md:inline-flex">
                       {assuntosDoTopico.length} assuntos
                     </span>
+                    <button 
+                      onClick={() => {
+                        setEditingTopico(topico)
+                        setEditTopicoName(topico.name)
+                      }}
+                      className="p-1.5 ml-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-md transition"
+                      title="Editar tópico"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
                   </div>
                   <button 
                     onClick={() => setActiveTopicoId(topico.id)}
                     className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition"
                   >
                     <Plus className="w-4 h-4" />
-                    Adicionar assunto
+                    <span className="hidden md:inline">Adicionar assunto</span>
+                    <span className="inline md:hidden">Assunto</span>
                   </button>
                 </div>
 
@@ -280,6 +349,43 @@ export default function TopicsManager({
             >
               Criar Tópico
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Editar Tópico */}
+      {editingTopico && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-slate-900">Editar Tópico</h3>
+              <button onClick={() => setEditingTopico(null)} className="p-1.5 hover:bg-slate-100 rounded-lg">
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+            <input
+              type="text"
+              value={editTopicoName}
+              onChange={(e) => setEditTopicoName(e.target.value)}
+              className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 mb-4"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleDeleteTopico(editingTopico.id)}
+                className="flex items-center justify-center p-2.5 border border-red-200 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition"
+                title="Excluir Tópico"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleEditTopico}
+                disabled={!editTopicoName.trim() || editTopicoName === editingTopico.name}
+                className="flex-1 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
+              >
+                Salvar Alterações
+              </button>
+            </div>
           </div>
         </div>
       )}
