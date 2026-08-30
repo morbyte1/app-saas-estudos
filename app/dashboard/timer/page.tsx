@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useToast } from '@/components/ToastContext'
 import { getMaterias } from '@/app/dashboard/materias/actions'
 import { getTopicosEAssuntos } from '@/app/dashboard/materias/[materia]/actions'
@@ -39,6 +39,64 @@ interface StudySession {
   assuntos?: { name: string }
 }
 
+// Microcomponente Isolado para o Relógio
+function ClockDisplay({ isRunning, phase, timerConfig, onPhaseChange, initialSeconds }: any) {
+  const [displaySeconds, setDisplaySeconds] = useState(initialSeconds)
+  const lastTickRef = useRef<number>(Date.now())
+
+  useEffect(() => {
+    setDisplaySeconds(initialSeconds)
+  }, [initialSeconds, timerConfig.type])
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+
+    if (isRunning) {
+      lastTickRef.current = Date.now()
+      
+      interval = setInterval(() => {
+        const now = Date.now()
+        const deltaSeconds = Math.floor((now - lastTickRef.current) / 1000)
+        
+        if (deltaSeconds >= 1) {
+          lastTickRef.current += deltaSeconds * 1000
+
+          setDisplaySeconds((prev: number) => {
+            if (timerConfig.type === 'cronometro' && phase === 'study') {
+              onPhaseChange('tick_study', deltaSeconds)
+              return prev + deltaSeconds
+            } else {
+              const next = prev - deltaSeconds
+              if (next <= 0) {
+                onPhaseChange('end_phase')
+                return 0
+              }
+              if (phase === 'study') onPhaseChange('tick_study', deltaSeconds)
+              return next
+            }
+          })
+        }
+      }, 500)
+    }
+    return () => { if (interval) clearInterval(interval) }
+  }, [isRunning, phase, timerConfig, onPhaseChange])
+
+  const formatTime = (totalSeconds: number) => {
+    const hours = Math.floor(totalSeconds / 3600)
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    const remSeconds = totalSeconds % 60
+    
+    if (hours > 0) return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(remSeconds).padStart(2, '0')}`
+    return `${String(minutes).padStart(2, '0')}:${String(remSeconds).padStart(2, '0')}`
+  }
+
+  return (
+    <div className={`text-6xl sm:text-[8rem] md:text-[10rem] font-bold tracking-tight mb-8 font-mono leading-none ${phase === 'rest' ? 'text-emerald-500' : 'text-slate-900'}`}>
+      {formatTime(displaySeconds)}
+    </div>
+  )
+}
+
 export default function TimerPage() {
   const [totalStudySeconds, setTotalStudySeconds] = useState(0)
   const [currentDisplaySeconds, setCurrentDisplaySeconds] = useState(0)
@@ -50,7 +108,6 @@ export default function TimerPage() {
   
   const [pomodoroCycles, setPomodoroCycles] = useState(0)
   const totalStudySecondsRef = useRef(totalStudySeconds)
-  const lastTickRef = useRef<number>(0)
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [timerConfig, setTimerConfig] = useState<{
@@ -167,58 +224,24 @@ export default function TimerPage() {
     }
   }, [manualForm.materiaId, isManualModalOpen, materias])
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null
-
-    if (isRunning) {
-      lastTickRef.current = Date.now()
-      
-      interval = setInterval(() => {
-        const now = Date.now()
-        const deltaSeconds = Math.floor((now - lastTickRef.current) / 1000)
-        
-        if (deltaSeconds >= 1) {
-          lastTickRef.current += deltaSeconds * 1000
-
-          if (phase === 'study') {
-            setTotalStudySeconds((prev) => prev + deltaSeconds)
-            
-            if (timerConfig.type === 'cronometro') {
-              setCurrentDisplaySeconds((prev) => prev + deltaSeconds)
-            } else {
-              setCurrentDisplaySeconds((prev) => {
-                const next = prev - deltaSeconds
-                if (next <= 0) {
-                  setPhase('rest')
-                  return timerConfig.pomodoroRest * 60
-                }
-                return next
-              })
-            }
-          } else if (phase === 'rest') {
-            setCurrentDisplaySeconds((prev) => {
-              const next = prev - deltaSeconds
-              if (next <= 0) {
-                setIsRunning(false)
-                setPhase('idle')
-                
-                if (timerConfig.type === 'pomodoro') {
-                  setPomodoroCycles((c) => c + 1)
-                  return timerConfig.pomodoroStudy * 60
-                }
-                return totalStudySecondsRef.current
-              }
-              return next
-            })
-          }
+  const handlePhaseChange = useCallback((action: string, delta?: number) => {
+    if (action === 'tick_study' && delta) {
+      setTotalStudySeconds(prev => prev + delta)
+    }
+    if (action === 'end_phase') {
+      if (phase === 'study') {
+        setPhase('rest')
+        setCurrentDisplaySeconds(timerConfig.pomodoroRest * 60)
+      } else {
+        setIsRunning(false)
+        setPhase('idle')
+        if (timerConfig.type === 'pomodoro') {
+          setPomodoroCycles(c => c + 1)
+          setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
         }
-      }, 500)
+      }
     }
-
-    return () => {
-      if (interval) clearInterval(interval)
-    }
-  }, [isRunning, phase, timerConfig])
+  }, [phase, timerConfig])
 
   const formatTime = (totalSeconds: number) => {
     const hours = Math.floor(totalSeconds / 3600)
@@ -543,9 +566,13 @@ export default function TimerPage() {
             </div>
           )}
 
-          <div className={`text-6xl sm:text-[8rem] md:text-[10rem] font-bold tracking-tight mb-8 font-mono leading-none ${phase === 'rest' ? 'text-emerald-500' : 'text-slate-900'}`}>
-            {formatTime(currentDisplaySeconds)}
-          </div>
+          <ClockDisplay 
+            isRunning={isRunning} 
+            phase={phase} 
+            timerConfig={timerConfig} 
+            initialSeconds={currentDisplaySeconds}
+            onPhaseChange={handlePhaseChange}
+          />
 
           <div className="flex flex-wrap gap-4 justify-center mb-8">
             {phase === 'idle' && currentDisplaySeconds === 0 ? (

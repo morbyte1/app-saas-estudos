@@ -164,7 +164,9 @@ export async function getDashboardStats() {
     }
   }
 
+  // ... código anterior da função getDashboardStats
   const userName = user.user_metadata?.full_name || 'Estudante'
+  const currentYearStart = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]
 
   const [
     { data: sessions },
@@ -172,10 +174,12 @@ export async function getDashboardStats() {
     { data: examGoals },
     { data: userSettings }
   ] = await Promise.all([
+    // OTIMIZAÇÃO: Filtro adicionado para histórico limitado ao ano atual
     supabase
       .from('study_sessions')
       .select('session_date, duration_seconds, materia_id')
-      .eq('user_id', user.id),
+      .eq('user_id', user.id)
+      .gte('session_date', currentYearStart),
     supabase
       .from('materias')
       .select('*')

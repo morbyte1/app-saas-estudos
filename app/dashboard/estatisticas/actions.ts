@@ -9,6 +9,8 @@ export async function getRealEstatisticas() {
   if (userError || !user) return { error: 'Usuário não autenticado' }
 
   // Busca todos os dados necessários em paralelo
+const currentYearStart = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]
+
   const [
     { data: materias },
     { data: sessions },
@@ -16,7 +18,10 @@ export async function getRealEstatisticas() {
     { data: assuntos }
   ] = await Promise.all([
     supabase.from('materias').select('id, name').eq('user_id', user.id),
-    supabase.from('study_sessions').select('materia_id, duration_seconds, questions_done, questions_wrong, session_date').eq('user_id', user.id),
+    // OTIMIZAÇÃO: Filtro adicionado para buscar apenas as sessões do ano atual
+    supabase.from('study_sessions').select('materia_id, duration_seconds, questions_done, questions_wrong, session_date')
+      .eq('user_id', user.id)
+      .gte('session_date', currentYearStart),
     supabase.from('topicos').select('id, materia_id').eq('user_id', user.id),
     supabase.from('assuntos').select('topico_id, is_done').eq('user_id', user.id)
   ])

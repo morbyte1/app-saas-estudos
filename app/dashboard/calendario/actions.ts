@@ -190,14 +190,16 @@ export async function createSubject(data: {
     return { error: 'User not authenticated', subject: null }
   }
 
-  // Realizamos o insert de forma isolada para não dar conflito com regras RLS (Row Level Security)
-  const { error } = await supabase
+  // CORREÇÃO: Cadeia direta .insert().select().single()
+  const { data: newSubject, error } = await supabase
     .from('subjects')
     .insert({
       user_id: user.id,
       name: data.name,
       color: data.color,
     })
+    .select()
+    .single()
 
   if (error) {
     console.error('Error creating subject:', error.message)
@@ -205,17 +207,7 @@ export async function createSubject(data: {
   }
 
   revalidatePath('/dashboard/calendario')
-  
-  // Buscamos a matéria recém-criada para retornar o ID correto
-  const { data: newSubject } = await supabase
-    .from('subjects')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('name', data.name)
-    .order('id', { ascending: false })
-    .limit(1)
-
-  return { success: true, subject: newSubject?.[0] || null }
+  return { success: true, subject: newSubject }
 }
 
 export async function duplicateEvents(

@@ -114,13 +114,7 @@ export async function deleteTopico(topicoId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
 
-  // Exclui os assuntos vinculados primeiro para evitar conflitos de Foreign Key (caso não haja CASCADE no banco)
-  await supabase
-    .from('assuntos')
-    .delete()
-    .eq('topico_id', topicoId)
-    .eq('user_id', user.id)
-
+  // CORREÇÃO: Chamada dupla removida. A constraint ON DELETE CASCADE resolve os assuntos atrelados.
   const { error } = await supabase
     .from('topicos')
     .delete()
