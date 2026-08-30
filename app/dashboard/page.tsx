@@ -286,10 +286,9 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-8">
       <div className="max-w-7xl mx-auto">
-        // Substitua o header pelo bloco abaixo:
         <div className="flex justify-between items-start mb-8">
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Seja bem-vindo!</h1>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Bora estudar, Arthur?</h1>
             <p className="text-sm text-slate-500 mt-2 font-medium">{quoteOfDay}</p>
           </div>
           <button className="flex items-center gap-2 px-4 py-2 bg-white text-primary-700 font-medium rounded-lg border border-slate-200 hover:bg-slate-50 transition">
