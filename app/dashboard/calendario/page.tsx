@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useToast } from '@/components/ToastContext'
 import { ChevronLeft, ChevronRight, Clock, Plus, MoreVertical, Check, X, Copy, Edit2, Target } from 'lucide-react'
 import {
   getCalendarData,
@@ -36,6 +37,7 @@ export default function CalendarioPage() {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [dailyStats, setDailyStats] = useState({ goal: 3, todayMinutes: 0 })
   const [isLoading, setIsLoading] = useState(true)
+  const { toast } = useToast()
   
   // Modal de Evento
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -205,11 +207,12 @@ export default function CalendarioPage() {
           }))
         }
         setShowNewSubject(false)
+        toast("Tag criada com sucesso!", "success")
       } else {
-        alert('Não foi possível criar a matéria/tag. Detalhe do erro: ' + result.error)
+        toast('Não foi possível criar a matéria/tag. Erro: ' + result.error, "error")
       }
     } catch (err) {
-      alert('Erro inesperado ao tentar salvar a matéria.')
+      toast('Erro inesperado ao tentar salvar a matéria.', "error")
     } finally {
       setIsSavingSubject(false)
     }
@@ -224,18 +227,18 @@ export default function CalendarioPage() {
     const finalSubjectId = modalData.subjectId
 
     if (!modalData.title.trim() || !modalData.time || !modalData.duration) {
-      alert("Por favor, preencha o nome, horário e a duração do estudo.")
+      toast("Por favor, preencha o nome, horário e a duração do estudo.", "error")
       return
     }
 
     if (!finalSubjectId) {
-      alert("Por favor, selecione ou crie uma matéria (tag).")
+      toast("Por favor, selecione ou crie uma matéria (tag).", "error")
       return
     }
 
     const parsedDuration = parseInt(modalData.duration)
     if (isNaN(parsedDuration) || parsedDuration <= 0) {
-      alert("A duração deve ser um número válido maior que zero.")
+      toast("A duração deve ser um número válido maior que zero.", "error")
       return
     }
 
@@ -258,8 +261,9 @@ export default function CalendarioPage() {
           }
         }
         closeModal()
+        toast("Estudo atualizado com sucesso!", "success")
       } else {
-        alert("Erro ao atualizar o estudo: " + result.error)
+        toast("Erro ao atualizar o estudo: " + result.error, "error")
       }
     } else {
       const result = await createEvent({
@@ -280,8 +284,9 @@ export default function CalendarioPage() {
           }
         }
         closeModal()
+        toast("Estudo adicionado ao calendário!", "success")
       } else {
-        alert("Erro ao criar o estudo no banco de dados: " + result.error)
+        toast("Erro ao criar o estudo: " + result.error, "error")
       }
     }
   }
@@ -338,8 +343,9 @@ export default function CalendarioPage() {
         setEvents(dataResult.events || [])
       }
       closeDuplicateModal()
+      toast("Cronograma sincronizado com sucesso!", "success")
     } else {
-      alert("Erro ao duplicar cronograma: " + result.error)
+      toast("Erro ao duplicar cronograma: " + result.error, "error")
     }
     
     setIsDuplicating(false)
@@ -348,15 +354,16 @@ export default function CalendarioPage() {
   const handleSaveDailyGoal = async () => {
     const num = parseFloat(newDailyGoal)
     if (isNaN(num) || num <= 0) {
-      alert("Informe um número de horas válido.")
+      toast("Informe um número de horas válido.", "error")
       return
     }
     const result = await updateDailyGoal(num)
     if (result.success) {
       setDailyStats(prev => ({ ...prev, goal: num }))
       setIsDailyGoalModalOpen(false)
+      toast("Meta diária atualizada!", "success")
     } else {
-      alert("Erro ao salvar meta.")
+      toast("Erro ao salvar meta.", "error")
     }
   }
 

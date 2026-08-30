@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useToast } from '@/components/ToastContext'
 import { getMaterias } from '@/app/dashboard/materias/actions'
 import { getTopicosEAssuntos } from '@/app/dashboard/materias/[materia]/actions'
 import { saveTimerSession, getTimerHistory, deleteTimerSession } from './actions'
@@ -46,6 +47,7 @@ export default function TimerPage() {
   const [isRunning, setIsRunning] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
+  const { toast } = useToast()
   
   // Estado para contagem de ciclos (exclusivo Pomodoro)
   const [pomodoroCycles, setPomodoroCycles] = useState(0)
@@ -299,7 +301,7 @@ export default function TimerPage() {
 
   const handleFinishRequest = () => {
     if (!selectedMateriaId || !selectedAssuntoId) {
-      alert("Selecione uma matéria e um assunto antes de finalizar.")
+      toast("Selecione uma matéria e um assunto antes de finalizar.", "error")
       return
     }
     setIsRunning(false)
@@ -336,6 +338,7 @@ export default function TimerPage() {
       }
       setPhase('idle')
       setIsFinishModalOpen(false)
+      toast("Sessão salva com sucesso!", "success")
       
       const historyResult = await getTimerHistory()
       if (historyResult.success && historyResult.data) {
@@ -348,7 +351,7 @@ export default function TimerPage() {
         setHistorySessions(formattedHistory)
       }
     } else {
-      alert('Erro ao salvar sessão: ' + result.error)
+      toast('Erro ao salvar sessão: ' + result.error, "error")
     }
 
     setIsLoading(false)
@@ -361,8 +364,9 @@ export default function TimerPage() {
       
       if (result.success) {
         setHistorySessions(prev => prev.filter(session => session.id !== id))
+        toast("Registro excluído.", "success")
       } else {
-        alert('Erro ao excluir registro: ' + result.error)
+        toast('Erro ao excluir registro: ' + result.error, "error")
       }
       setIsLoading(false)
     }
@@ -409,7 +413,7 @@ export default function TimerPage() {
 
   const handleConfirmManual = async () => {
     if (!manualForm.materiaId || !manualForm.assuntoId || !manualForm.durationMinutes || !manualForm.sessionDate) {
-      alert("Preencha matéria, assunto, data e tempo em minutos.")
+      toast("Preencha matéria, assunto, data e tempo em minutos.", "error")
       return
     }
 
@@ -429,6 +433,7 @@ export default function TimerPage() {
 
     if (result.success) {
       setIsManualModalOpen(false)
+      toast("Sessão manual salva com sucesso!", "success")
       
       const historyResult = await getTimerHistory()
       if (historyResult.success && historyResult.data) {
@@ -440,7 +445,7 @@ export default function TimerPage() {
         setHistorySessions(formattedHistory)
       }
     } else {
-      alert('Erro ao salvar sessão: ' + result.error)
+      toast('Erro ao salvar sessão: ' + result.error, "error")
     }
     setIsLoading(false)
   }

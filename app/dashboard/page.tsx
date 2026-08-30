@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Calendar, Clock, Target, TrendingUp, Plus, Flame, Check, X, Edit2, Trash2 } from 'lucide-react'
 import { getCalendarData, createSubject } from './calendario/actions'
+import { useToast } from '@/components/ToastContext'
 import { getTasks, createTask, updateTask, deleteTask, toggleTaskStatus, getDashboardStats, createExamGoal, updateExamGoal, deleteExamGoal } from './actions'
 
 // --- INTERFACES (mantenha iguais às originais) ---
@@ -29,6 +30,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [quoteOfDay, setQuoteOfDay] = useState(QUOTES[0])
+  const { toast } = useToast()
 
   // Estados do Modal de Tarefas
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
@@ -196,23 +198,26 @@ export default function DashboardPage() {
           setNewSubjectColor('#8b5cf6')
         }
         setShowNewSubject(false)
-      } else { alert('Não foi possível criar a matéria/tag.') }
+        toast("Matéria criada com sucesso!", "success")
+      } else { 
+        toast("Não foi possível criar a matéria/tag.", "error") 
+      }
     } finally { setIsSavingSubject(false) }
   }
 
   const handleSaveTask = async () => {
     if (!taskModalData.title.trim() || !taskModalData.subjectId) {
-      alert("Por favor, preencha o nome da tarefa e selecione uma matéria (tag).")
+      toast("Por favor, preencha o nome da tarefa e selecione uma matéria (tag).", "error")
       return
     }
     if (editingTaskId) {
       const result = await updateTask(editingTaskId, { title: taskModalData.title, subject_id: taskModalData.subjectId, priority: taskModalData.priority })
       if (result.success && result.task) { setTasks(tasks.map(t => t.id === editingTaskId ? result.task : t)); closeTaskModal() } 
-      else { alert("Erro ao atualizar a tarefa.") }
+      else { toast("Erro ao atualizar a tarefa.", "error") }
     } else {
       const result = await createTask({ title: taskModalData.title, subject_id: taskModalData.subjectId, priority: taskModalData.priority })
       if (result.success && result.task) { setTasks([...tasks, result.task]); closeTaskModal() } 
-      else { alert("Erro ao criar a tarefa.") }
+      else { toast("Erro ao criar a tarefa.", "error") }
     }
   }
 
@@ -251,7 +256,7 @@ export default function DashboardPage() {
 
   const handleSaveExamGoal = async () => {
     if (!examForm.name || !examForm.date || !examForm.time) {
-      alert("Preencha todos os campos da meta.")
+      toast("Preencha todos os campos da meta.", "error")
       return
     }
     const targetDate = new Date(`${examForm.date}T${examForm.time}:00`).toISOString()
@@ -260,12 +265,14 @@ export default function DashboardPage() {
       const result = await updateExamGoal(editingExamId, { name: examForm.name, target_date: targetDate })
       if (result.success && result.goal) {
         setStats(prev => prev ? { ...prev, examGoal: { id: result.goal.id, name: result.goal.name, target_date: result.goal.target_date } } : null)
-      } else alert("Erro ao atualizar a meta.")
+        toast("Meta atualizada com sucesso!", "success")
+      } else toast("Erro ao atualizar a meta.", "error")
     } else {
       const result = await createExamGoal({ name: examForm.name, target_date: targetDate })
       if (result.success && result.goal) {
         setStats(prev => prev ? { ...prev, examGoal: { id: result.goal.id, name: result.goal.name, target_date: result.goal.target_date } } : null)
-      } else alert("Erro ao criar a meta.")
+        toast("Meta criada com sucesso!", "success")
+      } else toast("Erro ao criar a meta.", "error")
     }
     setIsExamModalOpen(false)
   }
