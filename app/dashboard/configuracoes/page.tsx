@@ -3,8 +3,8 @@
 import { useState, useEffect, useTransition } from 'react'
 import { useToast } from '@/components/ToastContext'
 import { createClient } from '@/utils/supabase/client'
-import { User, Mail, Lock, LogOut, Loader2 } from 'lucide-react'
-import { updateUserProfile, updateUserEmail, updateUserPassword } from './actions'
+import { User, Mail, Lock, LogOut, Loader2, AlertTriangle, X } from 'lucide-react'
+import { updateUserProfile, updateUserEmail, updateUserPassword, deleteAccount } from './actions'
 import { signout } from '../actions'
 
 export default function ConfiguracoesPage() {
@@ -13,6 +13,11 @@ export default function ConfiguracoesPage() {
   const [password, setPassword] = useState('')
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isPending, startTransition] = useTransition()
+  
+  // Estados para exclusão de conta
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
   
   const { toast } = useToast()
 
@@ -62,6 +67,18 @@ export default function ConfiguracoesPage() {
     })
   }
 
+  const handleDeleteAccount = () => {
+    if (!deletePassword) return toast('Digite sua senha para confirmar.', 'error')
+    setIsDeleting(true)
+    startTransition(async () => {
+      const res = await deleteAccount(deletePassword)
+      if (res.error) {
+        toast(res.error, 'error')
+        setIsDeleting(false)
+      }
+    })
+  }
+
   if (isLoadingData) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -100,7 +117,7 @@ export default function ConfiguracoesPage() {
               </div>
               <button
                 onClick={handleUpdateName}
-                disabled={isPending}
+                disabled={isPending || isDeleting}
                 className="w-full sm:w-auto px-6 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50 whitespace-nowrap"
               >
                 Atualizar Nome
@@ -130,7 +147,7 @@ export default function ConfiguracoesPage() {
                 </div>
                 <button
                   onClick={handleUpdateEmail}
-                  disabled={isPending}
+                  disabled={isPending || isDeleting}
                   className="w-full sm:w-auto px-6 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50 whitespace-nowrap"
                 >
                   Atualizar E-mail
@@ -150,7 +167,7 @@ export default function ConfiguracoesPage() {
                 </div>
                 <button
                   onClick={handleUpdatePassword}
-                  disabled={isPending || !password}
+                  disabled={isPending || !password || isDeleting}
                   className="w-full sm:w-auto px-6 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50 whitespace-nowrap"
                 >
                   Atualizar Senha
@@ -159,28 +176,102 @@ export default function ConfiguracoesPage() {
             </div>
           </section>
 
-          {/* Sessão: Perigo (Sair da conta) */}
-          <section className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-red-50 p-2 rounded-lg text-red-600">
-                <LogOut className="w-5 h-5" />
+          {/* Sessão: Perigo (Sair e Excluir) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <section className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-red-50 p-2 rounded-lg text-red-600">
+                  <LogOut className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Sessão</h2>
+                  <p className="text-xs text-slate-500 font-medium">Encerrar sua sessão neste dispositivo.</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">Sessão</h2>
-                <p className="text-xs text-slate-500 font-medium">Encerrar sua sessão neste dispositivo.</p>
+              
+              <button
+                onClick={() => startTransition(async () => await signout())}
+                disabled={isPending || isDeleting}
+                className="w-full mt-2 px-6 py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition disabled:opacity-50 whitespace-nowrap"
+              >
+                Sair da conta
+              </button>
+            </section>
+
+            <section className="bg-white rounded-2xl p-6 border border-red-200 shadow-sm flex flex-col justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-red-50 p-2 rounded-lg text-red-600">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Zona de Perigo</h2>
+                  <p className="text-xs text-slate-500 font-medium">Esta ação não poderá ser desfeita.</p>
+                </div>
               </div>
-            </div>
-            
-            <button
-              onClick={() => startTransition(async () => await signout())}
-              disabled={isPending}
-              className="px-6 py-2.5 border border-red-200 bg-red-50 text-red-600 font-medium rounded-xl hover:bg-red-100 transition disabled:opacity-50 whitespace-nowrap"
-            >
-              Sair da conta
-            </button>
-          </section>
+              
+              <button
+                onClick={() => setIsDeleteModalOpen(true)}
+                disabled={isPending || isDeleting}
+                className="w-full mt-2 px-6 py-2.5 border border-red-200 bg-red-50 text-red-600 font-medium rounded-xl hover:bg-red-100 transition disabled:opacity-50 whitespace-nowrap"
+              >
+                Excluir minha conta
+              </button>
+            </section>
+          </div>
         </div>
       </div>
+
+      {/* Modal de Exclusão de Conta */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-red-600 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                Confirmar Exclusão
+              </h3>
+              <button 
+                onClick={() => { setIsDeleteModalOpen(false); setDeletePassword('') }} 
+                className="p-2 hover:bg-slate-100 rounded-lg transition"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <p className="text-sm text-slate-600 font-medium leading-relaxed">
+                Tem certeza que deseja excluir sua conta? Todo o seu progresso, matérias, tarefas e histórico no timer serão <strong className="text-slate-900">apagados permanentemente</strong>.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Digite sua senha para confirmar</label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 text-slate-900"
+                  placeholder="Sua senha atual"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-8">
+              <button
+                onClick={() => { setIsDeleteModalOpen(false); setDeletePassword('') }}
+                className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={isDeleting || !deletePassword}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 transition disabled:opacity-50"
+              >
+                {isDeleting ? 'Excluindo...' : 'Sim, excluir conta'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

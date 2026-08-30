@@ -130,7 +130,7 @@ export default function Sidebar() {
 
       {/* BARRA LATERAL (Sidebar) */}
       <aside className={`
-        fixed md:relative top-0 left-0 h-screen z-50 flex-shrink-0
+        fixed md:relative top-0 left-0 h-[100dvh] z-50 flex-shrink-0
         ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         ${isMinimized ? 'md:w-24' : 'md:w-64'} w-72
         bg-white border-r border-slate-200 flex flex-col transition-all duration-300
