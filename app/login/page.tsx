@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef } from 'react'
+import Image from 'next/image'
 import { Eye, EyeOff, BookOpen } from 'lucide-react'
-import { loginAction, signupAction } from './actions'
+import { loginAction, signupAction, resetPasswordAction } from './actions'
 import { useToast } from '@/components/ToastContext'
 
 export default function LoginPage() {
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isPending, startTransition] = useTransition()
   const { toast } = useToast()
+  const formRef = useRef<HTMLFormElement>(null)
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -27,6 +29,30 @@ export default function LoginPage() {
     })
   }
 
+  const handleForgotPassword = () => {
+    if (!formRef.current) return
+    const formData = new FormData(formRef.current)
+    const email = formData.get('email') as string
+
+    if (!email) {
+      toast('Por favor, preencha o campo de e-mail acima para recuperar sua senha.', 'error')
+      return
+    }
+
+    startTransition(async () => {
+      const res = await resetPasswordAction(email)
+      if (res?.error) {
+        toast(res.error, 'error')
+      } else if (res?.success) {
+        toast(res.success, 'success')
+      }
+    })
+  }
+
+  const handleForgotEmail = () => {
+    toast('Como o e-mail é a sua chave primária de acesso, caso o tenha perdido, entre em contato com nosso suporte.', 'error')
+  }
+
   const inputClass = "w-full px-4 py-3.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-slate-900 placeholder:text-slate-400 bg-white transition-all text-sm font-medium"
 
   return (
@@ -35,12 +61,17 @@ export default function LoginPage() {
         
         {/* LOGO */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="bg-primary-600 text-white p-1.5 rounded-lg">
+          <div className="bg-primary-600 text-white p-1.5 rounded-lg flex items-center justify-center">
             <BookOpen className="w-6 h-6" />
           </div>
-          <span className="text-3xl font-extrabold text-slate-800 tracking-tight">
-            studia<span className="text-secondary-500">.</span>
-          </span>
+          <Image 
+            src="/logo.png" 
+            alt="Logo" 
+            width={120} 
+            height={40} 
+            className="object-contain"
+            priority
+          />
         </div>
 
         {/* TAB SWITCHER */}
@@ -66,7 +97,7 @@ export default function LoginPage() {
         </div>
 
         {/* FORMULÁRIO */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4">
           
           {!isLogin && (
             <input
@@ -124,12 +155,21 @@ export default function LoginPage() {
 
           {isLogin && (
             <div className="flex justify-between items-center px-1 mt-1 mb-2">
-              <a href="#" className="text-xs font-semibold text-primary-600 hover:text-primary-700 underline underline-offset-2 transition-colors">
+              <button 
+                type="button" 
+                onClick={handleForgotEmail}
+                className="text-xs font-semibold text-primary-600 hover:text-primary-700 underline underline-offset-2 transition-colors"
+              >
                 Esqueci meu e-mail
-              </a>
-              <a href="#" className="text-xs font-semibold text-primary-600 hover:text-primary-700 underline underline-offset-2 transition-colors">
+              </button>
+              <button 
+                type="button" 
+                onClick={handleForgotPassword}
+                disabled={isPending}
+                className="text-xs font-semibold text-primary-600 hover:text-primary-700 underline underline-offset-2 transition-colors disabled:opacity-50"
+              >
                 Esqueci minha senha
-              </a>
+              </button>
             </div>
           )}
 
