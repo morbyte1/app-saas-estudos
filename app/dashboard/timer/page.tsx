@@ -443,8 +443,8 @@ export default function TimerPage() {
     setIsLoading(false)
   }
 
-  const selectedMateriaName = selectedMateriaId === 'geral' ? 'Geral (Livre)' : (materias.find(m => m.id === selectedMateriaId)?.name || 'Geral (Livre)')
-  const selectedAssuntoName = selectedAssuntoId === 'geral' ? 'Geral' : (assuntos.find(a => a.id === selectedAssuntoId)?.name || 'Geral')
+  const selectedMateriaName = selectedMateriaId === 'geral' ? 'Geral (sem tópico definido)' : (materias.find(m => m.id === selectedMateriaId)?.name || 'Geral (Livre)')
+  const selectedAssuntoName = selectedAssuntoId === 'geral' ? 'Geral (sem asssunto definido)' : (assuntos.find(a => a.id === selectedAssuntoId)?.name || 'Geral')
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden p-8 flex flex-col items-center">
