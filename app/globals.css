@@ -2,16 +2,16 @@
 
 @theme {
   /* Paleta Principal (Escala de Verdes) */
-  --color-primary-50: #F1F7ED;  /* Mint Cream */
+  --color-primary-50: #F1F7ED;
   --color-primary-100: #E6F1DF; 
-  --color-primary-200: #E0EEC6; /* Frosted Mint */
+  --color-primary-200: #E0EEC6;
   --color-primary-300: #BED6AC; 
   --color-primary-400: #9DBF97; 
-  --color-primary-500: #7CA982; /* Muted Teal */
-  --color-primary-600: #5F8C65; /* Tom ajustado para botões e contrastes */
+  --color-primary-500: #7CA982;
+  --color-primary-600: #5F8C65;
   --color-primary-700: #436E4B;
   --color-primary-800: #33553E;
-  --color-primary-900: #243E36; /* Dark Slate Grey */
+  --color-primary-900: #243E36;
   --color-primary-950: #152620;
 
   /* Paleta Secundária (Escala de Dourados) */
@@ -20,10 +20,43 @@
   --color-secondary-200: #EFE6C5;
   --color-secondary-300: #E3D299;
   --color-secondary-400: #D5BC6B;
-  --color-secondary-500: #C2A83E; /* Old Gold */
+  --color-secondary-500: #C2A83E;
   --color-secondary-600: #A3892F;
   --color-secondary-700: #826B25;
   --color-secondary-800: #665320;
   --color-secondary-900: #54441E;
   --color-secondary-950: #30260F;
+}
+
+/* ==========================================
+   ANIMAÇÕES PREMIUM E FLUIDAS
+   ========================================== */
+@keyframes fadeInBlur {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to { opacity: 1; backdrop-filter: blur(4px); }
+}
+
+@keyframes modalEnter {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-overlay {
+  animation: fadeInBlur 0.3s ease-out forwards;
+  will-change: opacity, backdrop-filter; /* Otimização para hardware rendering */
+}
+
+.animate-modal {
+  animation: modalEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.animate-page {
+  animation: pageEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }

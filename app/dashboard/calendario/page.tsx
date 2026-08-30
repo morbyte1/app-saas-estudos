@@ -706,8 +706,8 @@ export default function CalendarioPage() {
 
             {/* Modal de Evento */}
             {isModalOpen && (
-              <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-                <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl">
+              <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 animate-overlay">
+                <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="text-xl font-bold text-slate-900">
                       {editingEventId ? 'Editar Estudo' : 'Novo Estudo'}
@@ -856,8 +856,8 @@ export default function CalendarioPage() {
 
             {/* Modal de Duplicação de Estudos */}
             {isDuplicateModalOpen && (
-              <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-                <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl">
+              <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 animate-overlay">
+                <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-bold text-slate-900">Sincronizar Cronograma</h3>
                     <button onClick={closeDuplicateModal} className="p-2 hover:bg-slate-100 rounded-lg">
@@ -931,8 +931,8 @@ export default function CalendarioPage() {
 
             {/* Modal de Meta Diária */}
             {isDailyGoalModalOpen && (
-              <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl">
+              <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
+                <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl animate-modal">
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="text-xl font-bold text-slate-900">Configurar Meta Diária</h3>
                     <button onClick={() => setIsDailyGoalModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg">

@@ -695,8 +695,8 @@ export default function TimerPage() {
 
       {/* MODAL DE CONFIGURAÇÕES */}
       {isSettingsOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-slate-900">Configurações do Timer</h3>
               <button onClick={() => setIsSettingsOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg transition">
@@ -784,8 +784,8 @@ export default function TimerPage() {
 
       {/* MODAL DE FINALIZAÇÃO DA SESSÃO */}
       {isFinishModalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-slate-900">Finalizar Estudo</h3>
               <button onClick={() => setIsFinishModalOpen(false)} disabled={isLoading} className="p-2 hover:bg-slate-100 rounded-lg transition">
@@ -860,8 +860,8 @@ export default function TimerPage() {
 
       {/* MODAL DE ENVIO MANUAL */}
       {isManualModalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-slate-900">Enviar Estudo Manual</h3>
               <button onClick={() => setIsManualModalOpen(false)} disabled={isLoading} className="p-2 hover:bg-slate-100 rounded-lg transition">

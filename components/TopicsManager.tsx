@@ -326,8 +326,8 @@ export default function TopicsManager({
 
       {/* Modal: Criar Tópico */}
       {isTopicoModalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl animate-modal">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-slate-900">Novo Tópico</h3>
               <button onClick={() => setIsTopicoModalOpen(false)} className="p-1.5 hover:bg-slate-100 rounded-lg">
@@ -355,8 +355,8 @@ export default function TopicsManager({
 
       {/* Modal: Editar Tópico */}
       {editingTopico && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl animate-modal">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-slate-900">Editar Tópico</h3>
               <button onClick={() => setEditingTopico(null)} className="p-1.5 hover:bg-slate-100 rounded-lg">
@@ -392,8 +392,8 @@ export default function TopicsManager({
 
       {/* Modal: Criar Assunto */}
       {activeTopicoId && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl animate-modal">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-slate-900">Novo Assunto</h3>
               <button onClick={() => setActiveTopicoId(null)} className="p-1.5 hover:bg-slate-100 rounded-lg">
@@ -421,8 +421,8 @@ export default function TopicsManager({
 
       {/* Modal: Editar Assunto */}
       {editingAssunto && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl animate-modal">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-slate-900">Editar Assunto</h3>
               <button onClick={() => setEditingAssunto(null)} className="p-1.5 hover:bg-slate-100 rounded-lg">

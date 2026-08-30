@@ -628,8 +628,8 @@ export default function DashboardPage() {
 
       {/* MODAL DE TAREFAS */}
       {isTaskModalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-slate-900">
                 {editingTaskId ? 'Editar Tarefa' : 'Nova Tarefa'}
@@ -763,8 +763,8 @@ export default function DashboardPage() {
 
       {/* MODAL DE META DE PROVA */}
       {isExamModalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl animate-modal">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-slate-900">{editingExamId ? 'Editar Meta' : 'Nova Meta de Prova'}</h3>
               <button onClick={() => setIsExamModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg">
