@@ -466,8 +466,8 @@ export default function TimerPage() {
     setIsLoading(false)
   }
 
-  const selectedMateriaName = selectedMateriaId === 'geral' ? 'Geral (sem tópico definido)' : (materias.find(m => m.id === selectedMateriaId)?.name || 'Geral (Livre)')
-  const selectedAssuntoName = selectedAssuntoId === 'geral' ? 'Geral (sem asssunto definido)' : (assuntos.find(a => a.id === selectedAssuntoId)?.name || 'Geral')
+  const selectedMateriaName = selectedMateriaId === 'geral' ? 'Geral' : (materias.find(m => m.id === selectedMateriaId)?.name || 'Geral (Livre)')
+  const selectedAssuntoName = selectedAssuntoId === 'geral' ? 'Geral' : (assuntos.find(a => a.id === selectedAssuntoId)?.name || 'Geral')
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden p-8 flex flex-col items-center">
@@ -919,7 +919,7 @@ export default function TimerPage() {
                   onChange={(e) => setManualForm({ ...manualForm, materiaId: e.target.value })}
                   className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
                 >
-                  <option value="geral">Geral (Livre)</option>
+                  <option value="geral">Geral</option>
                   {materias.map(m => (
                     <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
