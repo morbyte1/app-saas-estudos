@@ -7,12 +7,12 @@ import { getCalendarData, createSubject } from './calendario/actions'
 import { useToast } from '@/components/ToastContext'
 import { getTasks, createTask, updateTask, deleteTask, toggleTaskStatus, getDashboardStats, createExamGoal, updateExamGoal, deleteExamGoal } from './actions'
 
-// --- INTERFACES (mantenha iguais às originais) ---
+// --- INTERFACES ---
 interface Event { id: string; title: string; time: string; duration: number; subject_id: string; is_done: boolean; event_date: string }
 interface Subject { id: string; name: string; color: string }
 interface Task { id: string; title: string; subject_id: string; priority: 'baixa' | 'normal' | 'alta'; is_done: boolean }
 interface TopSubject { id: string; name: string; goalHours: number; studiedHours: number; studiedMinutes: number; progress: number }
-interface DashboardStats { todayMinutes: number; totalHours: number; totalDurationFormatted: string; currentStreak: number; maxStreak: number; examGoal: { id: string, name: string, target_date: string } | null; topSubjects: TopSubject[]; dailyGoalHours: number }
+interface DashboardStats { userName: string; todayMinutes: number; totalHours: number; totalDurationFormatted: string; currentStreak: number; maxStreak: number; examGoal: { id: string, name: string, target_date: string } | null; topSubjects: TopSubject[]; dailyGoalHours: number }
 
 const QUOTES = [
   "“A excelência é um hábito.” — Aristóteles",
@@ -105,7 +105,8 @@ export default function DashboardPage() {
     const interval = setInterval(calculateCountdown, 60000)
     return () => clearInterval(interval)
   }, [stats?.examGoal])
-// Bloqueio de scroll do fundo quando um modal estiver aberto
+
+  // Bloqueio de scroll do fundo quando um modal estiver aberto
   useEffect(() => {
     const mainElement = document.getElementById('main-scroll-container')
     
@@ -117,14 +118,12 @@ export default function DashboardPage() {
       mainElement?.classList.remove('!overflow-hidden')
     }
 
-    // Limpeza (Cleanup) para garantir que o scroll volte ao normal caso o componente seja desmontado
     return () => {
       document.body.classList.remove('overflow-hidden')
       mainElement?.classList.remove('!overflow-hidden')
     }
   }, [isTaskModalOpen, isExamModalOpen])
 
-  // Data formatada
   const today = new Date()
   const formattedToday = today.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
   const capitalizedToday = formattedToday.charAt(0).toUpperCase() + formattedToday.slice(1)
@@ -305,22 +304,22 @@ export default function DashboardPage() {
     }
   }
 
-  // Progresso da Meta Diária (em %)
   const dailyProgressPercent = stats ? Math.min(Math.round((stats.todayMinutes / (stats.dailyGoalHours * 60)) * 100), 100) : 0
+  const firstName = stats?.userName ? stats.userName.split(' ')[0] : 'Estudante'
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-8">
       <div className="max-w-7xl mx-auto">
-<div className="flex flex-col sm:flex-row justify-between sm:items-center items-start mb-8 gap-4">
-  <div>
-    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Bora estudar, Arthur?</h1>
-    <p className="text-sm text-slate-500 mt-2 font-medium">{quoteOfDay}</p>
-  </div>
-  <button className="flex items-center gap-2 px-4 py-2 bg-white text-primary-700 font-medium rounded-lg border border-slate-200 hover:bg-slate-50 transition w-full sm:w-auto justify-center">
-    <Calendar className="w-4 h-4" />
-    {capitalizedToday}
-  </button>
-</div>
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center items-start mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Bora estudar, {firstName}?</h1>
+            <p className="text-sm text-slate-500 mt-2 font-medium">{quoteOfDay}</p>
+          </div>
+          <button className="flex items-center gap-2 px-4 py-2 bg-white text-primary-700 font-medium rounded-lg border border-slate-200 hover:bg-slate-50 transition w-full sm:w-auto justify-center">
+            <Calendar className="w-4 h-4" />
+            {capitalizedToday}
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-8">
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col">

@@ -4,8 +4,8 @@ import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 export async function saveTimerSession(data: {
-  materia_id: string
-  assunto_id: string
+  materia_id: string | null
+  assunto_id: string | null
   duration_seconds: number
   questions_done: number
   questions_wrong: number

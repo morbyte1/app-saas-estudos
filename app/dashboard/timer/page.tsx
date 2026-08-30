@@ -5,7 +5,7 @@ import { useToast } from '@/components/ToastContext'
 import { getMaterias } from '@/app/dashboard/materias/actions'
 import { getTopicosEAssuntos } from '@/app/dashboard/materias/[materia]/actions'
 import { saveTimerSession, getTimerHistory, deleteTimerSession } from './actions'
-import { ChevronDown, Settings, Maximize, Minimize, Plus, ChevronRight, Circle, HelpCircle, X, CheckCircle, XCircle, Clock, Book, FileText, Play, Pause, Check, Coffee, Trash2, RefreshCw, RotateCcw } from 'lucide-react'
+import { ChevronDown, Settings, Maximize, Minimize, Plus, ChevronRight, HelpCircle, X, CheckCircle, XCircle, Clock, Book, FileText, Play, Pause, Check, Coffee, Trash2, RefreshCw, RotateCcw } from 'lucide-react'
 
 interface Materia {
   id: string
@@ -50,6 +50,7 @@ export default function TimerPage() {
   
   const [pomodoroCycles, setPomodoroCycles] = useState(0)
   const totalStudySecondsRef = useRef(totalStudySeconds)
+  const lastTickRef = useRef<number>(0)
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [timerConfig, setTimerConfig] = useState<{
@@ -70,10 +71,10 @@ export default function TimerPage() {
   const [expandedDates, setExpandedDates] = useState<string[]>([])
 
   const [materias, setMaterias] = useState<Materia[]>([])
-  const [selectedMateriaId, setSelectedMateriaId] = useState<string>('')
+  const [selectedMateriaId, setSelectedMateriaId] = useState<string>('geral')
   const [topicos, setTopicos] = useState<Topico[]>([])
   const [assuntos, setAssuntos] = useState<Assunto[]>([])
-  const [selectedAssuntoId, setSelectedAssuntoId] = useState<string>('')
+  const [selectedAssuntoId, setSelectedAssuntoId] = useState<string>('geral')
 
   const [isFinishModalOpen, setIsFinishModalOpen] = useState(false)
   const [questionsDone, setQuestionsDone] = useState<string>('')
@@ -82,8 +83,8 @@ export default function TimerPage() {
   const [isManualModalOpen, setIsManualModalOpen] = useState(false)
   const [modalAssuntos, setModalAssuntos] = useState<Assunto[]>([])
   const [manualForm, setManualForm] = useState({
-    materiaId: '',
-    assuntoId: '',
+    materiaId: 'geral',
+    assuntoId: 'geral',
     durationMinutes: '',
     sessionDate: '',
     questionsDone: '',
@@ -103,7 +104,6 @@ export default function TimerPage() {
       
       if (materiasResult.success && materiasResult.data && materiasResult.data.length > 0) {
         setMaterias(materiasResult.data)
-        setSelectedMateriaId(materiasResult.data[0].id)
       }
       
       if (historyResult.success && historyResult.data) {
@@ -121,10 +121,10 @@ export default function TimerPage() {
 
   useEffect(() => {
     const fetchAssuntosForMateria = async () => {
-      if (!selectedMateriaId) {
+      if (!selectedMateriaId || selectedMateriaId === 'geral') {
         setTopicos([])
         setAssuntos([])
-        setSelectedAssuntoId('')
+        setSelectedAssuntoId('geral')
         return
       }
       const materiaObj = materias.find(m => m.id === selectedMateriaId)
@@ -137,7 +137,7 @@ export default function TimerPage() {
         if (result.assuntos && result.assuntos.length > 0) {
           setSelectedAssuntoId(result.assuntos[0].id)
         } else {
-          setSelectedAssuntoId('')
+          setSelectedAssuntoId('geral')
         }
       }
     }
@@ -146,8 +146,9 @@ export default function TimerPage() {
 
   useEffect(() => {
     const fetchModalAssuntos = async () => {
-      if (!manualForm.materiaId) {
+      if (!manualForm.materiaId || manualForm.materiaId === 'geral') {
         setModalAssuntos([])
+        setManualForm(prev => ({ ...prev, assuntoId: 'geral' }))
         return
       }
       const materiaObj = materias.find(m => m.id === manualForm.materiaId)
@@ -157,7 +158,7 @@ export default function TimerPage() {
       if (!result.error) {
         setModalAssuntos(result.assuntos || [])
         if (!result.assuntos?.find((a: Assunto) => a.id === manualForm.assuntoId)) {
-          setManualForm(prev => ({ ...prev, assuntoId: result.assuntos?.[0]?.id || '' }))
+          setManualForm(prev => ({ ...prev, assuntoId: result.assuntos?.[0]?.id || 'geral' }))
         }
       }
     }
@@ -170,37 +171,48 @@ export default function TimerPage() {
     let interval: NodeJS.Timeout | null = null
 
     if (isRunning) {
+      lastTickRef.current = Date.now()
+      
       interval = setInterval(() => {
-        if (phase === 'study') {
-          setTotalStudySeconds((prev) => prev + 1)
-          
-          if (timerConfig.type === 'cronometro') {
-            setCurrentDisplaySeconds((prev) => prev + 1)
-          } else {
+        const now = Date.now()
+        const deltaSeconds = Math.floor((now - lastTickRef.current) / 1000)
+        
+        if (deltaSeconds >= 1) {
+          lastTickRef.current += deltaSeconds * 1000
+
+          if (phase === 'study') {
+            setTotalStudySeconds((prev) => prev + deltaSeconds)
+            
+            if (timerConfig.type === 'cronometro') {
+              setCurrentDisplaySeconds((prev) => prev + deltaSeconds)
+            } else {
+              setCurrentDisplaySeconds((prev) => {
+                const next = prev - deltaSeconds
+                if (next <= 0) {
+                  setPhase('rest')
+                  return timerConfig.pomodoroRest * 60
+                }
+                return next
+              })
+            }
+          } else if (phase === 'rest') {
             setCurrentDisplaySeconds((prev) => {
-              if (prev <= 1) {
-                setPhase('rest')
-                return timerConfig.pomodoroRest * 60
+              const next = prev - deltaSeconds
+              if (next <= 0) {
+                setIsRunning(false)
+                setPhase('idle')
+                
+                if (timerConfig.type === 'pomodoro') {
+                  setPomodoroCycles((c) => c + 1)
+                  return timerConfig.pomodoroStudy * 60
+                }
+                return totalStudySecondsRef.current
               }
-              return prev - 1
+              return next
             })
           }
-        } else if (phase === 'rest') {
-          setCurrentDisplaySeconds((prev) => {
-            if (prev <= 1) {
-              setIsRunning(false)
-              setPhase('idle')
-              
-              if (timerConfig.type === 'pomodoro') {
-                setPomodoroCycles((c) => c + 1)
-                return timerConfig.pomodoroStudy * 60
-              }
-              return totalStudySecondsRef.current
-            }
-            return prev - 1
-          })
         }
-      }, 1000)
+      }, 500)
     }
 
     return () => {
@@ -301,8 +313,8 @@ export default function TimerPage() {
     const session_date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
     const result = await saveTimerSession({
-      materia_id: selectedMateriaId,
-      assunto_id: selectedAssuntoId,
+      materia_id: selectedMateriaId === 'geral' ? null : selectedMateriaId,
+      assunto_id: selectedAssuntoId === 'geral' ? null : selectedAssuntoId,
       duration_seconds: totalStudySeconds,
       questions_done: qDone,
       questions_wrong: qWrong,
@@ -404,8 +416,8 @@ export default function TimerPage() {
     const durationSeconds = (parseInt(manualForm.durationMinutes) || 0) * 60
 
     const result = await saveTimerSession({
-      materia_id: manualForm.materiaId,
-      assunto_id: manualForm.assuntoId,
+      materia_id: manualForm.materiaId === 'geral' ? null : manualForm.materiaId,
+      assunto_id: manualForm.assuntoId === 'geral' ? null : manualForm.assuntoId,
       duration_seconds: durationSeconds,
       questions_done: qDone,
       questions_wrong: qWrong,
@@ -431,25 +443,30 @@ export default function TimerPage() {
     setIsLoading(false)
   }
 
-  const selectedMateriaName = materias.find(m => m.id === selectedMateriaId)?.name || ''
-  const selectedAssuntoName = assuntos.find(a => a.id === selectedAssuntoId)?.name || ''
+  const selectedMateriaName = selectedMateriaId === 'geral' ? 'Geral (Livre)' : (materias.find(m => m.id === selectedMateriaId)?.name || 'Geral (Livre)')
+  const selectedAssuntoName = selectedAssuntoId === 'geral' ? 'Geral' : (assuntos.find(a => a.id === selectedAssuntoId)?.name || 'Geral')
 
   return (
-    <div className="h-full min-h-screen md:h-screen flex flex-col md:flex-row bg-white text-slate-900 overflow-x-hidden relative">
+    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden p-8 flex flex-col items-center">
       
-      {/* SEÇÃO ESQUERDA (PRINCIPAL) */}
-      <div className="flex-1 p-4 md:p-8 flex flex-col justify-between relative md:overflow-y-auto">
+      <div className="max-w-7xl w-full flex-1 flex flex-col justify-between relative">
         
-        {/* Header (Topo) */}
+        {/* HEADER */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Timer</h1>
+          <p className="text-sm text-slate-500 mt-2 font-medium">Gerencie seu tempo de estudo e foco</p>
+        </div>
+
+        {/* CONTROLES SUPERIORES */}
         <div className="flex flex-col sm:flex-row justify-between items-start w-full gap-4">
           <div className="flex flex-col w-full sm:w-auto gap-3">
             <div className="relative">
               <select
                 value={selectedMateriaId}
                 onChange={(e) => setSelectedMateriaId(e.target.value)}
-                className="w-full sm:w-auto appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none"
+                className="w-full sm:w-auto appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none shadow-sm"
               >
-                <option value="" disabled>Selecione a matéria</option>
+                <option value="geral" className="text-slate-900 bg-white">Matéria: Geral (Livre)</option>
                 {materias.map(m => (
                   <option key={m.id} value={m.id} className="text-slate-900 bg-white">
                     Matéria: {m.name}
@@ -463,9 +480,9 @@ export default function TimerPage() {
               <select
                 value={selectedAssuntoId}
                 onChange={(e) => setSelectedAssuntoId(e.target.value)}
-                className="w-full sm:w-auto appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none"
+                className="w-full sm:w-auto appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none shadow-sm"
               >
-                <option value="" disabled>Selecione o assunto</option>
+                <option value="geral" className="text-slate-900 bg-white">Assunto: Geral</option>
                 {assuntos.map(a => (
                   <option key={a.id} value={a.id} className="text-slate-900 bg-white">
                     Assunto: {a.name}
@@ -479,26 +496,26 @@ export default function TimerPage() {
           <div className="flex gap-3 items-center self-end sm:self-auto">
             <button 
               onClick={openSettings}
-              className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600"
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 shadow-sm"
             >
               <Settings className="w-4 h-4" />
             </button>
             <button 
               onClick={() => setIsMaximized(true)}
-              className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600"
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 shadow-sm"
             >
               <Maximize className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Centro (Timer e Controles) */}
-        <div className={isMaximized ? "fixed inset-0 z-50 bg-white flex flex-col items-center justify-center p-4 md:p-8 animate-in fade-in duration-200" : "flex flex-col items-center justify-center flex-1 my-10"}>
+        {/* CENTRO (TIMER E CONTROLES) */}
+        <div className={isMaximized ? "fixed inset-0 z-50 bg-slate-50 flex flex-col items-center justify-center p-4 md:p-8 animate-in fade-in duration-200" : "flex flex-col items-center justify-center flex-1 my-10"}>
           
           {isMaximized && (
             <button 
               onClick={() => setIsMaximized(false)}
-              className="absolute top-8 right-8 w-12 h-12 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors shadow-sm"
+              className="absolute top-8 right-8 w-12 h-12 flex items-center justify-center rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors shadow-sm"
               title="Voltar ao normal"
             >
               <Minimize className="w-5 h-5" />
@@ -507,8 +524,8 @@ export default function TimerPage() {
 
           {isMaximized && (
              <div className="mb-10 text-center animate-in slide-in-from-top-4 duration-300">
-               <h2 className="text-2xl font-bold text-slate-900">{selectedMateriaName || 'Nenhuma matéria'}</h2>
-               <p className="text-slate-500 font-medium">{selectedAssuntoName || 'Nenhum assunto'}</p>
+               <h2 className="text-2xl font-bold text-slate-900">{selectedMateriaName}</h2>
+               <p className="text-slate-500 font-medium">{selectedAssuntoName}</p>
              </div>
           )}
 
@@ -531,47 +548,61 @@ export default function TimerPage() {
           </div>
 
           <div className="flex flex-wrap gap-4 justify-center mb-8">
-            <button
-              onClick={handleStart}
-              disabled={isRunning || isLoading}
-              className="px-6 py-3 md:px-8 md:py-3.5 bg-primary-600 text-white font-bold rounded-full hover:bg-primary-700 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
-            >
-              <Play className="w-4 h-4 fill-current" /> Iniciar
-            </button>
-
-            <button
-              onClick={handlePause}
-              disabled={!isRunning || isLoading}
-              className="px-6 py-3 md:px-8 md:py-3.5 bg-slate-200 text-slate-800 font-bold rounded-full hover:bg-slate-300 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2"
-            >
-              <Pause className="w-4 h-4 fill-current" /> Pausar
-            </button>
-
-            <button
-              onClick={handleFinishRequest}
-              disabled={isLoading || totalStudySeconds === 0}
-              className="px-6 py-3 md:px-8 md:py-3.5 bg-slate-900 text-white font-bold rounded-full hover:bg-primary-600 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
-            >
-              <Check className="w-4 h-4 stroke-[3]" /> Finalizar
-            </button>
-
-            {timerConfig.type === 'cronometro' && phase === 'study' && (
+            {phase === 'idle' && currentDisplaySeconds === 0 ? (
               <button
-                onClick={handleRestNow}
-                disabled={totalStudySeconds === 0}
-                className="px-6 py-3 md:px-8 md:py-3.5 bg-amber-100 text-amber-800 font-bold rounded-full hover:bg-amber-200 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2 border border-amber-200"
+                onClick={handleStart}
+                disabled={isLoading}
+                className="px-6 py-3 md:px-8 md:py-3.5 bg-primary-600 text-white font-bold rounded-full hover:bg-primary-700 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
               >
-                <Coffee className="w-4 h-4" /> Descansar Agora
+                <Play className="w-4 h-4 fill-current" /> Iniciar
               </button>
-            )}
+            ) : (
+              <>
+                {isRunning ? (
+                  <button
+                    onClick={handlePause}
+                    disabled={isLoading}
+                    className="px-6 py-3 md:px-8 md:py-3.5 bg-slate-200 text-slate-800 font-bold rounded-full hover:bg-slate-300 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2"
+                  >
+                    <Pause className="w-4 h-4 fill-current" /> Pausar
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleStart}
+                    disabled={isLoading}
+                    className="px-6 py-3 md:px-8 md:py-3.5 bg-primary-600 text-white font-bold rounded-full hover:bg-primary-700 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
+                  >
+                    <Play className="w-4 h-4 fill-current" /> Retomar
+                  </button>
+                )}
 
-            <button
-              onClick={handleResetTimer}
-              disabled={isLoading || (totalStudySeconds === 0 && phase === 'idle')}
-              className="px-6 py-3 md:px-8 md:py-3.5 bg-red-100 text-red-800 font-bold rounded-full hover:bg-red-200 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2 border border-red-200"
-            >
-              <RotateCcw className="w-4 h-4" /> Reiniciar
-            </button>
+                <button
+                  onClick={handleFinishRequest}
+                  disabled={isLoading}
+                  className="px-6 py-3 md:px-8 md:py-3.5 bg-slate-900 text-white font-bold rounded-full hover:bg-slate-800 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
+                >
+                  <Check className="w-4 h-4 stroke-[3]" /> Finalizar
+                </button>
+
+                {timerConfig.type === 'cronometro' && phase === 'study' && totalStudySeconds > 300 && (
+                  <button
+                    onClick={handleRestNow}
+                    disabled={totalStudySeconds === 0}
+                    className="px-6 py-3 md:px-8 md:py-3.5 bg-amber-100 text-amber-800 font-bold rounded-full hover:bg-amber-200 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2 border border-amber-200"
+                  >
+                    <Coffee className="w-4 h-4" /> Descansar Agora
+                  </button>
+                )}
+
+                <button
+                  onClick={handleResetTimer}
+                  disabled={isLoading}
+                  className="px-6 py-3 md:px-8 md:py-3.5 bg-red-100 text-red-800 font-bold rounded-full hover:bg-red-200 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2 border border-red-200"
+                >
+                  <RotateCcw className="w-4 h-4" /> Reiniciar
+                </button>
+              </>
+            )}
           </div>
           
           {!isMaximized && (
@@ -582,7 +613,7 @@ export default function TimerPage() {
               </div>
               <button 
                 onClick={openManualModal}
-                className="px-6 py-2.5 bg-slate-100 text-slate-700 rounded-full text-xs font-bold uppercase hover:bg-slate-200 transition-colors border border-slate-200 flex items-center gap-2"
+                className="px-6 py-2.5 bg-white text-slate-700 rounded-full text-xs font-bold uppercase hover:bg-slate-100 shadow-sm transition-colors border border-slate-200 flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Enviar tempo manual
@@ -591,7 +622,7 @@ export default function TimerPage() {
           )}
         </div>
 
-        {/* Rodapé (Histórico Dinâmico) */}
+        {/* RODAPÉ (HISTÓRICO) */}
         <div className="w-full pb-8">
           <button 
             onClick={() => setShowHistory(!showHistory)}
@@ -604,7 +635,7 @@ export default function TimerPage() {
           {showHistory && (
             <div className="w-full flex flex-col gap-3 animate-in slide-in-from-bottom-2 fade-in duration-200">
               {Object.keys(groupedHistory).length === 0 ? (
-                <div className="text-sm text-slate-500 bg-slate-50 p-6 rounded-2xl text-center border border-slate-100 flex flex-col items-center gap-2 shadow-sm">
+                <div className="text-sm text-slate-500 bg-white p-6 rounded-2xl text-center border border-slate-200 flex flex-col items-center gap-2 shadow-sm">
                   <Clock className="w-8 h-8 text-slate-300 mb-1" />
                   <p className="text-slate-600">Até agora você ainda não tem nada por aqui.</p>
                   <p className="font-medium text-slate-700">Clique em <strong className="text-primary-600">Iniciar</strong> acima ou envie um estudo manual para começar!</p>
@@ -627,11 +658,11 @@ export default function TimerPage() {
                     {expandedDates.includes(dateStr) && (
                       <div className="flex flex-col gap-3 px-2 pb-2">
                         {groupedHistory[dateStr].map(session => (
-                          <div key={session.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm mx-1 sm:mx-2 group">
-                            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                          <div key={session.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm mx-1 sm:mx-2 group">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                               <div className="flex items-center gap-2">
                                 <Book className="w-4 h-4 flex-shrink-0 text-primary-600" />
-                                <span className="font-bold text-slate-800 text-sm truncate max-w-[120px] sm:max-w-xs">{session.materias?.name || 'Matéria removida'}</span>
+                                <span className="font-bold text-slate-800 text-sm truncate max-w-[120px] sm:max-w-xs">{session.materias?.name || 'Geral (Livre)'}</span>
                               </div>
                               <div className="flex items-center gap-3">
                                 <div className="flex items-center gap-2">
@@ -651,7 +682,7 @@ export default function TimerPage() {
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                               <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
                                 <FileText className="w-4 h-4 flex-shrink-0 text-slate-400" />
-                                <span className="truncate">{session.assuntos?.name || 'Assunto removido'}</span>
+                                <span className="truncate">{session.assuntos?.name || 'Geral'}</span>
                               </div>
                               <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                                 <div className="flex items-center gap-1.5 bg-emerald-100 text-emerald-800 px-2 py-1 rounded-md text-xs font-bold border border-emerald-200">
@@ -675,22 +706,6 @@ export default function TimerPage() {
           )}
         </div>
 
-      </div>
-
-      {/* SEÇÃO DIREITA (SIDEBAR DE TAREFAS PRESERVADO) */}
-      <div className="w-full md:w-80 p-6 md:p-8 flex flex-col gap-6 border-t md:border-t-0 md:border-l border-slate-100 h-auto md:h-full bg-white flex-shrink-0 md:overflow-y-auto">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">TAREFAS</h2>
-        
-        <div className="flex flex-col gap-4">
-          {[1, 2, 3, 4, 5].map((item) => (
-            <div 
-              key={item} 
-              className="flex items-center px-4 h-12 rounded-full border border-slate-100 bg-white hover:border-primary-600 transition-colors cursor-pointer group"
-            >
-              <Circle className="w-4 h-4 text-slate-300 group-hover:text-primary-600 transition-colors" />
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* MODAL DE CONFIGURAÇÕES */}
@@ -752,7 +767,7 @@ export default function TimerPage() {
                   <select
                     value={draftConfig.cronometroRestPerc}
                     onChange={(e) => setDraftConfig({...draftConfig, cronometroRestPerc: Number(e.target.value)})}
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8961DA] bg-white text-slate-900 font-medium"
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-slate-900 font-medium"
                   >
                     <option value={10}>10% do tempo de estudo</option>
                     <option value={15}>15% do tempo de estudo</option>
@@ -818,7 +833,7 @@ export default function TimerPage() {
                   min="0"
                   value={questionsDone}
                   onChange={(e) => setQuestionsDone(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8961DA] bg-white"
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
                   placeholder="Ex: 15"
                 />
               </div>
@@ -832,7 +847,7 @@ export default function TimerPage() {
                   min="0"
                   value={questionsWrong}
                   onChange={(e) => setQuestionsWrong(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8961DA] bg-white"
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
                   placeholder="Ex: 2"
                 />
               </div>
@@ -875,9 +890,9 @@ export default function TimerPage() {
                 <select
                   value={manualForm.materiaId}
                   onChange={(e) => setManualForm({ ...manualForm, materiaId: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8961DA] bg-white text-sm"
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
                 >
-                  <option value="" disabled>Selecione uma matéria</option>
+                  <option value="geral">Geral (Livre)</option>
                   {materias.map(m => (
                     <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
@@ -889,10 +904,9 @@ export default function TimerPage() {
                 <select
                   value={manualForm.assuntoId}
                   onChange={(e) => setManualForm({ ...manualForm, assuntoId: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8961DA] bg-white text-sm"
-                  disabled={!manualForm.materiaId}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
                 >
-                  <option value="" disabled>Selecione um assunto</option>
+                  <option value="geral">Geral</option>
                   {modalAssuntos.map(a => (
                     <option key={a.id} value={a.id}>{a.name}</option>
                   ))}
@@ -906,7 +920,7 @@ export default function TimerPage() {
                     type="date"
                     value={manualForm.sessionDate}
                     onChange={(e) => setManualForm({ ...manualForm, sessionDate: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8961DA] bg-white text-sm"
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
                   />
                 </div>
                 <div>
@@ -916,7 +930,7 @@ export default function TimerPage() {
                     min="1"
                     value={manualForm.durationMinutes}
                     onChange={(e) => setManualForm({ ...manualForm, durationMinutes: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8961DA] bg-white text-sm"
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
                     placeholder="Ex: 60"
                   />
                 </div>
@@ -930,7 +944,7 @@ export default function TimerPage() {
                     min="0"
                     value={manualForm.questionsDone}
                     onChange={(e) => setManualForm({ ...manualForm, questionsDone: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8961DA] bg-white text-sm"
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
                     placeholder="Ex: 15"
                   />
                 </div>
@@ -941,7 +955,7 @@ export default function TimerPage() {
                     min="0"
                     value={manualForm.questionsWrong}
                     onChange={(e) => setManualForm({ ...manualForm, questionsWrong: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8961DA] bg-white text-sm"
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
                     placeholder="Ex: 2"
                   />
                 </div>
@@ -967,7 +981,6 @@ export default function TimerPage() {
           </div>
         </div>
       )}
-
     </div>
   )
 }

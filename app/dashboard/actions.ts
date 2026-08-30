@@ -164,6 +164,8 @@ export async function getDashboardStats() {
     }
   }
 
+  const userName = user.user_metadata?.full_name || 'Estudante'
+
   const [
     { data: sessions },
     { data: materias },
@@ -290,7 +292,6 @@ export async function getDashboardStats() {
 
   const todayMinutes = Math.floor(todaySeconds / 60)
   
-  // Formatando as horas totais para sincronizar com as Estatísticas
   const totalHours = Math.floor(totalSeconds / 3600)
   const totalMinutesRemaining = Math.floor((totalSeconds % 3600) / 60)
   const totalDurationFormatted = totalHours > 0 
@@ -300,6 +301,7 @@ export async function getDashboardStats() {
   return {
     success: true,
     data: {
+      userName,
       todayMinutes,
       totalHours,
       totalDurationFormatted,
