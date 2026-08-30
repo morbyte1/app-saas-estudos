@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import Image from 'next/image'
 import { 
   LayoutGrid, 
@@ -28,6 +29,21 @@ export default function Sidebar() {
   const router = useRouter()
   const [isMinimized, setIsMinimized] = useState(false)
 
+  // Recupera o estado salvo no navegador assim que o componente é montado
+  useEffect(() => {
+    const savedState = localStorage.getItem('revyza-sidebar-minimized')
+    if (savedState === 'true') {
+      setIsMinimized(true)
+    }
+  }, [])
+
+  // Função para alternar e salvar a preferência no localStorage
+  const toggleMinimize = () => {
+    const newValue = !isMinimized
+    setIsMinimized(newValue)
+    localStorage.setItem('revyza-sidebar-minimized', String(newValue))
+  }
+
   // Identifica se é uma página interna profunda (ex: /dashboard/materias/[materia])
   const isDeepLink = pathname.split('/').filter(Boolean).length > 2
 
@@ -35,7 +51,7 @@ export default function Sidebar() {
     <aside className={`${isMinimized ? 'w-24' : 'w-64'} h-screen bg-white border-r border-slate-200 flex flex-col transition-all duration-300 relative z-20 flex-shrink-0`}>
       {/* Botão de Minimizar/Maximizar */}
       <button 
-        onClick={() => setIsMinimized(!isMinimized)}
+        onClick={toggleMinimize}
         className="absolute -right-3 top-8 bg-white border border-slate-200 rounded-full p-1 text-slate-400 hover:text-primary-600 shadow-sm z-30 transition-colors"
       >
         {isMinimized ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -88,7 +104,8 @@ export default function Sidebar() {
             
             return (
               <li key={item.name}>
-                <a
+                {/* Substituição do <a> pelo <Link> nativo do Next.js para navegação SPA sem reload */}
+                <Link
                   href={item.href}
                   title={isMinimized ? item.name : undefined}
                   className={`flex items-center gap-3 py-3 mx-4 rounded-xl font-medium transition-colors ${
@@ -99,7 +116,7 @@ export default function Sidebar() {
                 >
                   <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-primary-600' : ''}`} />
                   {!isMinimized && <span>{item.name}</span>}
-                </a>
+                </Link>
               </li>
             )
           })}
