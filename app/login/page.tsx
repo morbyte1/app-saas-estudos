@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef } from 'react'
 import Image from 'next/image'
-import { Eye, EyeOff, BookOpen } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { loginAction, signupAction, resetPasswordAction } from './actions'
 import { useToast } from '@/components/ToastContext'
 
@@ -60,15 +60,12 @@ export default function LoginPage() {
       <div className="w-full max-w-[420px] bg-white p-8 md:p-10 rounded-3xl shadow-xl border border-slate-100 animate-page">
         
         {/* LOGO */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="bg-primary-600 text-white p-1.5 rounded-lg flex items-center justify-center">
-            <BookOpen className="w-6 h-6" />
-          </div>
+        <div className="flex items-center justify-center mb-8">
           <Image 
             src="/logo.png" 
             alt="Logo" 
-            width={120} 
-            height={40} 
+            width={180} 
+            height={60} 
             className="object-contain"
             priority
           />
