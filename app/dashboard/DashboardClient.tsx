@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Calendar, Clock, Target, TrendingUp, Plus, Flame, Check, X, Edit2, Trash2 } from 'lucide-react'
+import { Calendar, Clock, Target, TrendingUp, Plus, Flame, Check, X, Edit2, Trash2, Library } from 'lucide-react'
 import { getCalendarData, createSubject } from './calendario/actions'
 import { useToast } from '@/components/ToastContext'
 import { getTasks, createTask, updateTask, deleteTask, toggleTaskStatus, getDashboardStats, createExamGoal, updateExamGoal, deleteExamGoal } from './actions'
@@ -439,9 +439,19 @@ export default function DashboardClient({ initialEvents, initialSubjects, initia
                       </div>
                     ))}
                   </>
-                ) : (stats.topSubjects || []).length === 0 ? (
-                  <div className="col-span-3 bg-white border border-dashed border-slate-200 rounded-2xl p-6 text-center text-sm text-slate-500">
-                    Nenhuma matéria cadastrada ou estudada.
+) : (stats.topSubjects || []).length === 0 ? (
+                  <div className="col-span-3 flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center shadow-sm">
+                    <Library className="w-10 h-10 text-slate-300 mb-3" />
+                    <h3 className="text-slate-900 font-bold text-sm mb-1">Nenhuma matéria cadastrada</h3>
+                    <p className="text-slate-500 text-xs mb-4">
+                      Adicione matérias para ver seu progresso semanal por aqui.
+                    </p>
+                    <Link 
+                      href="/dashboard/materias" 
+                      className="px-4 py-2 bg-slate-50 text-primary-600 border border-slate-200 font-medium rounded-lg hover:bg-slate-100 transition text-xs"
+                    >
+                      Configurar Matérias
+                    </Link>
                   </div>
                 ) : (
                   stats.topSubjects.map(materia => (

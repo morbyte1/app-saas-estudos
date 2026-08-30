@@ -5,13 +5,14 @@ import {
   Clock, CheckCircle2, Target, BookOpen, 
   TrendingUp, TrendingDown, Library, Award, 
   AlertTriangle, Brain, AlertCircle,
-  Book, FileQuestion
+  Book, FileQuestion, BarChart2
 } from 'lucide-react'
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell
 } from 'recharts'
 import { getRealEstatisticas } from './actions'
+import Link from 'next/link'
 
 const errorReasons = [
   { id: 1, name: 'Falta de Atenção', percent: 45, icon: AlertCircle },
@@ -221,152 +222,171 @@ export default function EstatisticasPage() {
           </div>
         </div>
 
-        {/* 3. EVOLUÇÃO (GRÁFICOS) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-900 mb-6">Evolução Anual (Horas)</h2>
-            <div className="h-72 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.annualData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
-                  <Tooltip 
-                    cursor={{ fill: '#f8fafc' }}
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-                  />
-                  <Bar dataKey="horas" fill="#71c385" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+{/* 3, 4 E 5. GRÁFICOS OU EMPTY STATE */}
+        {stats.totalDurationFormatted === '0min' && stats.totalQuestions === 0 ? (
+          <div className="flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-200 rounded-3xl p-16 text-center mt-8 shadow-sm">
+            <BarChart2 className="w-16 h-16 text-slate-300 mb-4" />
+            <h2 className="text-xl font-bold text-slate-900 mb-2">Seu mapa de evolução aparecerá aqui</h2>
+            <p className="text-slate-500 mb-6 max-w-md">
+              Comece a registrar seus estudos no Timer para ver seu desempenho.
+            </p>
+            <Link 
+              href="/dashboard/timer" 
+              className="px-6 py-3 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition shadow-sm"
+            >
+              Ir para o Timer
+            </Link>
           </div>
-
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-900 mb-6">Atividade Mensal (30 dias)</h2>
-            <div className="h-72 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={stats.monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={<CustomXAxisTick />} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-                  />
-                  <Line type="monotone" dataKey="atividade" stroke="#5F8C65" strokeWidth={3} dot={{ r: 4, fill: '#5F8C65', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* 4. DISTRIBUIÇÃO E 5. MOTIVOS DE ERRO */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col items-center">
-              <h2 className="text-lg font-bold text-slate-900 mb-2 self-start">Meus tópicos finalizados</h2>
-              <div className="relative h-56 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={stats.finishedTopicsData}
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={2}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {stats.finishedTopicsData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <div className="text-3xl font-bold text-slate-900 h-9 flex items-center justify-center">
-                    {isLoading ? <div className="h-8 w-12 bg-slate-200 rounded-lg animate-pulse"></div> : stats.totalTopicosFeitos}
-                  </div>
-                  <span className="text-xs font-medium text-slate-500 uppercase">Total</span>
+        ) : (
+          <>
+            {/* 3. EVOLUÇÃO (GRÁFICOS) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+                <h2 className="text-lg font-bold text-slate-900 mb-6">Evolução Anual (Horas)</h2>
+                <div className="h-72 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.annualData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                      <Tooltip 
+                        cursor={{ fill: '#f8fafc' }}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                      />
+                      <Bar dataKey="horas" fill="#71c385" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-3 justify-center mt-2">
-                {stats.finishedTopicsData.map((item, i) => (
-                  <div key={i} className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.fill }}></div>
-                    {item.name}
-                  </div>
-                ))}
-              </div>
-            </div>
 
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col items-center">
-              <h2 className="text-lg font-bold text-slate-900 mb-2 self-start">Meus erros por matéria</h2>
-              <div className="relative h-56 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={stats.wrongQuestionsData}
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={2}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {stats.wrongQuestionsData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <div className="text-3xl font-bold text-slate-900 h-9 flex items-center justify-center">
-                    {isLoading ? <div className="h-8 w-12 bg-slate-200 rounded-lg animate-pulse"></div> : stats.totalErros}
-                  </div>
-                  <span className="text-xs font-medium text-slate-500 uppercase">Total</span>
+              <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+                <h2 className="text-lg font-bold text-slate-900 mb-6">Atividade Mensal (30 dias)</h2>
+                <div className="h-72 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={stats.monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={<CustomXAxisTick />} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                      />
+                      <Line type="monotone" dataKey="atividade" stroke="#5F8C65" strokeWidth={3} dot={{ r: 4, fill: '#5F8C65', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-3 justify-center mt-2">
-                {stats.wrongQuestionsData.map((item, i) => (
-                  <div key={i} className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.fill }}></div>
-                    {item.name}
-                  </div>
-                ))}
-              </div>
             </div>
-          </div>
 
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-900 mb-6">Por que eu erro</h2>
-            <div className="space-y-6">
-              {errorReasons.map((reason) => {
-                const colors = getErrorColorClass(reason.percent)
-                const Icon = reason.icon
-                
-                return (
-                  <div key={reason.id} className="flex flex-col gap-2">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <Icon className={`w-4 h-4 ${colors.text}`} />
-                        <span className="text-sm font-bold text-slate-700">{reason.name}</span>
+            {/* 4. DISTRIBUIÇÃO E 5. MOTIVOS DE ERRO */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              
+              <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col items-center">
+                  <h2 className="text-lg font-bold text-slate-900 mb-2 self-start">Meus tópicos finalizados</h2>
+                  <div className="relative h-56 w-full flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={stats.finishedTopicsData}
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={2}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {stats.finishedTopicsData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <div className="text-3xl font-bold text-slate-900 h-9 flex items-center justify-center">
+                        {isLoading ? <div className="h-8 w-12 bg-slate-200 rounded-lg animate-pulse"></div> : stats.totalTopicosFeitos}
                       </div>
-                      <span className={`text-sm font-bold ${colors.text}`}>{reason.percent}%</span>
-                    </div>
-                    <div className={`w-full h-2 rounded-full ${colors.track}`}>
-                      <div 
-                        className={`h-2 rounded-full ${colors.bg} transition-all duration-500`} 
-                        style={{ width: `${reason.percent}%` }}
-                      ></div>
+                      <span className="text-xs font-medium text-slate-500 uppercase">Total</span>
                     </div>
                   </div>
-                )
-              })}
+                  <div className="flex flex-wrap gap-3 justify-center mt-2">
+                    {stats.finishedTopicsData.map((item, i) => (
+                      <div key={i} className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.fill }}></div>
+                        {item.name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col items-center">
+                  <h2 className="text-lg font-bold text-slate-900 mb-2 self-start">Meus erros por matéria</h2>
+                  <div className="relative h-56 w-full flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={stats.wrongQuestionsData}
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={2}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {stats.wrongQuestionsData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <div className="text-3xl font-bold text-slate-900 h-9 flex items-center justify-center">
+                        {isLoading ? <div className="h-8 w-12 bg-slate-200 rounded-lg animate-pulse"></div> : stats.totalErros}
+                      </div>
+                      <span className="text-xs font-medium text-slate-500 uppercase">Total</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-3 justify-center mt-2">
+                    {stats.wrongQuestionsData.map((item, i) => (
+                      <div key={i} className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.fill }}></div>
+                        {item.name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+                <h2 className="text-lg font-bold text-slate-900 mb-6">Por que eu erro</h2>
+                <div className="space-y-6">
+                  {errorReasons.map((reason) => {
+                    const colors = getErrorColorClass(reason.percent)
+                    const Icon = reason.icon
+                    
+                    return (
+                      <div key={reason.id} className="flex flex-col gap-2">
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <Icon className={`w-4 h-4 ${colors.text}`} />
+                            <span className="text-sm font-bold text-slate-700">{reason.name}</span>
+                          </div>
+                          <span className={`text-sm font-bold ${colors.text}`}>{reason.percent}%</span>
+                        </div>
+                        <div className={`w-full h-2 rounded-full ${colors.track}`}>
+                          <div 
+                            className={`h-2 rounded-full ${colors.bg} transition-all duration-500`} 
+                            style={{ width: `${reason.percent}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+              
             </div>
-          </div>
-          
-        </div>
+          </>
+        )}
       </div>
     </div>
   )

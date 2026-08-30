@@ -466,7 +466,7 @@ export default function TimerPage() {
     setIsLoading(false)
   }
 
-  const selectedMateriaName = selectedMateriaId === 'geral' ? 'Geral' : (materias.find(m => m.id === selectedMateriaId)?.name || 'Geral (Livre)')
+  const selectedMateriaName = selectedMateriaId === 'geral' ? 'Geral' : (materias.find(m => m.id === selectedMateriaId)?.name || 'Geral')
   const selectedAssuntoName = selectedAssuntoId === 'geral' ? 'Geral' : (assuntos.find(a => a.id === selectedAssuntoId)?.name || 'Geral')
 
   return (
@@ -489,7 +489,7 @@ export default function TimerPage() {
                 onChange={(e) => setSelectedMateriaId(e.target.value)}
                 className="w-full sm:w-auto appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none shadow-sm"
               >
-                <option value="geral" className="text-slate-900 bg-white">Matéria: Geral (Livre)</option>
+                <option value="geral" className="text-slate-900 bg-white">Matéria: Geral</option>
                 {materias.map(m => (
                   <option key={m.id} value={m.id} className="text-slate-900 bg-white">
                     Matéria: {m.name}
@@ -689,7 +689,7 @@ export default function TimerPage() {
                             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                               <div className="flex items-center gap-2">
                                 <Book className="w-4 h-4 flex-shrink-0 text-primary-600" />
-                                <span className="font-bold text-slate-800 text-sm truncate max-w-[120px] sm:max-w-xs">{session.materias?.name || 'Geral (Livre)'}</span>
+                                <span className="font-bold text-slate-800 text-sm truncate max-w-[120px] sm:max-w-xs">{session.materias?.name || 'Geral'}</span>
                               </div>
                               <div className="flex items-center gap-3">
                                 <div className="flex items-center gap-2">
