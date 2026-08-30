@@ -105,6 +105,24 @@ export default function DashboardPage() {
     const interval = setInterval(calculateCountdown, 60000)
     return () => clearInterval(interval)
   }, [stats?.examGoal])
+// Bloqueio de scroll do fundo quando um modal estiver aberto
+  useEffect(() => {
+    const mainElement = document.getElementById('main-scroll-container')
+    
+    if (isTaskModalOpen || isExamModalOpen) {
+      document.body.classList.add('overflow-hidden')
+      mainElement?.classList.add('!overflow-hidden')
+    } else {
+      document.body.classList.remove('overflow-hidden')
+      mainElement?.classList.remove('!overflow-hidden')
+    }
+
+    // Limpeza (Cleanup) para garantir que o scroll volte ao normal caso o componente seja desmontado
+    return () => {
+      document.body.classList.remove('overflow-hidden')
+      mainElement?.classList.remove('!overflow-hidden')
+    }
+  }, [isTaskModalOpen, isExamModalOpen])
 
   // Data formatada
   const today = new Date()

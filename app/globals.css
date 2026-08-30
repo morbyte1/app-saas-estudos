@@ -60,3 +60,7 @@
   animation: pageEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: opacity; /* <- Removido o 'transform' daqui */
 }
+::selection {
+  background-color: #243E36; /* Cor de fundo da seleção (ex: rosa) */
+  color: #ffffff;            /* Cor do texto selecionado (ex: branco) */
+}
