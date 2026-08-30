@@ -175,10 +175,45 @@ export default function MateriasPage() {
           </button>
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-slate-500 font-medium">Carregando informações...</div>
-          </div>
+{isLoading ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4 animate-pulse">
+                  <div className="w-12 h-12 bg-slate-100 rounded-xl"></div>
+                  <div className="flex flex-col gap-2 flex-1">
+                    <div className="h-3 w-28 bg-slate-200 rounded-full"></div>
+                    <div className="h-6 w-16 bg-slate-200 rounded-full"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm animate-pulse">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="h-6 w-32 bg-slate-200 rounded-full"></div>
+                    <div className="flex gap-1">
+                      <div className="w-7 h-7 bg-slate-100 rounded-md"></div>
+                      <div className="w-7 h-7 bg-slate-100 rounded-md"></div>
+                    </div>
+                  </div>
+                  <div className="space-y-4 mb-6">
+                    <div className="h-4 w-40 bg-slate-200 rounded-full"></div>
+                    <div className="h-4 w-48 bg-slate-200 rounded-full"></div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="h-4 w-28 bg-slate-200 rounded-full"></div>
+                      <div className="h-4 w-8 bg-slate-200 rounded-full"></div>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-2"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">

@@ -96,9 +96,9 @@ export default function EstatisticasPage() {
             </div>
             <div>
               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Meu tempo total</p>
-              <p className="text-2xl font-bold text-slate-900">
-                {isLoading ? '...' : stats.totalDurationFormatted}
-              </p>
+              <div className="text-2xl font-bold text-slate-900 min-h-[32px] flex items-center">
+                {isLoading ? <div className="h-8 w-24 bg-slate-200 rounded-lg animate-pulse inline-block"></div> : stats.totalDurationFormatted}
+              </div>
             </div>
           </div>
 
@@ -108,9 +108,9 @@ export default function EstatisticasPage() {
             </div>
             <div>
               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Minhas questões feitas</p>
-              <p className="text-2xl font-bold text-slate-900">
-                {isLoading ? '...' : stats.totalQuestions}
-              </p>
+              <div className="text-2xl font-bold text-slate-900 min-h-[32px] flex items-center">
+                {isLoading ? <div className="h-8 w-16 bg-slate-200 rounded-lg animate-pulse inline-block"></div> : stats.totalQuestions}
+              </div>
             </div>
           </div>
 
@@ -120,9 +120,9 @@ export default function EstatisticasPage() {
             </div>
             <div>
               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Minha precisão</p>
-              <p className="text-2xl font-bold text-slate-900">
-                {isLoading ? '...' : `${stats.globalPrecision}%`}
-              </p>
+              <div className="text-2xl font-bold text-slate-900 min-h-[32px] flex items-center">
+                {isLoading ? <div className="h-8 w-16 bg-slate-200 rounded-lg animate-pulse inline-block"></div> : `${stats.globalPrecision}%`}
+              </div>
             </div>
           </div>
 
@@ -132,9 +132,9 @@ export default function EstatisticasPage() {
             </div>
             <div>
               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Meus tópicos concluídos</p>
-              <p className="text-2xl font-bold text-slate-900">
-                {isLoading ? '...' : stats.totalTopicosFeitos}
-              </p>
+              <div className="text-2xl font-bold text-slate-900 min-h-[32px] flex items-center">
+                {isLoading ? <div className="h-8 w-16 bg-slate-200 rounded-lg animate-pulse inline-block"></div> : stats.totalTopicosFeitos}
+              </div>
             </div>
           </div>
         </div>
@@ -147,56 +147,76 @@ export default function EstatisticasPage() {
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <TrendingUp className="w-5 h-5 text-emerald-500" />
               <span className="text-xs text-slate-500 font-medium">Matéria mais estudada</span>
-              <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.maisEstudada}</span>
+              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
+                {isLoading ? <div className="h-4 w-24 bg-slate-200 rounded-md animate-pulse"></div> : stats.destaques.maisEstudada}
+              </div>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <TrendingDown className="w-5 h-5 text-red-500" />
               <span className="text-xs text-slate-500 font-medium">Matéria menos estudada</span>
-              <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.menosEstudada}</span>
+              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
+                {isLoading ? <div className="h-4 w-24 bg-slate-200 rounded-md animate-pulse"></div> : stats.destaques.menosEstudada}
+              </div>
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <Library className="w-5 h-5 text-blue-500" />
               <span className="text-xs text-slate-500 font-medium">Matéria com mais tópicos</span>
-              <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.maisTopicos}</span>
+              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
+                {isLoading ? <div className="h-4 w-24 bg-slate-200 rounded-md animate-pulse"></div> : stats.destaques.maisTopicos}
+              </div>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <Book className="w-5 h-5 text-slate-400" />
               <span className="text-xs text-slate-500 font-medium">Matéria com menos tópicos</span>
-              <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.menosTopicos}</span>
+              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
+                {isLoading ? <div className="h-4 w-24 bg-slate-200 rounded-md animate-pulse"></div> : stats.destaques.menosTopicos}
+              </div>
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <Award className="w-5 h-5 text-amber-500" />
               <span className="text-xs text-slate-500 font-medium">Melhor Precisão</span>
-              <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.melhorPrecisao}</span>
+              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
+                {isLoading ? <div className="h-4 w-24 bg-slate-200 rounded-md animate-pulse"></div> : stats.destaques.melhorPrecisao}
+              </div>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <AlertCircle className="w-5 h-5 text-red-500" />
               <span className="text-xs text-slate-500 font-medium">Precisão mais baixa</span>
-              <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.piorPrecisao}</span>
+              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
+                {isLoading ? <div className="h-4 w-24 bg-slate-200 rounded-md animate-pulse"></div> : stats.destaques.piorPrecisao}
+              </div>
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <FileQuestion className="w-5 h-5 text-indigo-500" />
               <span className="text-xs text-slate-500 font-medium">Matéria com mais questões feitas</span>
-              <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.maisQuestoes}</span>
+              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
+                {isLoading ? <div className="h-4 w-24 bg-slate-200 rounded-md animate-pulse"></div> : stats.destaques.maisQuestoes}
+              </div>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <FileQuestion className="w-5 h-5 text-slate-400" />
               <span className="text-xs text-slate-500 font-medium">Matéria com menos questões feitas</span>
-              <span className="text-sm font-bold text-slate-900">{isLoading ? '...' : stats.destaques.menosQuestoes}</span>
+              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
+                {isLoading ? <div className="h-4 w-24 bg-slate-200 rounded-md animate-pulse"></div> : stats.destaques.menosQuestoes}
+              </div>
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
               <span className="text-xs text-slate-500 font-medium">Melhor resultado em provas</span>
-              <span className="text-sm font-bold text-slate-900">-</span>
+              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
+                {isLoading ? <div className="h-4 w-12 bg-slate-200 rounded-md animate-pulse"></div> : '-'}
+              </div>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
               <AlertTriangle className="w-5 h-5 text-orange-500" />
               <span className="text-xs text-slate-500 font-medium">Resultado a melhorar em provas</span>
-              <span className="text-sm font-bold text-slate-900">-</span>
+              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
+                {isLoading ? <div className="h-4 w-12 bg-slate-200 rounded-md animate-pulse"></div> : '-'}
+              </div>
             </div>
           </div>
         </div>
@@ -264,7 +284,9 @@ export default function EstatisticasPage() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-3xl font-bold text-slate-900">{isLoading ? '...' : stats.totalTopicosFeitos}</span>
+                  <div className="text-3xl font-bold text-slate-900 h-9 flex items-center justify-center">
+                    {isLoading ? <div className="h-8 w-12 bg-slate-200 rounded-lg animate-pulse"></div> : stats.totalTopicosFeitos}
+                  </div>
                   <span className="text-xs font-medium text-slate-500 uppercase">Total</span>
                 </div>
               </div>
@@ -299,7 +321,9 @@ export default function EstatisticasPage() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-3xl font-bold text-slate-900">{isLoading ? '...' : stats.totalErros}</span>
+                  <div className="text-3xl font-bold text-slate-900 h-9 flex items-center justify-center">
+                    {isLoading ? <div className="h-8 w-12 bg-slate-200 rounded-lg animate-pulse"></div> : stats.totalErros}
+                  </div>
                   <span className="text-xs font-medium text-slate-500 uppercase">Total</span>
                 </div>
               </div>

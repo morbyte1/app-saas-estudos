@@ -402,20 +402,73 @@ export default function CalendarioPage() {
   const formatDecimal = (mins: number) => (mins / 60).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
   
   const studiedDec = formatDecimal(dailyStats.todayMinutes)
-  const remainingMinutes = Math.max((dailyStats.goal * 60) - dailyStats.todayMinutes, 0)
-  const remH = Math.floor(remainingMinutes / 60)
-  const remM = remainingMinutes % 60
 
   return (
     <div className="p-8 min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto">
         {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-slate-500">Carregando...</div>
-          </div>
+          <>
+            <div className="flex justify-between items-start mb-6 animate-pulse">
+              <div className="flex flex-col gap-2">
+                <div className="h-8 w-56 bg-slate-200 rounded-full"></div>
+                <div className="h-4 w-64 bg-slate-200 rounded-full"></div>
+              </div>
+              <div className="h-12 w-48 bg-slate-200 rounded-full shadow-sm"></div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-6">
+              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 w-full max-w-sm animate-pulse">
+                <div className="flex justify-between items-center mb-6">
+                  <div className="h-6 w-32 bg-slate-200 rounded-full"></div>
+                  <div className="h-8 w-16 bg-slate-100 rounded-lg"></div>
+                </div>
+                <div className="grid grid-cols-7 gap-1 mt-4">
+                   {Array.from({ length: 7 }).map((_, i) => (
+                     <div key={`head-${i}`} className="h-4 w-full bg-slate-100 rounded-md mb-2"></div>
+                   ))}
+                   {Array.from({ length: 35 }).map((_, i) => (
+                     <div key={i} className="h-10 w-10 bg-slate-100 rounded-xl mx-auto"></div>
+                   ))}
+                </div>
+              </div>
+
+              <div className="lg:col-span-2 animate-pulse">
+                <div className="flex justify-between items-center mb-6">
+                  <div className="flex flex-col gap-2">
+                    <div className="h-6 w-40 bg-slate-200 rounded-full"></div>
+                    <div className="h-4 w-64 bg-slate-200 rounded-full"></div>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="h-10 w-28 bg-slate-200 rounded-xl"></div>
+                    <div className="h-10 w-40 bg-slate-200 rounded-xl"></div>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2 mb-6">
+                  {Array.from({ length: 7 }).map((_, i) => (
+                    <div key={i} className="flex-1 py-3 rounded-2xl h-[72px] bg-slate-100 border border-slate-200"></div>
+                  ))}
+                </div>
+                
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4 h-[72px]">
+                      <div className="w-12 h-10 flex flex-col items-center justify-center gap-1.5">
+                        <div className="h-4 w-10 bg-slate-200 rounded-md"></div>
+                        <div className="h-3 w-8 bg-slate-200 rounded-md"></div>
+                      </div>
+                      <div className="w-6 h-6 rounded-lg bg-slate-100 flex-shrink-0"></div>
+                      <div className="flex-1 h-5 w-1/2 bg-slate-200 rounded-md"></div>
+                      <div className="w-20 h-6 bg-slate-100 rounded-full"></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
         ) : (
           <>
-<div className="flex justify-between items-start mb-6">
+            <div className="flex justify-between items-start mb-6">
               <div>
                 <h1 className="text-3xl font-extrabold text-slate-900">Planejamento</h1>
                 <p className="text-slate-500 mt-2">Organize seu cronograma de estudos</p>

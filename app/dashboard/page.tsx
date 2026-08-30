@@ -312,9 +312,11 @@ export default function DashboardPage() {
                 <Clock className="w-4 h-4 text-primary-600" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-slate-900">
-              {isLoading || !stats ? '...' : formatTodayMinutes(stats.todayMinutes)}
-            </p>
+            {isLoading || !stats ? (
+              <div className="h-8 w-20 bg-slate-200 rounded-md animate-pulse mt-1"></div>
+            ) : (
+              <p className="text-2xl font-bold text-slate-900">{formatTodayMinutes(stats.todayMinutes)}</p>
+            )}
           </div>
 
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col">
@@ -324,9 +326,11 @@ export default function DashboardPage() {
                 <TrendingUp className="w-4 h-4 text-blue-600" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-slate-900">
-              {isLoading || !stats ? '...' : stats.totalDurationFormatted}
-            </p>
+            {isLoading || !stats ? (
+              <div className="h-8 w-24 bg-slate-200 rounded-md animate-pulse mt-1"></div>
+            ) : (
+              <p className="text-2xl font-bold text-slate-900">{stats.totalDurationFormatted}</p>
+            )}
           </div>
 
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col">
@@ -337,11 +341,13 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex flex-col">
-              <p className="text-2xl font-bold text-slate-900">
-                {isLoading || !stats ? '...' : `${stats.currentStreak} dias`}
-              </p>
-              {!isLoading && stats && (
-                <span className="text-[10px] text-slate-400 font-medium">Máxima: {stats.maxStreak} dias</span>
+              {isLoading || !stats ? (
+                <div className="h-8 w-16 bg-slate-200 rounded-md animate-pulse mt-1"></div>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold text-slate-900">{stats.currentStreak} dias</p>
+                  <span className="text-[10px] text-slate-400 font-medium">Máxima: {stats.maxStreak} dias</span>
+                </>
               )}
             </div>
           </div>
@@ -353,20 +359,30 @@ export default function DashboardPage() {
                 <Target className="w-4 h-4 text-orange-600" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-slate-900 mb-2">{isLoading ? '...' : `${dailyProgressPercent}%`}</p>
+            {isLoading ? (
+              <div className="h-8 w-16 bg-slate-200 rounded-md animate-pulse mb-2"></div>
+            ) : (
+              <p className="text-2xl font-bold text-slate-900 mb-2">{dailyProgressPercent}%</p>
+            )}
             <div className="w-full bg-slate-100 rounded-full h-2">
               <div className="bg-orange-500 h-2 rounded-full transition-all duration-500" style={{ width: `${dailyProgressPercent}%` }}></div>
             </div>
           </div>
 
-<div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-center">
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-center">
             <div className="flex justify-between items-start mb-2">
               <span className="text-xs text-slate-400 font-semibold uppercase">Meu objetivo</span>
               <div className="bg-primary-100 p-2 rounded-lg">
                 <Target className="w-4 h-4 text-primary-600" />
               </div>
             </div>
-            {!isLoading && stats && stats.examGoal ? (
+            {isLoading ? (
+              <div className="flex flex-col mt-1 gap-2 animate-pulse">
+                <div className="h-5 w-3/4 bg-slate-200 rounded-md"></div>
+                <div className="h-8 w-12 bg-slate-200 rounded-md"></div>
+                <div className="h-3 w-1/2 bg-slate-200 rounded-md"></div>
+              </div>
+            ) : stats && stats.examGoal ? (
               <div className="flex flex-col mt-1 group">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-bold text-slate-700 truncate">{stats.examGoal.name}</p>
@@ -404,7 +420,21 @@ export default function DashboardPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 {isLoading || !stats ? (
-                  <div className="col-span-3 text-center text-sm text-slate-500 py-4">Carregando...</div>
+                  <>
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm animate-pulse flex flex-col gap-3">
+                        <div className="flex justify-between items-center">
+                          <div className="h-5 w-20 bg-slate-200 rounded-md"></div>
+                          <div className="h-4 w-12 bg-slate-200 rounded-md"></div>
+                        </div>
+                        <div className="flex justify-between items-center mt-1">
+                          <div className="h-4 w-24 bg-slate-200 rounded-md"></div>
+                          <div className="h-4 w-8 bg-slate-200 rounded-md"></div>
+                        </div>
+                        <div className="h-2 w-full bg-slate-100 rounded-full mt-1"></div>
+                      </div>
+                    ))}
+                  </>
                 ) : (stats.topSubjects || []).length === 0 ? (
                   <div className="col-span-3 bg-white border border-dashed border-slate-200 rounded-2xl p-6 text-center text-sm text-slate-500">
                     Nenhuma matéria cadastrada ou estudada.
@@ -445,9 +475,19 @@ export default function DashboardPage() {
               </div>
               <div className="flex flex-col gap-4">
                 {isLoading ? (
-                  <div className="text-center text-slate-500 py-6 text-sm font-medium">
-                    Carregando cronograma...
-                  </div>
+                  <>
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center gap-4 animate-pulse py-2">
+                        <div className="w-16 flex flex-col gap-1.5">
+                          <div className="h-4 w-12 bg-slate-200 rounded-md"></div>
+                          <div className="h-3 w-8 bg-slate-200 rounded-md"></div>
+                        </div>
+                        <div className="w-1 h-10 rounded-full mx-4 bg-slate-200"></div>
+                        <div className="flex-1 h-5 w-3/4 bg-slate-200 rounded-md"></div>
+                        <div className="h-5 w-12 bg-slate-200 rounded-md"></div>
+                      </div>
+                    ))}
+                  </>
                 ) : eventsWithStatus.length === 0 ? (
                   <div className="text-center text-slate-500 py-6 text-sm font-medium border border-dashed border-slate-200 rounded-xl">
                     Nada agendado para hoje. Aproveite para descansar ou adiantar revisões!
@@ -504,7 +544,20 @@ export default function DashboardPage() {
               
               <div className="space-y-3">
                 {isLoading ? (
-                  <div className="text-center text-slate-500 py-4 text-sm">Carregando tarefas...</div>
+                  <>
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} className="flex items-start gap-3 border border-slate-100 rounded-xl p-3 animate-pulse">
+                        <div className="w-5 h-5 rounded bg-slate-200 flex-shrink-0 mt-0.5"></div>
+                        <div className="flex-1 flex flex-col gap-2">
+                          <div className="h-4 w-11/12 bg-slate-200 rounded-md"></div>
+                          <div className="flex gap-2">
+                            <div className="h-3 w-16 bg-slate-200 rounded-md"></div>
+                            <div className="h-3 w-20 bg-slate-200 rounded-md"></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
                 ) : sortedTasks.length === 0 ? (
                   <div className="text-center text-slate-500 py-4 text-sm border border-dashed border-slate-200 rounded-xl">
                     Tudo em dia por aqui 👍
