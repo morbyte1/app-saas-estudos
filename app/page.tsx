@@ -207,7 +207,7 @@ export default function LandingPage() {
             <div className="flex aspect-video flex-col items-center justify-center gap-3 bg-[#F1F7ED]/50 p-8 text-center">
               <BarChart3 className="size-10 text-[#7CA982] animate-bounce" strokeWidth={1.5} aria-hidden />
               <span className="text-sm font-medium text-[#243E36]/70">
-                Seu print do Dashboard virá aqui
+                <Image alt="Dashboard do Revyza" className="w-full object-cover" height={675} src="/print-dashboard.png" width={1200}/>
               </span>
             </div>
           </div>
