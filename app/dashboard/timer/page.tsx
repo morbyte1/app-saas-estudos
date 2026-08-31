@@ -326,7 +326,7 @@ export default function TimerPage() {
     setIsFinishModalOpen(true)
   }
 
-  const handleConfirmFinish = async () => {
+const handleConfirmFinish = async () => {
     setIsLoading(true)
 
     const qDone = parseInt(questionsDone) || 0
@@ -345,13 +345,10 @@ export default function TimerPage() {
     })
 
     if (result.success) {
+      // CORREÇÃO: Força estritamente os estados a voltarem para 0
       setTotalStudySeconds(0)
+      setCurrentDisplaySeconds(0)
       setPomodoroCycles(0)
-      if (timerConfig.type === 'pomodoro') {
-        setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
-      } else {
-        setCurrentDisplaySeconds(0)
-      }
       setPhase('idle')
       setIsFinishModalOpen(false)
       toast("Sessão salva com sucesso!", "success")

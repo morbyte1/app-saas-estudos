@@ -3,14 +3,13 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Calendar, Clock, Target, TrendingUp, Plus, Flame, Check, X, Edit2, Trash2, Library } from 'lucide-react'
-import { getCalendarData, createSubject } from './calendario/actions'
 import { useToast } from '@/components/ToastContext'
-import { getTasks, createTask, updateTask, deleteTask, toggleTaskStatus, getDashboardStats, createExamGoal, updateExamGoal, deleteExamGoal } from './actions'
+import { getTasks, createTask, updateTask, deleteTask, toggleTaskStatus, createExamGoal, updateExamGoal, deleteExamGoal } from './actions'
 
-// --- INTERFACES ---
 interface Event { id: string; title: string; time: string; duration: number; subject_id: string; is_done: boolean; event_date: string }
 interface Subject { id: string; name: string; color: string }
-interface Task { id: string; title: string; subject_id: string; priority: 'baixa' | 'normal' | 'alta'; is_done: boolean }
+interface Materia { id: string; name: string }
+interface Task { id: string; title: string; materia_id?: string | null; tag_padrao?: string | null; priority: 'baixa' | 'normal' | 'alta'; is_done: boolean }
 interface TopSubject { id: string; name: string; goalHours: number; studiedHours: number; studiedMinutes: number; progress: number }
 interface DashboardStats { userName: string; todayMinutes: number; totalHours: number; totalDurationFormatted: string; currentStreak: number; maxStreak: number; examGoal: { id: string, name: string, target_date: string } | null; topSubjects: TopSubject[]; dailyGoalHours: number }
 
@@ -19,6 +18,7 @@ interface DashboardClientProps {
   initialSubjects: Subject[];
   initialTasks: Task[];
   initialStats: DashboardStats | null;
+  initialMaterias: Materia[];
 }
 
 const QUOTES = [
@@ -30,33 +30,33 @@ const QUOTES = [
   "“Você nunca sabe que resultados virão da sua ação. Mas se não fizer nada, não existirão resultados.” — Mahatma Gandhi"
 ]
 
-export default function DashboardClient({ initialEvents, initialSubjects, initialTasks, initialStats }: DashboardClientProps) {
+const TAGS_PADRAO = {
+  simulado: { name: 'Simulado', colorClass: 'text-purple-600 bg-purple-100' },
+  questoes: { name: 'Questões', colorClass: 'text-orange-600 bg-orange-100' },
+  revisao: { name: 'Revisão', colorClass: 'text-blue-600 bg-blue-100' }
+}
+
+export default function DashboardClient({ initialEvents, initialSubjects, initialTasks, initialStats, initialMaterias }: DashboardClientProps) {
   const [events, setEvents] = useState<Event[]>(initialEvents)
   const [subjects, setSubjects] = useState<Subject[]>(initialSubjects)
+  const [materias, setMaterias] = useState<Materia[]>(initialMaterias)
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [stats, setStats] = useState<DashboardStats | null>(initialStats)
   const [quoteOfDay, setQuoteOfDay] = useState(QUOTES[0])
   const { toast } = useToast()
 
-  // Estados do Modal de Tarefas
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
-  const [taskModalData, setTaskModalData] = useState<{title: string; subjectId: string; priority: 'baixa' | 'normal' | 'alta';}>({title: '', subjectId: '', priority: 'normal'})
+  
+  // O selection mescla 'materia:ID' ou 'tag:NOME'
+  const [taskModalData, setTaskModalData] = useState<{title: string; selection: string; priority: 'baixa' | 'normal' | 'alta';}>({title: '', selection: '', priority: 'normal'})
 
-  // Estados para nova Tag
-  const [showNewSubject, setShowNewSubject] = useState(false)
-  const [newSubjectName, setNewSubjectName] = useState('')
-  const [newSubjectColor, setNewSubjectColor] = useState('#8b5cf6')
-  const [isSavingSubject, setIsSavingSubject] = useState(false)
-
-  // Estados para Meta de Prova
   const [isExamModalOpen, setIsExamModalOpen] = useState(false)
   const [editingExamId, setEditingExamId] = useState<string | null>(null)
   const [examForm, setExamForm] = useState({ name: '', date: '', time: '' })
   const [examCountdown, setExamCountdown] = useState({ days: 0, hours: 0, minutes: 0 })
 
   useEffect(() => {
-    // Calculadora para rotacionar a frase diariamente
     const now = new Date()
     const start = new Date(now.getFullYear(), 0, 0)
     const diff = now.getTime() - start.getTime()
@@ -64,7 +64,6 @@ export default function DashboardClient({ initialEvents, initialSubjects, initia
     setQuoteOfDay(QUOTES[dayOfYear % QUOTES.length])
   }, [])
 
-  // Atualização do Countdown da Prova
   useEffect(() => {
     if (!stats?.examGoal?.target_date) return
 
@@ -89,7 +88,6 @@ export default function DashboardClient({ initialEvents, initialSubjects, initia
     return () => clearInterval(interval)
   }, [stats?.examGoal])
 
-  // Bloqueio de scroll do fundo quando um modal estiver aberto
   useEffect(() => {
     const mainElement = document.getElementById('main-scroll-container')
     
@@ -167,65 +165,55 @@ export default function DashboardClient({ initialEvents, initialSubjects, initia
     return colors[color || 'purple'] || colors.purple
   }
 
-  const getSubjectTextColorClass = (color: string) => {
-    const colors: Record<string, string> = {
-      purple: 'text-primary-600', blue: 'text-blue-600', green: 'text-green-600', orange: 'text-orange-600', red: 'text-red-600'
-    }
-    if (color && color.startsWith('#')) return ''
-    return colors[color || 'purple'] || colors.purple
-  }
-
   const openTaskModal = () => {
     setIsTaskModalOpen(true)
-    setTaskModalData({ title: '', subjectId: subjects.length > 0 ? subjects[0].id : '', priority: 'normal' })
+    setTaskModalData({ title: '', selection: materias.length > 0 ? `materia:${materias[0].id}` : 'tag:simulado', priority: 'normal' })
     setEditingTaskId(null)
-    setShowNewSubject(false)
   }
+  
   const closeTaskModal = () => { setIsTaskModalOpen(false); setEditingTaskId(null) }
 
-  const handleSaveSubjectForTask = async () => {
-    if (!newSubjectName.trim()) return
-    setIsSavingSubject(true)
-    try {
-      const result = await createSubject({ name: newSubjectName, color: newSubjectColor })
-      if (result.success) {
-        const dataResult = await getCalendarData()
-        if (!dataResult.error) {
-          setSubjects(dataResult.subjects || [])
-          const createdSubject = result.subject || dataResult.subjects?.find((s: Subject) => s.name === newSubjectName)
-          setTaskModalData(prev => ({ ...prev, subjectId: createdSubject ? createdSubject.id : (dataResult.subjects?.[0]?.id || '') }))
-          setNewSubjectName('')
-          setNewSubjectColor('#8b5cf6')
-        }
-        setShowNewSubject(false)
-        toast("Matéria criada com sucesso!", "success")
-      } else { 
-        toast("Não foi possível criar a matéria/tag.", "error") 
-      }
-    } finally { setIsSavingSubject(false) }
-  }
-
   const handleSaveTask = async () => {
-    if (!taskModalData.title.trim() || !taskModalData.subjectId) {
-      toast("Por favor, preencha o nome da tarefa e selecione uma matéria (tag).", "error")
+    if (!taskModalData.title.trim() || !taskModalData.selection) {
+      toast("Por favor, preencha o nome da tarefa e selecione uma matéria ou tag.", "error")
       return
     }
+
+    const isMateria = taskModalData.selection.startsWith('materia:')
+    const isTag = taskModalData.selection.startsWith('tag:')
+    
+    const materia_id = isMateria ? taskModalData.selection.replace('materia:', '') : null
+    const tag_padrao = isTag ? taskModalData.selection.replace('tag:', '') : null
+
     if (editingTaskId) {
-      const result = await updateTask(editingTaskId, { title: taskModalData.title, subject_id: taskModalData.subjectId, priority: taskModalData.priority })
+      const result = await updateTask(editingTaskId, { 
+        title: taskModalData.title, 
+        materia_id, 
+        tag_padrao,
+        priority: taskModalData.priority 
+      })
       if (result.success && result.task) { setTasks(tasks.map(t => t.id === editingTaskId ? result.task : t)); closeTaskModal() } 
       else { toast("Erro ao atualizar a tarefa.", "error") }
     } else {
-      const result = await createTask({ title: taskModalData.title, subject_id: taskModalData.subjectId, priority: taskModalData.priority })
+      const result = await createTask({ 
+        title: taskModalData.title, 
+        materia_id, 
+        tag_padrao, 
+        priority: taskModalData.priority 
+      })
       if (result.success && result.task) { setTasks([...tasks, result.task]); closeTaskModal() } 
       else { toast("Erro ao criar a tarefa.", "error") }
     }
   }
 
   const handleEditTask = (task: Task) => {
-    setTaskModalData({ title: task.title, subjectId: task.subject_id, priority: task.priority })
+    let selection = ''
+    if (task.materia_id) selection = `materia:${task.materia_id}`
+    else if (task.tag_padrao) selection = `tag:${task.tag_padrao}`
+
+    setTaskModalData({ title: task.title, selection, priority: task.priority })
     setEditingTaskId(task.id)
     setIsTaskModalOpen(true)
-    setShowNewSubject(false)
   }
 
   const handleDeleteTask = async (id: string) => {
@@ -285,6 +273,29 @@ export default function DashboardClient({ initialEvents, initialSubjects, initia
         setIsExamModalOpen(false)
       }
     }
+  }
+
+  const renderTaskTag = (task: Task) => {
+    if (task.tag_padrao) {
+      const config = TAGS_PADRAO[task.tag_padrao as keyof typeof TAGS_PADRAO]
+      if (config) {
+        return (
+          <p className={`text-[11px] font-semibold break-words px-2 py-0.5 rounded-md ${config.colorClass}`}>
+            {config.name}
+          </p>
+        )
+      }
+    } else if (task.materia_id) {
+      const mat = materias.find(m => m.id === task.materia_id)
+      if (mat) {
+        return (
+          <p className="text-[11px] font-semibold break-words px-2 py-0.5 rounded-md bg-primary-100 text-primary-700">
+            {mat.name}
+          </p>
+        )
+      }
+    }
+    return null
   }
 
   const dailyProgressPercent = stats ? Math.min(Math.round((stats.todayMinutes / (stats.dailyGoalHours * 60)) * 100), 100) : 0
@@ -439,7 +450,7 @@ export default function DashboardClient({ initialEvents, initialSubjects, initia
                       </div>
                     ))}
                   </>
-) : (stats.topSubjects || []).length === 0 ? (
+                ) : (stats.topSubjects || []).length === 0 ? (
                   <div className="col-span-3 flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center shadow-sm">
                     <Library className="w-10 h-10 text-slate-300 mb-3" />
                     <h3 className="text-slate-900 font-bold text-sm mb-1">Nenhuma matéria cadastrada</h3>
@@ -578,8 +589,6 @@ export default function DashboardClient({ initialEvents, initialSubjects, initia
                   </div>
                 ) : (
                   sortedTasks.map(task => {
-                    const subject = subjects.find(s => s.id === task.subject_id)
-                    
                     return (
                       <div key={task.id} className="flex items-start gap-3 border border-slate-100 rounded-xl p-3 group relative hover:border-slate-200 transition">
                         <div
@@ -598,14 +607,7 @@ export default function DashboardClient({ initialEvents, initialSubjects, initia
                             {task.title}
                           </p>
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
-                            {subject && (
-                              <p 
-                                className={`text-[11px] font-semibold break-words ${getSubjectTextColorClass(subject.color)}`}
-                                style={subject.color?.startsWith('#') ? { color: subject.color } : {}}
-                              >
-                                {subject.name}
-                              </p>
-                            )}
+                            {renderTaskTag(task)}
                             <span className="text-[10px] text-slate-300">•</span>
                             <span className={`text-[10px] font-bold uppercase tracking-wide whitespace-nowrap ${
                               task.priority === 'alta' ? 'text-red-500' :
@@ -685,75 +687,31 @@ export default function DashboardClient({ initialEvents, initialSubjects, initia
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-slate-700">
-                    Matéria (Tag)
+                    Matéria ou Tag Padrão
                   </label>
-                  {!showNewSubject && (
-                    <button
-                      type="button"
-                      onClick={() => setShowNewSubject(true)}
-                      className="text-primary-600 text-xs font-bold flex items-center gap-1 hover:text-primary-700"
-                    >
-                      <Plus className="w-3 h-3" /> Nova Tag
-                    </button>
-                  )}
                 </div>
                 
-                {!showNewSubject ? (
-                  <select
-                    value={taskModalData.subjectId}
-                    onChange={(e) => setTaskModalData({ ...taskModalData, subjectId: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  >
-                    <option value="" disabled>Selecione uma matéria</option>
-                    {subjects.map(subject => (
-                      <option key={subject.id} value={subject.id}>
-                        {subject.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="space-y-3 bg-primary-50 border border-primary-100 p-4 rounded-xl">
-                    <div className="flex justify-between items-center">
-                      <h4 className="text-sm font-bold text-primary-900">Criação de tags</h4>
-                      <button type="button" onClick={() => setShowNewSubject(false)} className="text-slate-400 hover:text-slate-600">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">
-                        Nome
-                      </label>
-                      <input
-                        type="text"
-                        value={newSubjectName}
-                        onChange={(e) => setNewSubjectName(e.target.value)}
-                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-                        placeholder="Ex: Biologia"
-                      />
-                    </div>
-                    <div className="flex items-end gap-3">
-                      <div className="flex-1">
-                        <label className="block text-xs font-medium text-slate-700 mb-1">
-                          Cor
-                        </label>
-                        <input
-                          type="color"
-                          value={newSubjectColor}
-                          onChange={(e) => setNewSubjectColor(e.target.value)}
-                          className="w-full h-10 p-1 bg-white border border-slate-200 rounded-xl cursor-pointer"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleSaveSubjectForTask}
-                        disabled={!newSubjectName.trim() || isSavingSubject}
-                        className="px-4 py-2 h-10 bg-primary-600 text-white text-sm font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
-                      >
-                        {isSavingSubject ? 'Salvando...' : 'Salvar'}
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <select
+                  value={taskModalData.selection}
+                  onChange={(e) => setTaskModalData({ ...taskModalData, selection: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="" disabled>Selecione uma matéria ou tag</option>
+                  <optgroup label="Tags Padrões">
+                    <option value="tag:simulado">Simulado</option>
+                    <option value="tag:questoes">Questões</option>
+                    <option value="tag:revisao">Revisão</option>
+                  </optgroup>
+                  {materias.length > 0 && (
+                    <optgroup label="Suas Matérias">
+                      {materias.map(materia => (
+                        <option key={materia.id} value={`materia:${materia.id}`}>
+                          {materia.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
               </div>
             </div>
 

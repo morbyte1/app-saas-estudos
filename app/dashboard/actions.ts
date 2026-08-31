@@ -66,7 +66,8 @@ export async function getTasks() {
 
 export async function createTask(data: {
   title: string
-  subject_id: string
+  materia_id?: string | null
+  tag_padrao?: string | null
   priority: 'baixa' | 'normal' | 'alta'
 }) {
   const supabase = await createClient()
@@ -77,7 +78,8 @@ export async function createTask(data: {
   const { data: newTask, error } = await supabase.from('tasks').insert({
     user_id: user.id,
     title: data.title,
-    subject_id: data.subject_id,
+    materia_id: data.materia_id || null,
+    tag_padrao: data.tag_padrao || null,
     priority: data.priority,
     is_done: false,
   }).select().single()
@@ -90,7 +92,8 @@ export async function createTask(data: {
 
 export async function updateTask(id: string, data: {
   title?: string
-  subject_id?: string
+  materia_id?: string | null
+  tag_padrao?: string | null
   priority?: 'baixa' | 'normal' | 'alta'
 }) {
   const supabase = await createClient()
