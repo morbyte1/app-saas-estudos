@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import { Dancing_Script } from "next/font/google";
 import Link from "next/link";
 import Image from "next/image";
@@ -88,6 +89,39 @@ const faqs = [
   }
 ];
 
+// Componente auxiliar para animação de scroll revelando os blocos
+function ScrollReveal({ children, className = "", delay = 0 }: { children: React.ReactNode, className?: string, delay?: number }) {
+  const [isVisible, setIsVisible] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          if (ref.current) observer.unobserve(ref.current);
+        }
+      },
+      { threshold: 0.1, rootMargin: "50px" }
+    );
+
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-700 ease-out will-change-[opacity,transform] ${
+        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
+      } ${className}`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function LandingPage() {
   return (
     <main className="scroll-smooth bg-[#F1F7ED] text-[#243E36] antialiased">
@@ -118,13 +152,8 @@ export default function LandingPage() {
         {/* Brilho Radial (Glow) */}
         <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[300px] h-[300px] sm:w-[600px] sm:h-[400px] bg-[#7CA982]/25 rounded-full blur-[80px] -z-0 pointer-events-none" />
 
-        <div className="relative z-10 mx-auto max-w-3xl text-center">
+        <ScrollReveal className="relative z-10 mx-auto max-w-3xl text-center">
           
-          {/* Logo no topo da página */}
-          <div className="flex justify-center mb-6">
-             <Image src="/logo.png" alt="Revyza Logo" width={140} height={40} className="object-contain" priority />
-          </div>
-
           {/* Prova Social (Avatares) */}
           <div className="mb-6 flex items-center justify-center gap-3">
             <div className="flex -space-x-2">
@@ -164,9 +193,9 @@ export default function LandingPage() {
               />
             </Link>
           </div>
-        </div>
+        </ScrollReveal>
 
-        <div className="relative z-10 mx-auto mt-16 max-w-6xl">
+        <ScrollReveal delay={200} className="relative z-10 mx-auto mt-16 max-w-6xl">
           {/* Efeito de "Janela de Navegador" para o Placeholder */}
           <div className="overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-[#243E36]/10 transition-transform duration-700 hover:-translate-y-2">
             <div className="flex items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-4 py-3">
@@ -182,7 +211,7 @@ export default function LandingPage() {
               </span>
             </div>
           </div>
-        </div>
+        </ScrollReveal>
       </section>
 
       {/* 2. DOR (Inversão Psicológica de Cores) */}
@@ -190,7 +219,7 @@ export default function LandingPage() {
         {/* Glow dourado suave no fundo escuro */}
         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#C2A83E]/10 rounded-full blur-[100px] pointer-events-none" />
         
-        <div className="mx-auto max-w-3xl relative z-10">
+        <ScrollReveal className="mx-auto max-w-3xl relative z-10">
           <AlarmClockOff className="size-10 text-[#C2A83E]" strokeWidth={1.5} aria-hidden />
           <h2 className="mt-8 text-3xl font-bold leading-tight tracking-tight text-[#F1F7ED] sm:text-4xl">
             Você gasta mais tempo &quot;se organizando&quot; do que resolvendo questões?
@@ -200,25 +229,28 @@ export default function LandingPage() {
             horas personalizando cores em um template de estudos não te aprova. Acertar
             questões, sim. O seu futuro não depende de fórmulas complexas do Excel.
           </p>
-        </div>
+        </ScrollReveal>
       </section>
 
       {/* 3. COMO FUNCIONA */}
       <section className="px-6 py-20 md:py-28">
         <div className="mx-auto max-w-6xl">
-          <p className="text-sm font-semibold uppercase tracking-widest text-[#7CA982]">
-            Como funciona
-          </p>
-          <h2 className="mt-4 max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl">
-            Três pilares para uma rotina sem atrito.
-          </h2>
+          <ScrollReveal>
+            <p className="text-sm font-semibold uppercase tracking-widest text-[#7CA982]">
+              Como funciona
+            </p>
+            <h2 className="mt-4 max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl">
+              Três pilares para uma rotina sem atrito.
+            </h2>
+          </ScrollReveal>
 
           <div className="mt-16 space-y-20 md:space-y-28">
             {pillars.map((pillar, i) => {
               const Icon = pillar.icon;
               return (
-                <div
+                <ScrollReveal
                   key={pillar.title}
+                  delay={i * 100}
                   className="grid items-center gap-10 md:grid-cols-2 md:gap-16"
                 >
                   <div className={i % 2 === 1 ? "md:order-2" : ""}>
@@ -243,7 +275,7 @@ export default function LandingPage() {
                       {pillar.placeholder}
                     </span>
                   </div>
-                </div>
+                </ScrollReveal>
               );
             })}
           </div>
@@ -252,7 +284,7 @@ export default function LandingPage() {
 
       {/* 4. TABELA COMPARATIVA */}
       <section className="bg-white px-6 py-20 md:py-28">
-        <div className="mx-auto max-w-5xl">
+        <ScrollReveal className="mx-auto max-w-5xl">
           <h2 className="max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl">
             Por que o Revyza vence a sua planilha.
           </h2>
@@ -306,12 +338,12 @@ export default function LandingPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </ScrollReveal>
       </section>
 
       {/* 5. CARTA DO FUNDADOR */}
       <section className="px-6 py-20 md:py-28">
-        <div className="mx-auto max-w-3xl rounded-3xl bg-white p-8 shadow-[0_24px_60px_-24px_rgba(36,62,54,0.1)] ring-1 ring-[#243E36]/5 sm:p-12 relative overflow-hidden">
+        <ScrollReveal className="mx-auto max-w-3xl rounded-3xl bg-white p-8 shadow-[0_24px_60px_-24px_rgba(36,62,54,0.1)] ring-1 ring-[#243E36]/5 sm:p-12 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-2 h-full bg-[#7CA982]" />
           <div className="flex items-center gap-4">
             <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[#E0EEC6] ring-1 ring-[#243E36]/10">
@@ -348,12 +380,12 @@ export default function LandingPage() {
           <p className="mt-8 text-sm font-semibold text-[#243E36]">
             Arthur, Fundador e Desenvolvedor Solo.
           </p>
-        </div>
+        </ScrollReveal>
       </section>
 
       {/* 6. FAQ (Perguntas Frequentes) */}
       <section className="bg-white px-6 py-20 md:py-28">
-        <div className="mx-auto max-w-3xl">
+        <ScrollReveal className="mx-auto max-w-3xl">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Perguntas Frequentes</h2>
             <p className="mt-4 text-lg text-[#243E36]/75">O que você precisa saber antes de entrar.</p>
@@ -372,14 +404,14 @@ export default function LandingPage() {
               </details>
             ))}
           </div>
-        </div>
+        </ScrollReveal>
       </section>
 
       {/* 7. CTA FINAL */}
       <section id="garantir-vaga" className="bg-[#243E36] px-6 py-24 md:py-32 relative overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#7CA982]/10 rounded-full blur-[120px] pointer-events-none" />
         
-        <div className="relative z-10 mx-auto max-w-2xl text-center">
+        <ScrollReveal className="relative z-10 mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-extrabold tracking-tight text-[#F1F7ED] sm:text-5xl">
             Faça parte dos 30 primeiros.
           </h2>
@@ -405,14 +437,14 @@ export default function LandingPage() {
           <p className="mt-5 text-sm text-[#F1F7ED]/60">
             Acesso 100% gratuito. Sem cartão de crédito.
           </p>
-        </div>
+        </ScrollReveal>
       </section>
 
       {/* 8. FOOTER */}
       <footer className="bg-white px-6 py-14 border-t border-[#243E36]/5">
         <div className="mx-auto flex max-w-6xl flex-col gap-8 md:flex-row md:items-end md:justify-between">
           <div>
-            <Image src="/logo.png" alt="Revyza Logo" width={120} height={36} className="object-contain mb-3" />
+            <Image src="/logo.png" alt="Revyza Logo" width={100} height={28} className="object-contain mb-1" />
             <p className="text-sm text-[#243E36]/70">
               O ecossistema blindado para a sua aprovação.
             </p>
