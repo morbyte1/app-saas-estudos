@@ -7,14 +7,11 @@ import Image from "next/image";
 import {
   AlarmClockOff,
   ArrowRight,
-  BarChart3,
   Check,
-  LayoutList,
   Minus,
-  PieChart,
-  Timer,
   User,
   ChevronDown,
+  X,
 } from "lucide-react";
 
 const dancing = Dancing_Script({
@@ -26,20 +23,20 @@ const pillars = [
   {
     title: "Configure sua rotina em 3 cliques. Adeus, planilhas.",
     body: "Nada de templates complexos ou páginas em branco. Cadastre suas matérias, defina metas semanais e deixe o Revyza dizer exatamente o que você precisa focar hoje. A organização deixa de ser um evento e passa a ser invisível.",
-    icon: LayoutList,
-    placeholder: 'Espaço para print da aba "Minhas Matérias"',
+    imageSrc: "/print-materias.png",
+    imageAlt: "Aba Minhas Matérias do Revyza",
   },
   {
     title: "Foco absoluto. Sem tocar no celular.",
     body: "Um Timer minimalista integrado diretamente ao seu ambiente de estudos. Escolha entre Pomodoro ou Cronômetro Progressivo. Quando o tempo acabar, registre quantas questões você fez e quantas errou ali mesmo. Sem notificações, sem distrações.",
-    icon: Timer,
-    placeholder: "Espaço para print do Timer",
+    imageSrc: "/print-timer.png",
+    imageAlt: "Timer blindado do Revyza",
   },
   {
     title: "Estude com métricas reais, não com intuição.",
     body: "Você foca em resolver a lista, nós cuidamos da matemática. O Revyza gera gráficos automáticos do seu tempo de estudo, aponta quais matérias estão sendo abandonadas e analisa o verdadeiro motivo dos seus erros. Você descobre seu ponto cego meses antes da prova.",
-    icon: PieChart,
-    placeholder: "Espaço para print de Estatísticas (gráfico de pizza)",
+    imageSrc: "/print-estatisticas.png",
+    imageAlt: "Estatísticas de estudo do Revyza",
   },
 ];
 
@@ -89,7 +86,6 @@ const faqs = [
   }
 ];
 
-// Componente auxiliar para animação de scroll revelando os blocos
 function ScrollReveal({ children, className = "", delay = 0 }: { children: React.ReactNode, className?: string, delay?: number }) {
   const [isVisible, setIsVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -123,9 +119,50 @@ function ScrollReveal({ children, className = "", delay = 0 }: { children: React
 }
 
 export default function LandingPage() {
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+
+  // Travar o scroll do body quando a imagem estiver aberta
+  useEffect(() => {
+    if (zoomedImage) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [zoomedImage]);
+
   return (
     <main className="scroll-smooth bg-[#F1F7ED] text-[#243E36] antialiased">
       
+      {/* ZOOM LIGHTBOX */}
+      {zoomedImage && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#243E36]/90 p-4 backdrop-blur-md cursor-zoom-out transition-opacity"
+          onClick={() => setZoomedImage(null)}
+        >
+          <div className="relative max-w-7xl w-full flex justify-center animate-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setZoomedImage(null)}
+              className="absolute -top-12 right-0 md:-right-12 text-[#F1F7ED] hover:text-[#7CA982] transition-colors"
+              title="Fechar (Esc)"
+            >
+              <X className="size-8" />
+            </button>
+            <div className="relative w-full overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/20">
+              <Image 
+                src={zoomedImage} 
+                alt="Imagem Ampliada" 
+                width={1920} 
+                height={1080} 
+                className="w-full h-auto max-h-[85vh] object-contain bg-slate-50"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* NAVBAR FLUTUANTE */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#F1F7ED]/80 backdrop-blur-md border-b border-[#243E36]/10 transition-all duration-300">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
@@ -146,26 +183,20 @@ export default function LandingPage() {
       {/* 1. HERO (Premium) */}
       <section className="relative overflow-hidden px-6 pt-32 pb-16 sm:pt-40 md:pb-24">
         
-        {/* Padrão de Pontilhados */}
         <div className="absolute inset-0 z-0 bg-[radial-gradient(#d1d5db_1.5px,transparent_1.5px)] [background-size:24px_24px] opacity-70 pointer-events-none" />
-
-        {/* Brilho Radial (Glow) */}
         <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[300px] h-[300px] sm:w-[600px] sm:h-[400px] bg-[#7CA982]/25 rounded-full blur-[80px] -z-0 pointer-events-none" />
 
         <ScrollReveal className="relative z-10 mx-auto max-w-3xl text-center">
           
-          {/* Prova Social (Avatares) */}
+          <div className="flex justify-center mb-6">
+             <Image src="/logo.png" alt="Revyza Logo" width={140} height={40} className="object-contain" priority />
+          </div>
+
           <div className="mb-6 flex items-center justify-center gap-3">
             <div className="flex -space-x-2">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-[#F1F7ED] bg-[#243E36] text-[10px] font-bold text-white shadow-sm">
-                📚
-              </div>
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-[#F1F7ED] bg-[#7CA982] text-[10px] font-bold text-white shadow-sm">
-                ⚡
-              </div>
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-[#F1F7ED] bg-[#C2A83E] text-[10px] font-bold text-white shadow-sm">
-                🎯
-              </div>
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-[#F1F7ED] bg-[#243E36] text-[10px] font-bold text-white shadow-sm">📚</div>
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-[#F1F7ED] bg-[#7CA982] text-[10px] font-bold text-white shadow-sm">⚡</div>
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-[#F1F7ED] bg-[#C2A83E] text-[10px] font-bold text-white shadow-sm">🎯</div>
             </div>
             <span className="rounded-full bg-white/60 px-3 py-1 text-xs font-semibold text-[#243E36] shadow-sm backdrop-blur-sm border border-[#243E36]/5">
               Mais de <strong className="text-[#7CA982]">20 estudantes</strong> já na fila
@@ -187,43 +218,40 @@ export default function LandingPage() {
               className="group inline-flex items-center gap-3 rounded-2xl bg-[#7CA982] px-8 py-4 text-base font-semibold text-white shadow-[0_8px_24px_-12px_rgba(124,169,130,0.5)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-12px_rgba(124,169,130,0.6)] hover:brightness-105 md:text-lg"
             >
               Quero focar de verdade
-              <ArrowRight
-                className="size-5 transition-transform duration-300 group-hover:translate-x-1"
-                aria-hidden
-              />
+              <ArrowRight className="size-5 transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
             </Link>
           </div>
         </ScrollReveal>
 
         <ScrollReveal delay={200} className="relative z-10 mx-auto mt-16 max-w-6xl">
-          {/* Efeito de "Janela de Navegador" para o Placeholder */}
-          <div className="overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-[#243E36]/10 transition-transform duration-700 hover:-translate-y-2">
+          <div 
+            className="overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-[#243E36]/10 transition-transform duration-700 hover:-translate-y-2 cursor-zoom-in group"
+            onClick={() => setZoomedImage('/print-dashboard.png')}
+            title="Clique para ampliar"
+          >
             <div className="flex items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-4 py-3">
               <div className="size-2.5 rounded-full bg-red-400" />
               <div className="size-2.5 rounded-full bg-amber-400" />
               <div className="size-2.5 rounded-full bg-emerald-400" />
             </div>
             
-            <div className="flex aspect-video flex-col items-center justify-center gap-3 bg-[#F1F7ED]/50 p-8 text-center">
-{/* O interior do print */}
-<div className="bg-slate-50">
-  <Image 
-    alt="Dashboard do Revyza" 
-    src="/print-dashboard.png" 
-    width={1200} 
-    height={675} 
-    className="w-full h-auto object-cover"
-    priority
-  />
-</div>
+            <div className="bg-slate-50 relative">
+              <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/5 z-10 pointer-events-none" />
+              <Image 
+                alt="Dashboard do Revyza" 
+                src="/print-dashboard.png" 
+                width={1200} 
+                height={675} 
+                className="w-full h-auto object-cover"
+                priority
+              />
             </div>
           </div>
         </ScrollReveal>
       </section>
 
-      {/* 2. DOR (Inversão Psicológica de Cores) */}
+      {/* 2. DOR */}
       <section className="bg-[#243E36] px-6 py-20 md:py-28 relative">
-        {/* Glow dourado suave no fundo escuro */}
         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#C2A83E]/10 rounded-full blur-[100px] pointer-events-none" />
         
         <ScrollReveal className="mx-auto max-w-3xl relative z-10">
@@ -252,39 +280,38 @@ export default function LandingPage() {
           </ScrollReveal>
 
           <div className="mt-16 space-y-20 md:space-y-28">
-            {pillars.map((pillar, i) => {
-              const Icon = pillar.icon;
-              return (
-                <ScrollReveal
-                  key={pillar.title}
-                  delay={i * 100}
-                  className="grid items-center gap-10 md:grid-cols-2 md:gap-16"
-                >
-                  <div className={i % 2 === 1 ? "md:order-2" : ""}>
-                    <div className="flex size-12 items-center justify-center rounded-xl bg-[#E0EEC6]">
-                      <Icon className="size-6 text-[#243E36]" strokeWidth={1.75} aria-hidden />
-                    </div>
-                    <h3 className="mt-6 text-2xl font-bold leading-snug tracking-tight sm:text-3xl">
-                      {pillar.title}
-                    </h3>
-                    <p className="mt-4 text-base leading-relaxed text-[#243E36]/75 md:text-lg">
-                      {pillar.body}
-                    </p>
-                  </div>
+            {pillars.map((pillar, i) => (
+              <ScrollReveal
+                key={pillar.title}
+                delay={i * 100}
+                className="grid items-center gap-10 md:grid-cols-2 md:gap-16"
+              >
+                <div className={i % 2 === 1 ? "md:order-2" : ""}>
+                  <h3 className="mt-6 text-2xl font-bold leading-snug tracking-tight sm:text-3xl">
+                    {pillar.title}
+                  </h3>
+                  <p className="mt-4 text-base leading-relaxed text-[#243E36]/75 md:text-lg">
+                    {pillar.body}
+                  </p>
+                </div>
 
-                  <div
-                    className={`flex aspect-[4/3] flex-col items-center justify-center gap-3 rounded-2xl bg-white p-8 text-center ring-1 ring-[#243E36]/10 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_8px_24px_-12px_rgba(36,62,54,0.15)] ${
-                      i % 2 === 1 ? "md:order-1" : ""
-                    }`}
-                  >
-                    <Icon className="size-10 text-[#7CA982]" strokeWidth={1.5} aria-hidden />
-                    <span className="text-sm font-medium text-[#243E36]/70">
-                      {pillar.placeholder}
-                    </span>
-                  </div>
-                </ScrollReveal>
-              );
-            })}
+                <div
+                  className={`flex aspect-[4/3] flex-col items-center justify-center overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-[#243E36]/10 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_8px_24px_-12px_rgba(36,62,54,0.2)] cursor-zoom-in group ${
+                    i % 2 === 1 ? "md:order-1" : ""
+                  }`}
+                  onClick={() => setZoomedImage(pillar.imageSrc)}
+                  title="Clique para ampliar"
+                >
+                  <Image 
+                    src={pillar.imageSrc} 
+                    alt={pillar.imageAlt} 
+                    width={800} 
+                    height={600} 
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                  />
+                </div>
+              </ScrollReveal>
+            ))}
           </div>
         </div>
       </section>
@@ -301,44 +328,23 @@ export default function LandingPage() {
               <thead>
                 <tr>
                   <th className="w-1/4 pb-4" />
-                  <th className="rounded-t-2xl bg-[#E0EEC6] px-6 pb-4 pt-5 text-base font-bold text-[#243E36]">
-                    Revyza
-                  </th>
-                  <th className="px-6 pb-4 pt-5 text-base font-semibold text-[#243E36]/45">
-                    Planilhas (Notion/Excel)
-                  </th>
-                  <th className="px-6 pb-4 pt-5 text-base font-semibold text-[#243E36]/45">
-                    Apps de Timer
-                  </th>
+                  <th className="rounded-t-2xl bg-[#E0EEC6] px-6 pb-4 pt-5 text-base font-bold text-[#243E36]">Revyza</th>
+                  <th className="px-6 pb-4 pt-5 text-base font-semibold text-[#243E36]/45">Planilhas (Notion/Excel)</th>
+                  <th className="px-6 pb-4 pt-5 text-base font-semibold text-[#243E36]/45">Apps de Timer</th>
                 </tr>
               </thead>
               <tbody>
                 {comparison.map((row, i) => (
                   <tr key={row.label} className="align-top">
-                    <th className="border-t border-[#243E36]/10 py-5 pr-6 text-sm font-semibold text-[#243E36]">
-                      {row.label}
-                    </th>
-                    <td
-                      className={`bg-[#E0EEC6] px-6 py-5 text-sm font-semibold text-[#243E36] ${
-                        i === comparison.length - 1 ? "rounded-b-2xl" : ""
-                      }`}
-                    >
-                      <span className="flex items-start gap-2">
-                        <Check className="mt-0.5 size-4 shrink-0 text-[#7CA982]" aria-hidden />
-                        {row.revyza}
-                      </span>
+                    <th className="border-t border-[#243E36]/10 py-5 pr-6 text-sm font-semibold text-[#243E36]">{row.label}</th>
+                    <td className={`bg-[#E0EEC6] px-6 py-5 text-sm font-semibold text-[#243E36] ${i === comparison.length - 1 ? "rounded-b-2xl" : ""}`}>
+                      <span className="flex items-start gap-2"><Check className="mt-0.5 size-4 shrink-0 text-[#7CA982]" aria-hidden />{row.revyza}</span>
                     </td>
                     <td className="border-t border-[#243E36]/10 px-6 py-5 text-sm text-[#243E36]/45">
-                      <span className="flex items-start gap-2">
-                        <Minus className="mt-0.5 size-4 shrink-0" aria-hidden />
-                        {row.sheets}
-                      </span>
+                      <span className="flex items-start gap-2"><Minus className="mt-0.5 size-4 shrink-0" aria-hidden />{row.sheets}</span>
                     </td>
                     <td className="border-t border-[#243E36]/10 px-6 py-5 text-sm text-[#243E36]/45">
-                      <span className="flex items-start gap-2">
-                        <Minus className="mt-0.5 size-4 shrink-0" aria-hidden />
-                        {row.timers}
-                      </span>
+                      <span className="flex items-start gap-2"><Minus className="mt-0.5 size-4 shrink-0" aria-hidden />{row.timers}</span>
                     </td>
                   </tr>
                 ))}
@@ -356,9 +362,7 @@ export default function LandingPage() {
             <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[#E0EEC6] ring-1 ring-[#243E36]/10">
               <User className="size-6 text-[#7CA982]" strokeWidth={1.5} aria-hidden />
             </div>
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Por que eu criei o Revyza?
-            </h2>
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Por que eu criei o Revyza?</h2>
           </div>
 
           <div className="mt-8 space-y-5 text-lg leading-relaxed text-[#243E36]/85">
@@ -383,14 +387,11 @@ export default function LandingPage() {
               estudar juntos?&quot;
             </p>
           </div>
-
-          <p className="mt-8 text-sm font-semibold text-[#243E36]">
-            Arthur, Fundador e Desenvolvedor Solo.
-          </p>
+          <p className="mt-8 text-sm font-semibold text-[#243E36]">Arthur, Fundador e Desenvolvedor Solo.</p>
         </ScrollReveal>
       </section>
 
-      {/* 6. FAQ (Perguntas Frequentes) */}
+      {/* 6. FAQ */}
       <section className="bg-white px-6 py-20 md:py-28">
         <ScrollReveal className="mx-auto max-w-3xl">
           <div className="text-center mb-12">
@@ -419,15 +420,9 @@ export default function LandingPage() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#7CA982]/10 rounded-full blur-[120px] pointer-events-none" />
         
         <ScrollReveal className="relative z-10 mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-extrabold tracking-tight text-[#F1F7ED] sm:text-5xl">
-            Faça parte dos 30 primeiros.
-          </h2>
+          <h2 className="text-3xl font-extrabold tracking-tight text-[#F1F7ED] sm:text-5xl">Faça parte dos 30 primeiros.</h2>
           <p className="mt-6 text-lg leading-relaxed text-[#F1F7ED]/80">
-            O Revyza está em fase Beta fechada. Para garantir que o sistema rode com extrema
-            velocidade e que eu consiga conversar com todos no grupo de feedbacks, estou
-            liberando o acesso gratuito apenas para a nossa primeira tropa de 30 testadores.
-            Se você quer parar de brigar com planilhas e começar a focar na aprovação, ocupe
-            o seu lugar.
+            O Revyza está em fase Beta fechada. Para garantir que o sistema rode com extrema velocidade e que eu consiga conversar com todos no grupo de feedbacks, estou liberando o acesso gratuito apenas para a nossa primeira tropa de 30 testadores. Se você quer parar de brigar com planilhas e começar a focar na aprovação, ocupe o seu lugar.
           </p>
           <div className="mt-10">
             <Link
@@ -435,15 +430,10 @@ export default function LandingPage() {
               className="group inline-flex items-center gap-3 rounded-2xl bg-[#C2A83E] px-8 py-4 text-base font-bold text-[#243E36] shadow-[0_8px_24px_-12px_rgba(194,168,62,0.4)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-12px_rgba(194,168,62,0.6)] hover:brightness-105 md:text-lg"
             >
               Quero ser um dos 30 testadores
-              <ArrowRight
-                className="size-5 transition-transform duration-300 group-hover:translate-x-1"
-                aria-hidden
-              />
+              <ArrowRight className="size-5 transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
             </Link>
           </div>
-          <p className="mt-5 text-sm text-[#F1F7ED]/60">
-            Acesso 100% gratuito. Sem cartão de crédito.
-          </p>
+          <p className="mt-5 text-sm text-[#F1F7ED]/60">Acesso 100% gratuito. Sem cartão de crédito.</p>
         </ScrollReveal>
       </section>
 
@@ -452,20 +442,12 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col gap-8 md:flex-row md:items-end md:justify-between">
           <div>
             <Image src="/logo.png" alt="Revyza Logo" width={100} height={28} className="object-contain mb-1" />
-            <p className="text-sm text-[#243E36]/70">
-              O ecossistema blindado para a sua aprovação.
-            </p>
+            <p className="text-sm text-[#243E36]/70">O ecossistema blindado para a sua aprovação.</p>
           </div>
           <nav className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-[#243E36]/75">
-            <a className="transition-colors hover:text-[#7CA982]" href="mailto:seuemail@exemplo.com">
-              Falar com o Fundador
-            </a>
-            <a className="transition-colors hover:text-[#7CA982]" href="https://wa.me/seulinkdegrupo" target="_blank" rel="noopener noreferrer">
-              Comunidade VIP
-            </a>
-            <Link className="transition-colors hover:text-[#7CA982]" href="#">
-              Termos e Privacidade
-            </Link>
+            <a className="transition-colors hover:text-[#7CA982]" href="mailto:seuemail@exemplo.com">Falar com o Fundador</a>
+            <a className="transition-colors hover:text-[#7CA982]" href="https://wa.me/seulinkdegrupo" target="_blank" rel="noopener noreferrer">Comunidade VIP</a>
+            <Link className="transition-colors hover:text-[#7CA982]" href="#">Termos e Privacidade</Link>
           </nav>
         </div>
         <p className="mx-auto mt-10 max-w-6xl border-t border-[#243E36]/10 pt-6 text-xs text-[#243E36]/55">
