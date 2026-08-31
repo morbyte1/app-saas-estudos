@@ -1,11 +1,8 @@
 "use client";
 
 import { Dancing_Script } from "next/font/google";
-
-const dancing = Dancing_Script({
-  subsets: ["latin"],
-  weight: ["700"],
-});
+import Link from "next/link";
+import Image from "next/image";
 import {
   AlarmClockOff,
   ArrowRight,
@@ -16,15 +13,13 @@ import {
   PieChart,
   Timer,
   User,
+  ChevronDown,
 } from "lucide-react";
 
-/**
- * Revyza — Landing Page (Next.js App Router)
- * Cole este arquivo em: app/page.tsx (ou components/LandingPage.tsx)
- * Dependência única: lucide-react  ->  npm i lucide-react
- * Cores aplicadas inline via classes arbitrárias do Tailwind (não precisa configurar tema).
- * Paleta: cream #F1F7ED · forest #243E36 · sage #7CA982 · mist #E0EEC6 · gold #C2A83E
- */
+const dancing = Dancing_Script({
+  subsets: ["latin"],
+  weight: ["700"],
+});
 
 const pillars = [
   {
@@ -74,21 +69,63 @@ const comparison = [
   },
 ];
 
+const faqs = [
+  {
+    question: "O Revyza é totalmente gratuito?",
+    answer: "Para os 30 primeiros testadores da fase Beta, o acesso é 100% gratuito e não exige cartão de crédito. No futuro, o aplicativo terá planos pagos para novos usuários, mas meu foco agora é refinar a ferramenta com os feedbacks reais desta primeira turma."
+  },
+  {
+    question: "Tem aplicativo para celular (iOS/Android)?",
+    answer: "O Revyza é um Web App, rodando direto no navegador. Você pode usá-lo no computador para ter imersão total nas sessões de estudo (o que eu recomendo para evitar distrações), ou acessar pelo navegador do celular quando precisar. Aplicativos nativos para as lojas de apps estão no radar para o futuro."
+  },
+  {
+    question: "Posso apagar meus dados se eu não gostar?",
+    answer: 'Com certeza. Privacidade é o mínimo. Dentro da sua aba de Configurações, existe uma "Zona de Perigo" com um botão direto para excluir sua conta e apagar permanentemente todo o seu histórico de estudos do banco de dados. Nada seu fica preso no sistema.'
+  },
+  {
+    question: "Sinto falta de uma ferramenta específica. Posso sugerir?",
+    answer: 'É exatamente para isso que essa fase Beta serve! Ao entrar, você recebe o acesso ao canal exclusivo dos primeiros testadores. Funcionalidades como o "Caderno de Erros" já estão na lista de prioridades, e eu vou programar as próximas atualizações com base no que o nosso grupo decidir ser mais urgente.'
+  }
+];
+
 export default function LandingPage() {
   return (
     <main className="scroll-smooth bg-[#F1F7ED] text-[#243E36] antialiased">
-{/* 1. HERO (Agora Premium) */}
-      <section className="relative overflow-hidden px-6 pt-20 pb-16 sm:pt-28 md:pb-24">
+      
+      {/* NAVBAR FLUTUANTE */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#F1F7ED]/80 backdrop-blur-md border-b border-[#243E36]/10 transition-all duration-300">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+          <div className="flex items-center gap-2">
+            <Image src="/logo.png" alt="Revyza Logo" width={100} height={30} className="object-contain" />
+          </div>
+          <div className="flex items-center gap-4">
+            <Link href="/login" className="hidden sm:block text-sm font-semibold text-[#243E36] hover:text-[#7CA982] transition-colors">
+              Entrar
+            </Link>
+            <Link href="/login" className="rounded-full bg-[#243E36] px-5 py-2 text-sm font-semibold text-[#F1F7ED] shadow-sm transition-all hover:bg-[#7CA982] hover:-translate-y-0.5">
+              Cadastrar
+            </Link>
+          </div>
+        </div>
+      </nav>
+
+      {/* 1. HERO (Premium) */}
+      <section className="relative overflow-hidden px-6 pt-32 pb-16 sm:pt-40 md:pb-24">
         
-        {/* EFEITO 2: Padrão de Pontilhados (Dot Pattern) cobrindo o fundo */}
+        {/* Padrão de Pontilhados */}
         <div className="absolute inset-0 z-0 bg-[radial-gradient(#d1d5db_1.5px,transparent_1.5px)] [background-size:24px_24px] opacity-70 pointer-events-none" />
 
-        {/* EFEITO 1: Brilho Radial (Glow) atrás do texto */}
+        {/* Brilho Radial (Glow) */}
         <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[300px] h-[300px] sm:w-[600px] sm:h-[400px] bg-[#7CA982]/25 rounded-full blur-[80px] -z-0 pointer-events-none" />
 
         <div className="relative z-10 mx-auto max-w-3xl text-center">
           
-          {/* EFEITO 3: Prova Social (Avatares) */}
+          {/* Logo no topo da página */}
+          <div className="flex justify-center mb-6">
+             <Image src="/logo.png" alt="Revyza Logo" width={140} height={40} className="object-contain" priority />
+          </div>
+
+          {/* Prova Social (Avatares) */}
           <div className="mb-6 flex items-center justify-center gap-3">
             <div className="flex -space-x-2">
               <div className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-[#F1F7ED] bg-[#243E36] text-[10px] font-bold text-white shadow-sm">
@@ -116,7 +153,7 @@ export default function LandingPage() {
           </p>
           
           <div className="mt-10">
-            <a
+            <Link
               href="/login"
               className="group inline-flex items-center gap-3 rounded-2xl bg-[#7CA982] px-8 py-4 text-base font-semibold text-white shadow-[0_8px_24px_-12px_rgba(124,169,130,0.5)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-12px_rgba(124,169,130,0.6)] hover:brightness-105 md:text-lg"
             >
@@ -125,21 +162,19 @@ export default function LandingPage() {
                 className="size-5 transition-transform duration-300 group-hover:translate-x-1"
                 aria-hidden
               />
-            </a>
+            </Link>
           </div>
         </div>
 
         <div className="relative z-10 mx-auto mt-16 max-w-6xl">
-          {/* EFEITO EXTRA: Efeito de "Janela de Navegador" (Browser Mockup) para o Placeholder */}
+          {/* Efeito de "Janela de Navegador" para o Placeholder */}
           <div className="overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-[#243E36]/10 transition-transform duration-700 hover:-translate-y-2">
-            {/* Barra superior do navegador fictício */}
             <div className="flex items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-4 py-3">
               <div className="size-2.5 rounded-full bg-red-400" />
               <div className="size-2.5 rounded-full bg-amber-400" />
               <div className="size-2.5 rounded-full bg-emerald-400" />
             </div>
             
-            {/* O interior do print */}
             <div className="flex aspect-video flex-col items-center justify-center gap-3 bg-[#F1F7ED]/50 p-8 text-center">
               <BarChart3 className="size-10 text-[#7CA982] animate-bounce" strokeWidth={1.5} aria-hidden />
               <span className="text-sm font-medium text-[#243E36]/70">
@@ -150,14 +185,17 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 2. DOR */}
-      <section className="bg-white px-6 py-20 md:py-28">
-        <div className="mx-auto max-w-3xl">
+      {/* 2. DOR (Inversão Psicológica de Cores) */}
+      <section className="bg-[#243E36] px-6 py-20 md:py-28 relative">
+        {/* Glow dourado suave no fundo escuro */}
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#C2A83E]/10 rounded-full blur-[100px] pointer-events-none" />
+        
+        <div className="mx-auto max-w-3xl relative z-10">
           <AlarmClockOff className="size-10 text-[#C2A83E]" strokeWidth={1.5} aria-hidden />
-          <h2 className="mt-8 text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+          <h2 className="mt-8 text-3xl font-bold leading-tight tracking-tight text-[#F1F7ED] sm:text-4xl">
             Você gasta mais tempo &quot;se organizando&quot; do que resolvendo questões?
           </h2>
-          <p className="mt-6 text-lg leading-relaxed text-[#243E36]/75">
+          <p className="mt-6 text-lg leading-relaxed text-[#F1F7ED]/80">
             A falsa produtividade é o maior ralo de tempo do estudante moderno. Passar 3
             horas personalizando cores em um template de estudos não te aprova. Acertar
             questões, sim. O seu futuro não depende de fórmulas complexas do Excel.
@@ -195,13 +233,11 @@ export default function LandingPage() {
                     </p>
                   </div>
 
-                  {/* Card de imagem (placeholder) */}
                   <div
-                    className={`flex aspect-[4/3] flex-col items-center justify-center gap-3 rounded-2xl bg-[#E0EEC6] p-8 text-center ring-1 ring-[#243E36]/10 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_8px_24px_-12px_rgba(36,62,54,0.35)] ${
+                    className={`flex aspect-[4/3] flex-col items-center justify-center gap-3 rounded-2xl bg-white p-8 text-center ring-1 ring-[#243E36]/10 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_8px_24px_-12px_rgba(36,62,54,0.15)] ${
                       i % 2 === 1 ? "md:order-1" : ""
                     }`}
                   >
-                    {/* <img src="/images/seu-print.png" alt={pillar.placeholder} className="h-full w-full rounded-2xl object-cover" /> */}
                     <Icon className="size-10 text-[#7CA982]" strokeWidth={1.5} aria-hidden />
                     <span className="text-sm font-medium text-[#243E36]/70">
                       {pillar.placeholder}
@@ -221,7 +257,7 @@ export default function LandingPage() {
             Por que o Revyza vence a sua planilha.
           </h2>
 
-          <div className="mt-10 overflow-x-auto">
+          <div className="mt-10 overflow-x-auto pb-4">
             <table className="w-full min-w-[680px] border-separate border-spacing-0 text-left">
               <thead>
                 <tr>
@@ -275,10 +311,10 @@ export default function LandingPage() {
 
       {/* 5. CARTA DO FUNDADOR */}
       <section className="px-6 py-20 md:py-28">
-        <div className="mx-auto max-w-3xl rounded-3xl bg-white p-8 shadow-[0_24px_60px_-24px_rgba(36,62,54,0.25)] ring-1 ring-[#243E36]/5 sm:p-12">
+        <div className="mx-auto max-w-3xl rounded-3xl bg-white p-8 shadow-[0_24px_60px_-24px_rgba(36,62,54,0.1)] ring-1 ring-[#243E36]/5 sm:p-12 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-2 h-full bg-[#7CA982]" />
           <div className="flex items-center gap-4">
             <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[#E0EEC6] ring-1 ring-[#243E36]/10">
-              {/* <img src="/images/arthur.jpg" alt="Arthur, fundador do Revyza" className="size-14 rounded-full object-cover" /> */}
               <User className="size-6 text-[#7CA982]" strokeWidth={1.5} aria-hidden />
             </div>
             <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
@@ -315,9 +351,35 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 6. CTA FINAL */}
-      <section id="garantir-vaga" className="bg-[#243E36] px-6 py-24 md:py-32">
-        <div className="mx-auto max-w-2xl text-center">
+      {/* 6. FAQ (Perguntas Frequentes) */}
+      <section className="bg-white px-6 py-20 md:py-28">
+        <div className="mx-auto max-w-3xl">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Perguntas Frequentes</h2>
+            <p className="mt-4 text-lg text-[#243E36]/75">O que você precisa saber antes de entrar.</p>
+          </div>
+          
+          <div className="space-y-4">
+            {faqs.map((faq, index) => (
+              <details key={index} className="group rounded-2xl bg-[#F1F7ED] p-6 [&_summary::-webkit-details-marker]:hidden cursor-pointer ring-1 ring-[#243E36]/5">
+                <summary className="flex items-center justify-between font-bold text-[#243E36] text-lg">
+                  {faq.question}
+                  <ChevronDown className="size-5 text-[#7CA982] transition-transform duration-300 group-open:-rotate-180" />
+                </summary>
+                <p className="mt-4 text-[#243E36]/80 leading-relaxed pr-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                  {faq.answer}
+                </p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 7. CTA FINAL */}
+      <section id="garantir-vaga" className="bg-[#243E36] px-6 py-24 md:py-32 relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#7CA982]/10 rounded-full blur-[120px] pointer-events-none" />
+        
+        <div className="relative z-10 mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-extrabold tracking-tight text-[#F1F7ED] sm:text-5xl">
             Faça parte dos 30 primeiros.
           </h2>
@@ -329,16 +391,16 @@ export default function LandingPage() {
             o seu lugar.
           </p>
           <div className="mt-10">
-            <a
-              href="#garantir-vaga"
-              className="group inline-flex items-center gap-3 rounded-2xl bg-[#C2A83E] px-8 py-4 text-base font-bold text-[#243E36] transition-all duration-300 hover:-translate-y-0.5 hover:brightness-105 md:text-lg"
+            <Link
+              href="/login"
+              className="group inline-flex items-center gap-3 rounded-2xl bg-[#C2A83E] px-8 py-4 text-base font-bold text-[#243E36] shadow-[0_8px_24px_-12px_rgba(194,168,62,0.4)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-12px_rgba(194,168,62,0.6)] hover:brightness-105 md:text-lg"
             >
               Quero ser um dos 30 testadores
               <ArrowRight
                 className="size-5 transition-transform duration-300 group-hover:translate-x-1"
                 aria-hidden
               />
-            </a>
+            </Link>
           </div>
           <p className="mt-5 text-sm text-[#F1F7ED]/60">
             Acesso 100% gratuito. Sem cartão de crédito.
@@ -346,25 +408,25 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 7. FOOTER */}
-      <footer className="px-6 py-14">
+      {/* 8. FOOTER */}
+      <footer className="bg-white px-6 py-14 border-t border-[#243E36]/5">
         <div className="mx-auto flex max-w-6xl flex-col gap-8 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xl font-extrabold">Revyza</p>
-            <p className="mt-2 text-sm text-[#243E36]/70">
+            <Image src="/logo.png" alt="Revyza Logo" width={120} height={36} className="object-contain mb-3" />
+            <p className="text-sm text-[#243E36]/70">
               O ecossistema blindado para a sua aprovação.
             </p>
           </div>
           <nav className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-[#243E36]/75">
-            <a className="transition-colors hover:text-[#7CA982]" href="#garantir-vaga">
+            <a className="transition-colors hover:text-[#7CA982]" href="mailto:seuemail@exemplo.com">
               Falar com o Fundador
             </a>
-            <a className="transition-colors hover:text-[#7CA982]" href="#garantir-vaga">
+            <a className="transition-colors hover:text-[#7CA982]" href="https://wa.me/seulinkdegrupo" target="_blank" rel="noopener noreferrer">
               Comunidade VIP
             </a>
-            <a className="transition-colors hover:text-[#7CA982]" href="#garantir-vaga">
+            <Link className="transition-colors hover:text-[#7CA982]" href="#">
               Termos e Privacidade
-            </a>
+            </Link>
           </nav>
         </div>
         <p className="mx-auto mt-10 max-w-6xl border-t border-[#243E36]/10 pt-6 text-xs text-[#243E36]/55">
