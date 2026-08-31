@@ -205,10 +205,17 @@ export default function LandingPage() {
             </div>
             
             <div className="flex aspect-video flex-col items-center justify-center gap-3 bg-[#F1F7ED]/50 p-8 text-center">
-              <BarChart3 className="size-10 text-[#7CA982] animate-bounce" strokeWidth={1.5} aria-hidden />
-              <span className="text-sm font-medium text-[#243E36]/70">
-                <Image alt="Dashboard do Revyza" className="w-full object-cover" height={675} src="/print-dashboard.png" width={1200}/>
-              </span>
+{/* O interior do print */}
+<div className="bg-slate-50">
+  <Image 
+    alt="Dashboard do Revyza" 
+    src="/print-dashboard.png" 
+    width={1200} 
+    height={675} 
+    className="w-full h-auto object-cover"
+    priority
+  />
+</div>
             </div>
           </div>
         </ScrollReveal>
