@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useToast } from '@/components/ToastContext'
@@ -115,6 +116,9 @@ export default function TimerPage() {
   const { toast } = useToast()
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
   const [isResetTimerConfirmOpen, setIsResetTimerConfirmOpen] = useState(false)
+  const router = useRouter()
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
+  const [pendingPath, setPendingPath] = useState<string | null>(null)
   
   const [pomodoroCycles, setPomodoroCycles] = useState(0)
   const totalStudySecondsRef = useRef(totalStudySeconds)
@@ -136,6 +140,7 @@ export default function TimerPage() {
   const [showHistory, setShowHistory] = useState(false)
   const [historySessions, setHistorySessions] = useState<StudySession[]>([])
   const [expandedDates, setExpandedDates] = useState<string[]>([])
+  const [isSettingsConfirmOpen, setIsSettingsConfirmOpen] = useState(false)
 
   const [materias, setMaterias] = useState<Materia[]>([])
   const [selectedMateriaId, setSelectedMateriaId] = useState<string>('geral')
@@ -242,6 +247,47 @@ export default function TimerPage() {
     }
   }, [manualForm.materiaId, isManualModalOpen, materias])
 
+// Efeito para interceptar navegação e fechamento de aba
+  useEffect(() => {
+    // 1. Interceptar fechamento ou recarregamento da aba (Aviso nativo do navegador)
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isRunning) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+
+    // 2. Interceptar cliques nos links internos (ex: Sidebar)
+    const handleLinkClick = (e: MouseEvent) => {
+      if (!isRunning) return
+      
+      const target = e.target as HTMLElement
+      const anchor = target.closest('a')
+      
+      if (anchor && anchor.href) {
+        const url = new URL(anchor.href)
+        
+        // Se for um link para dentro do nosso app, mas para outra página que não seja o timer
+        if (url.origin === window.location.origin && url.pathname !== '/dashboard/timer') {
+          e.preventDefault()
+          e.stopPropagation() // Interrompe o Link do Next.js
+          
+          setPendingPath(url.pathname)
+          setIsLeaveModalOpen(true)
+        }
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    // O "true" no final faz o evento ser interceptado na fase de captura (antes do Next.js)
+    document.addEventListener('click', handleLinkClick, true) 
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      document.removeEventListener('click', handleLinkClick, true)
+    }
+  }, [isRunning])
+
   const handlePhaseChange = useCallback((action: string, delta?: number) => {
     if (action === 'tick_study' && delta) {
       setTotalStudySeconds(prev => prev + delta)
@@ -333,6 +379,14 @@ export default function TimerPage() {
   setIsResetTimerConfirmOpen(false)
 }
 
+const executeLeavePage = () => {
+    setIsRunning(false) // Garante que o timer seja pausado
+    setIsLeaveModalOpen(false)
+    if (pendingPath) {
+      router.push(pendingPath) // Navega para a página clicada
+    }
+  }
+
 const handleResetTimer = () => {
   setIsResetTimerConfirmOpen(true)
 }
@@ -411,25 +465,29 @@ const handleDeleteSession = (id: string) => {
   setSessionToDelete(id)
 }
 
-  const handleSaveSettings = () => {
-    if (isRunning || totalStudySeconds > 0 || currentDisplaySeconds > 0) {
-      if (!confirm('Alterar as configurações reiniciará o timer atual. Deseja continuar?')) {
-        return
-      }
-    }
-    setTimerConfig(draftConfig)
-    setIsSettingsOpen(false)
-    setIsRunning(false)
-    setPhase('idle')
-    setTotalStudySeconds(0)
-    setPomodoroCycles(0)
-    if (draftConfig.type === 'pomodoro') {
-      setCurrentDisplaySeconds(draftConfig.pomodoroStudy * 60)
-    } else {
-      setCurrentDisplaySeconds(0)
-    }
-    setResetKey(prev => prev + 1)
+  const executeSaveSettings = () => {
+  setTimerConfig(draftConfig)
+  setIsSettingsOpen(false)
+  setIsRunning(false)
+  setPhase('idle')
+  setTotalStudySeconds(0)
+  setPomodoroCycles(0)
+  if (draftConfig.type === 'pomodoro') {
+    setCurrentDisplaySeconds(draftConfig.pomodoroStudy * 60)
+  } else {
+    setCurrentDisplaySeconds(0)
   }
+  setResetKey(prev => prev + 1)
+  setIsSettingsConfirmOpen(false)
+}
+
+const handleSaveSettings = () => {
+  if (isRunning || totalStudySeconds > 0 || currentDisplaySeconds > 0) {
+    setIsSettingsConfirmOpen(true)
+    return
+  }
+  executeSaveSettings()
+}
 
   const openSettings = () => {
     setDraftConfig(timerConfig)
@@ -1051,6 +1109,26 @@ const handleDeleteSession = (id: string) => {
   onConfirm={executeResetTimer}
   onCancel={() => setIsResetTimerConfirmOpen(false)}
 />
+    <ConfirmModal
+  isOpen={isSettingsConfirmOpen}
+  title="Alterar Configurações"
+  message="Alterar as configurações reiniciará o timer atual. O progresso não salvo será perdido. Deseja continuar?"
+  confirmText="Sim, alterar"
+  onConfirm={executeSaveSettings}
+  onCancel={() => setIsSettingsConfirmOpen(false)}
+/>
+    <ConfirmModal
+        isOpen={isLeaveModalOpen}
+        title="Timer em andamento"
+        message="Se você sair desta página, seu timer será pausado automaticamente. Deseja continuar?"
+        confirmText="Sair e Pausar"
+        isDanger={false}
+        onConfirm={executeLeavePage}
+        onCancel={() => {
+          setIsLeaveModalOpen(false)
+          setPendingPath(null)
+        }}
+      />
     </div>
   )
 }
