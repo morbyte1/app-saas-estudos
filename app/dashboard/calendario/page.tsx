@@ -207,9 +207,9 @@ export default function CalendarioPage() {
           }))
         }
         setShowNewSubject(false)
-        toast("Tag criada com sucesso!", "success")
+        toast("Categoria criada com sucesso!", "success")
       } else {
-        toast('Não foi possível criar a matéria/tag. Erro: ' + result.error, "error")
+        toast('Não foi possível criar a categoria. Erro: ' + result.error, "error")
       }
     } catch (err) {
       toast('Erro inesperado ao tentar salvar a matéria.', "error")
@@ -232,7 +232,7 @@ export default function CalendarioPage() {
     }
 
     if (!finalSubjectId) {
-      toast("Por favor, selecione ou crie uma matéria (tag).", "error")
+      toast("Por favor, selecione ou crie uma categoria.", "error")
       return
     }
 
@@ -764,7 +764,7 @@ export default function CalendarioPage() {
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <label className="block text-sm font-medium text-slate-700">
-                          Tags
+                          Categoria
                         </label>
                         {!showNewSubject && (
                           <button
@@ -772,7 +772,7 @@ export default function CalendarioPage() {
                             onClick={() => setShowNewSubject(true)}
                             className="text-primary-600 text-xs font-bold flex items-center gap-1 hover:text-primary-700"
                           >
-                            <Plus className="w-3 h-3" /> Nova Tag
+                            <Plus className="w-3 h-3" /> Nova Categoria
                           </button>
                         )}
                       </div>
@@ -793,7 +793,7 @@ export default function CalendarioPage() {
                       ) : (
                         <div className="space-y-3 bg-primary-50 border border-primary-100 p-4 rounded-xl">
                           <div className="flex justify-between items-center">
-                            <h4 className="text-sm font-bold text-primary-900">Criação de tags</h4>
+                            <h4 className="text-sm font-bold text-primary-900">Criação de categorias</h4>
                             <button type="button" onClick={() => setShowNewSubject(false)} className="text-slate-400 hover:text-slate-600">
                               <X className="w-4 h-4" />
                             </button>

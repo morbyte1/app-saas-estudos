@@ -175,7 +175,7 @@ export default function DashboardClient({ initialEvents, initialSubjects, initia
 
   const handleSaveTask = async () => {
     if (!taskModalData.title.trim() || !taskModalData.selection) {
-      toast("Por favor, preencha o nome da tarefa e selecione uma matéria ou tag.", "error")
+      toast("Por favor, preencha o nome da tarefa e selecione uma categoria.", "error")
       return
     }
 
@@ -687,7 +687,7 @@ export default function DashboardClient({ initialEvents, initialSubjects, initia
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-slate-700">
-                    Matéria ou Tag Padrão
+                    Categoria
                   </label>
                 </div>
                 
@@ -696,8 +696,8 @@ export default function DashboardClient({ initialEvents, initialSubjects, initia
                   onChange={(e) => setTaskModalData({ ...taskModalData, selection: e.target.value })}
                   className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="" disabled>Selecione uma matéria ou tag</option>
-                  <optgroup label="Tags Padrões">
+                  <option value="" disabled>Selecione uma categoria</option>
+                  <optgroup label="Padrões">
                     <option value="tag:simulado">Simulado</option>
                     <option value="tag:questoes">Questões</option>
                     <option value="tag:revisao">Revisão</option>
