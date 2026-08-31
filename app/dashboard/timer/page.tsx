@@ -128,12 +128,14 @@ export default function TimerPage() {
     type: 'cronometro' | 'pomodoro',
     pomodoroStudy: number,
     pomodoroRest: number,
-    cronometroRestPerc: number
+    cronometroRestPerc: number,
+    autoStartRest: boolean
   }>({
     type: 'cronometro',
     pomodoroStudy: 25,
     pomodoroRest: 5,
-    cronometroRestPerc: 20
+    cronometroRestPerc: 20,
+    autoStartRest: false
   })
   const [draftConfig, setDraftConfig] = useState(timerConfig)
 
@@ -163,12 +165,35 @@ export default function TimerPage() {
     questionsWrong: ''
   })
 
-  // Tocar alarme na transição de estudo para descanso
+  // Carrega configurações salvas no localStorage ao iniciar
   useEffect(() => {
-    if (phase === 'rest') {
+    const saved = localStorage.getItem('revyza-timer-config')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        setTimerConfig(parsed)
+        setDraftConfig(parsed)
+        if (parsed.type === 'pomodoro' && phase === 'idle' && currentDisplaySeconds === 0) {
+          setCurrentDisplaySeconds(parsed.pomodoroStudy * 60)
+        }
+      } catch (e) {
+        console.error("Erro ao carregar configurações do timer", e)
+      }
+    }
+  }, [])
+
+  const previousPhaseRef = useRef(phase)
+
+  // Tocar alarme na transição de estudo para descanso e vice-versa
+  useEffect(() => {
+    if (
+      (phase === 'rest' && previousPhaseRef.current === 'study') ||
+      (phase === 'idle' && previousPhaseRef.current === 'rest')
+    ) {
       const audio = new Audio('/sound.mp3')
       audio.play().catch(e => console.error("Erro ao tocar alarme:", e))
     }
+    previousPhaseRef.current = phase
   }, [phase])
 
   useEffect(() => {
@@ -247,9 +272,8 @@ export default function TimerPage() {
     }
   }, [manualForm.materiaId, isManualModalOpen, materias])
 
-// Efeito para interceptar navegação e fechamento de aba
+  // Efeito para interceptar navegação e fechamento de aba
   useEffect(() => {
-    // 1. Interceptar fechamento ou recarregamento da aba (Aviso nativo do navegador)
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isRunning) {
         e.preventDefault()
@@ -257,7 +281,6 @@ export default function TimerPage() {
       }
     }
 
-    // 2. Interceptar cliques nos links internos (ex: Sidebar)
     const handleLinkClick = (e: MouseEvent) => {
       if (!isRunning) return
       
@@ -267,10 +290,9 @@ export default function TimerPage() {
       if (anchor && anchor.href) {
         const url = new URL(anchor.href)
         
-        // Se for um link para dentro do nosso app, mas para outra página que não seja o timer
         if (url.origin === window.location.origin && url.pathname !== '/dashboard/timer') {
           e.preventDefault()
-          e.stopPropagation() // Interrompe o Link do Next.js
+          e.stopPropagation() 
           
           setPendingPath(url.pathname)
           setIsLeaveModalOpen(true)
@@ -279,7 +301,6 @@ export default function TimerPage() {
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
-    // O "true" no final faz o evento ser interceptado na fase de captura (antes do Next.js)
     document.addEventListener('click', handleLinkClick, true) 
 
     return () => {
@@ -296,6 +317,11 @@ export default function TimerPage() {
       if (phase === 'study') {
         setPhase('rest')
         setCurrentDisplaySeconds(timerConfig.pomodoroRest * 60)
+        
+        // Se a opção de Auto-Start estiver desativada no Pomodoro, pausa o Timer
+        if (timerConfig.type === 'pomodoro' && !timerConfig.autoStartRest) {
+          setIsRunning(false)
+        }
       } else {
         setIsRunning(false)
         setPhase('idle')
@@ -366,30 +392,30 @@ export default function TimerPage() {
   }
 
   const executeResetTimer = () => {
-  setIsRunning(false)
-  setTotalStudySeconds(0)
-  setPomodoroCycles(0)
-  setPhase('idle')
-  if (timerConfig.type === 'pomodoro') {
-    setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
-  } else {
-    setCurrentDisplaySeconds(0)
+    setIsRunning(false)
+    setTotalStudySeconds(0)
+    setPomodoroCycles(0)
+    setPhase('idle')
+    if (timerConfig.type === 'pomodoro') {
+      setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
+    } else {
+      setCurrentDisplaySeconds(0)
+    }
+    setResetKey(prev => prev + 1)
+    setIsResetTimerConfirmOpen(false)
   }
-  setResetKey(prev => prev + 1)
-  setIsResetTimerConfirmOpen(false)
-}
 
-const executeLeavePage = () => {
-    setIsRunning(false) // Garante que o timer seja pausado
+  const executeLeavePage = () => {
+    setIsRunning(false) 
     setIsLeaveModalOpen(false)
     if (pendingPath) {
-      router.push(pendingPath) // Navega para a página clicada
+      router.push(pendingPath) 
     }
   }
 
-const handleResetTimer = () => {
-  setIsResetTimerConfirmOpen(true)
-}
+  const handleResetTimer = () => {
+    setIsResetTimerConfirmOpen(true)
+  }
 
   const handleFinishRequest = () => {
     if (!selectedMateriaId || !selectedAssuntoId) {
@@ -447,47 +473,48 @@ const handleResetTimer = () => {
   }
 
   const executeDeleteSession = async () => {
-  if (!sessionToDelete) return
-  setIsLoading(true)
-  const result = await deleteTimerSession(sessionToDelete)
-  
-  if (result.success) {
-    setHistorySessions(prev => prev.filter(session => session.id !== sessionToDelete))
-    toast("Registro excluído.", "success")
-  } else {
-    toast('Erro ao excluir registro: ' + result.error, "error")
+    if (!sessionToDelete) return
+    setIsLoading(true)
+    const result = await deleteTimerSession(sessionToDelete)
+    
+    if (result.success) {
+      setHistorySessions(prev => prev.filter(session => session.id !== sessionToDelete))
+      toast("Registro excluído.", "success")
+    } else {
+      toast('Erro ao excluir registro: ' + result.error, "error")
+    }
+    setIsLoading(false)
+    setSessionToDelete(null)
   }
-  setIsLoading(false)
-  setSessionToDelete(null)
-}
 
-const handleDeleteSession = (id: string) => {
-  setSessionToDelete(id)
-}
+  const handleDeleteSession = (id: string) => {
+    setSessionToDelete(id)
+  }
 
   const executeSaveSettings = () => {
-  setTimerConfig(draftConfig)
-  setIsSettingsOpen(false)
-  setIsRunning(false)
-  setPhase('idle')
-  setTotalStudySeconds(0)
-  setPomodoroCycles(0)
-  if (draftConfig.type === 'pomodoro') {
-    setCurrentDisplaySeconds(draftConfig.pomodoroStudy * 60)
-  } else {
-    setCurrentDisplaySeconds(0)
+    setTimerConfig(draftConfig)
+    localStorage.setItem('revyza-timer-config', JSON.stringify(draftConfig))
+    setIsSettingsOpen(false)
+    setIsRunning(false)
+    setPhase('idle')
+    setTotalStudySeconds(0)
+    setPomodoroCycles(0)
+    if (draftConfig.type === 'pomodoro') {
+      setCurrentDisplaySeconds(draftConfig.pomodoroStudy * 60)
+    } else {
+      setCurrentDisplaySeconds(0)
+    }
+    setResetKey(prev => prev + 1)
+    setIsSettingsConfirmOpen(false)
   }
-  setResetKey(prev => prev + 1)
-  setIsSettingsConfirmOpen(false)
-}
 
-const handleSaveSettings = () => {
-  if (isRunning || totalStudySeconds > 0 || currentDisplaySeconds > 0) {
-    setIsSettingsConfirmOpen(true)
-    return
+  const handleSaveSettings = () => {
+    if (isRunning || totalStudySeconds > 0 || currentDisplaySeconds > 0) {
+      setIsSettingsConfirmOpen(true)
+      return
+    }
+    executeSaveSettings()
   }
-  executeSaveSettings()
-}
 
   const openSettings = () => {
     setDraftConfig(timerConfig)
@@ -846,28 +873,46 @@ const handleSaveSettings = () => {
               </div>
 
               {draftConfig.type === 'pomodoro' ? (
-                <div className="space-y-3">
-                  <label className="block text-sm font-medium text-slate-700">Selecione o formato</label>
-                  <div className="grid grid-cols-1 gap-2">
-                    {[
-                      { s: 25, r: 5 },
-                      { s: 30, r: 5 },
-                      { s: 45, r: 10 },
-                      { s: 50, r: 10 },
-                      { s: 60, r: 15 }
-                    ].map((preset, idx) => {
-                      const isSelected = draftConfig.pomodoroStudy === preset.s && draftConfig.pomodoroRest === preset.r;
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => setDraftConfig({...draftConfig, pomodoroStudy: preset.s, pomodoroRest: preset.r})}
-                          className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${isSelected ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}
-                        >
-                          <span className="font-bold">{preset.s} min estudo</span>
-                          <span className="text-sm font-medium opacity-80">{preset.r} min descanso</span>
-                        </button>
-                      )
-                    })}
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-slate-700">Selecione o formato</label>
+                    <div className="grid grid-cols-1 gap-2">
+                      {[
+                        { s: 25, r: 5 },
+                        { s: 30, r: 5 },
+                        { s: 45, r: 10 },
+                        { s: 50, r: 10 },
+                        { s: 60, r: 15 }
+                      ].map((preset, idx) => {
+                        const isSelected = draftConfig.pomodoroStudy === preset.s && draftConfig.pomodoroRest === preset.r;
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => setDraftConfig({...draftConfig, pomodoroStudy: preset.s, pomodoroRest: preset.r})}
+                            className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${isSelected ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}
+                          >
+                            <span className="font-bold">{preset.s} min estudo</span>
+                            <span className="text-sm font-medium opacity-80">{preset.r} min descanso</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div>
+                      <p className="font-bold text-sm text-slate-700">Iniciar descanso automático</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Começa o descanso sem precisar clicar.</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={draftConfig.autoStartRest || false} 
+                        onChange={(e) => setDraftConfig({...draftConfig, autoStartRest: e.target.checked})} 
+                      />
+                      <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:text-primary-600"></div>
+                    </label>
                   </div>
                 </div>
               ) : (
@@ -1092,31 +1137,31 @@ const handleSaveSettings = () => {
         </div>
       )}
     <ConfirmModal
-  isOpen={!!sessionToDelete}
-  title="Excluir Registro"
-  message="Tem certeza que deseja excluir este registro de estudo do seu histórico?"
-  confirmText="Sim, excluir"
-  onConfirm={executeDeleteSession}
-  onCancel={() => setSessionToDelete(null)}
-  isLoading={isLoading}
-/>
+      isOpen={!!sessionToDelete}
+      title="Excluir Registro"
+      message="Tem certeza que deseja excluir este registro de estudo do seu histórico?"
+      confirmText="Sim, excluir"
+      onConfirm={executeDeleteSession}
+      onCancel={() => setSessionToDelete(null)}
+      isLoading={isLoading}
+    />
 
-<ConfirmModal
-  isOpen={isResetTimerConfirmOpen}
-  title="Zerar Timer"
-  message="Deseja realmente zerar o timer atual? O progresso não salvo será perdido."
-  confirmText="Sim, zerar"
-  onConfirm={executeResetTimer}
-  onCancel={() => setIsResetTimerConfirmOpen(false)}
-/>
     <ConfirmModal
-  isOpen={isSettingsConfirmOpen}
-  title="Alterar Configurações"
-  message="Alterar as configurações reiniciará o timer atual. O progresso não salvo será perdido. Deseja continuar?"
-  confirmText="Sim, alterar"
-  onConfirm={executeSaveSettings}
-  onCancel={() => setIsSettingsConfirmOpen(false)}
-/>
+      isOpen={isResetTimerConfirmOpen}
+      title="Zerar Timer"
+      message="Deseja realmente zerar o timer atual? O progresso não salvo será perdido."
+      confirmText="Sim, zerar"
+      onConfirm={executeResetTimer}
+      onCancel={() => setIsResetTimerConfirmOpen(false)}
+    />
+    <ConfirmModal
+      isOpen={isSettingsConfirmOpen}
+      title="Alterar Configurações"
+      message="Alterar as configurações reiniciará o timer atual. O progresso não salvo será perdido. Deseja continuar?"
+      confirmText="Sim, alterar"
+      onConfirm={executeSaveSettings}
+      onCancel={() => setIsSettingsConfirmOpen(false)}
+    />
     <ConfirmModal
         isOpen={isLeaveModalOpen}
         title="Timer em andamento"
