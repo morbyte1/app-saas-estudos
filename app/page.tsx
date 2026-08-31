@@ -170,7 +170,8 @@ export default function LandingPage() {
             <Image src="/logo.png" alt="Revyza Logo" width={100} height={30} className="object-contain" />
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/login" className="hidden sm:block text-sm font-semibold text-[#243E36] hover:text-[#7CA982] transition-colors">
+            {/* O "hidden sm:block" foi removido na linha abaixo */}
+            <Link href="/login" className="text-sm font-semibold text-[#243E36] hover:text-[#7CA982] transition-colors">
               Entrar
             </Link>
             <Link href="/login" className="rounded-full bg-[#243E36] px-5 py-2 text-sm font-semibold text-[#F1F7ED] shadow-sm transition-all hover:bg-[#7CA982] hover:-translate-y-0.5">
@@ -187,18 +188,6 @@ export default function LandingPage() {
         <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[300px] h-[300px] sm:w-[600px] sm:h-[400px] bg-[#7CA982]/25 rounded-full blur-[80px] -z-0 pointer-events-none" />
 
         <ScrollReveal className="relative z-10 mx-auto max-w-3xl text-center">
-          
-<div className="flex justify-center mb-8">
-   <Image 
-     src="/logo.png" 
-     alt="Revyza Logo" 
-     width={220} 
-     height={65} 
-     className="object-contain" 
-     priority 
-   />
-</div>
-
           <div className="mb-6 flex items-center justify-center gap-3">
             <div className="flex -space-x-2">
               <div className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-[#F1F7ED] bg-[#243E36] text-[10px] font-bold text-white shadow-sm">📚</div>
