@@ -188,9 +188,16 @@ export default function LandingPage() {
 
         <ScrollReveal className="relative z-10 mx-auto max-w-3xl text-center">
           
-          <div className="flex justify-center mb-6">
-             <Image src="/logo.png" alt="Revyza Logo" width={140} height={40} className="object-contain" priority />
-          </div>
+<div className="flex justify-center mb-8">
+   <Image 
+     src="/logo.png" 
+     alt="Revyza Logo" 
+     width={220} 
+     height={65} 
+     className="object-contain" 
+     priority 
+   />
+</div>
 
           <div className="mb-6 flex items-center justify-center gap-3">
             <div className="flex -space-x-2">
@@ -295,21 +302,21 @@ export default function LandingPage() {
                   </p>
                 </div>
 
-                <div
-                  className={`flex aspect-[4/3] flex-col items-center justify-center overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-[#243E36]/10 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_8px_24px_-12px_rgba(36,62,54,0.2)] cursor-zoom-in group ${
-                    i % 2 === 1 ? "md:order-1" : ""
-                  }`}
-                  onClick={() => setZoomedImage(pillar.imageSrc)}
-                  title="Clique para ampliar"
-                >
-                  <Image 
-                    src={pillar.imageSrc} 
-                    alt={pillar.imageAlt} 
-                    width={800} 
-                    height={600} 
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-                  />
-                </div>
+ <div
+  className={`relative overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-[#243E36]/10 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_8px_24px_-12px_rgba(36,62,54,0.2)] cursor-zoom-in group ${
+    i % 2 === 1 ? "md:order-1" : ""
+  }`}
+  onClick={() => setZoomedImage(pillar.imageSrc)}
+  title="Clique para ampliar"
+>
+  <Image 
+    src={pillar.imageSrc} 
+    alt={pillar.imageAlt} 
+    width={1200} 
+    height={675} 
+    className="w-full h-auto object-contain transition-transform duration-700 group-hover:scale-[1.03]"
+  />
+</div>
               </ScrollReveal>
             ))}
           </div>
