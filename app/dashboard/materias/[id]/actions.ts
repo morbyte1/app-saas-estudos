@@ -3,7 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-export async function getMateriaByName(name: string) {
+export async function getMateriaById(id: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
@@ -12,7 +12,7 @@ export async function getMateriaByName(name: string) {
     .from('materias')
     .select('*')
     .eq('user_id', user.id)
-    .ilike('name', name) 
+    .eq('id', id)
     .single()
 
   if (error) return { error: error.message }
@@ -87,7 +87,7 @@ export async function createTopico(materiaId: string, name: string) {
     .single()
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/materias/[materia]', 'page')
+  revalidatePath('/dashboard/materias/[id]', 'page')
   return { topico: data }
 }
 
@@ -105,7 +105,7 @@ export async function updateTopico(topicoId: string, name: string) {
     .single()
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/materias/[materia]', 'page')
+  revalidatePath('/dashboard/materias/[id]', 'page')
   return { topico: data }
 }
 
@@ -114,7 +114,6 @@ export async function deleteTopico(topicoId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
 
-  // CORREÇÃO: Chamada dupla removida. A constraint ON DELETE CASCADE resolve os assuntos atrelados.
   const { error } = await supabase
     .from('topicos')
     .delete()
@@ -122,7 +121,7 @@ export async function deleteTopico(topicoId: string) {
     .eq('user_id', user.id)
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/materias/[materia]', 'page')
+  revalidatePath('/dashboard/materias/[id]', 'page')
   return { success: true }
 }
 
@@ -138,7 +137,7 @@ export async function createAssunto(topicoId: string, name: string, durationMinu
     .single()
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/materias/[materia]', 'page')
+  revalidatePath('/dashboard/materias/[id]', 'page')
   return { assunto: data }
 }
 
@@ -156,7 +155,7 @@ export async function updateAssunto(assuntoId: string, name: string) {
     .single()
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/materias/[materia]', 'page')
+  revalidatePath('/dashboard/materias/[id]', 'page')
   return { assunto: data }
 }
 
@@ -172,7 +171,7 @@ export async function deleteAssunto(assuntoId: string) {
     .eq('user_id', user.id)
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/materias/[materia]', 'page')
+  revalidatePath('/dashboard/materias/[id]', 'page')
   return { success: true }
 }
 
@@ -188,6 +187,6 @@ export async function toggleAssunto(assuntoId: string, isDone: boolean) {
     .eq('user_id', user.id)
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/materias/[materia]', 'page')
+  revalidatePath('/dashboard/materias/[id]', 'page')
   return { success: true }
 }

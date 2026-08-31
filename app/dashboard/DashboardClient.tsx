@@ -8,7 +8,6 @@ import { useToast } from '@/components/ToastContext'
 import { getTasks, createTask, updateTask, deleteTask, toggleTaskStatus, createExamGoal, updateExamGoal, deleteExamGoal } from './actions'
 
 interface Event { id: string; title: string; time: string; duration: number; subject_id: string; is_done: boolean; event_date: string }
-interface Subject { id: string; name: string; color: string }
 interface Materia { id: string; name: string }
 interface Task { id: string; title: string; materia_id?: string | null; tag_padrao?: string | null; priority: 'baixa' | 'normal' | 'alta'; is_done: boolean }
 interface TopSubject { id: string; name: string; goalHours: number; studiedHours: number; studiedMinutes: number; progress: number }
@@ -16,7 +15,6 @@ interface DashboardStats { userName: string; todayMinutes: number; totalHours: n
 
 interface DashboardClientProps {
   initialEvents: Event[];
-  initialSubjects: Subject[];
   initialTasks: Task[];
   initialStats: DashboardStats | null;
   initialMaterias: Materia[];
@@ -43,9 +41,8 @@ const TAGS_PADRAO = {
   revisao: { name: 'Revisão', colorClass: 'text-blue-600 bg-blue-100' }
 }
 
-export default function DashboardClient({ initialEvents, initialSubjects, initialTasks, initialStats, initialMaterias }: DashboardClientProps) {
+export default function DashboardClient({ initialEvents, initialTasks, initialStats, initialMaterias }: DashboardClientProps) {
   const [events, setEvents] = useState<Event[]>(initialEvents)
-  const [subjects, setSubjects] = useState<Subject[]>(initialSubjects)
   const [materias, setMaterias] = useState<Materia[]>(initialMaterias)
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [stats, setStats] = useState<DashboardStats | null>(initialStats)
@@ -160,11 +157,6 @@ export default function DashboardClient({ initialEvents, initialSubjects, initia
     const mins = totalMinutes % 60
     if (hours > 0) return `${hours}h ${mins}min`
     return `${mins}min`
-  }
-
-  const getSubjectColorStyle = (color: string) => {
-    if (color && color.startsWith('#')) return { backgroundColor: color }
-    return {}
   }
 
   const getSubjectColorClass = (color: string) => {
@@ -545,9 +537,8 @@ const handleDeleteExamGoal = (id: string) => {
                   </div>
                 ) : (
                   eventsWithStatus.map((event) => {
-                    const subject = subjects.find(s => s.id === event.subject_id)
-                    const colorClass = getSubjectColorClass(subject?.color || 'purple')
-                    const colorStyle = getSubjectColorStyle(subject?.color || '')
+                    const materia = materias.find(m => m.id === event.subject_id)
+                    const colorClass = getSubjectColorClass('purple') // Removido cor da materia que não existia nela
 
                     return (
                       <div key={event.id} className="flex items-center gap-4">
@@ -557,7 +548,6 @@ const handleDeleteExamGoal = (id: string) => {
                         </div>
                         <div 
                           className={`w-1 h-10 rounded-full mx-4 ${colorClass}`}
-                          style={colorStyle}
                         ></div>
                         <div className={`flex-1 text-sm font-semibold ${event.is_done ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
                           {event.title}
@@ -831,24 +821,24 @@ const handleDeleteExamGoal = (id: string) => {
         </div>
       )}
     <ConfirmModal
-  isOpen={!!taskToDelete}
-  title="Excluir Tarefa"
-  message="Tem certeza que deseja excluir esta tarefa?"
-  confirmText="Sim, excluir"
-  onConfirm={executeDeleteTask}
-  onCancel={() => setTaskToDelete(null)}
-  isLoading={isDeletingBlock}
-/>
+      isOpen={!!taskToDelete}
+      title="Excluir Tarefa"
+      message="Tem certeza que deseja excluir esta tarefa?"
+      confirmText="Sim, excluir"
+      onConfirm={executeDeleteTask}
+      onCancel={() => setTaskToDelete(null)}
+      isLoading={isDeletingBlock}
+    />
 
-<ConfirmModal
-  isOpen={!!examToDelete}
-  title="Excluir Meta de Prova"
-  message="Tem certeza que deseja excluir sua meta de prova?"
-  confirmText="Sim, excluir"
-  onConfirm={executeDeleteExamGoal}
-  onCancel={() => setExamToDelete(null)}
-  isLoading={isDeletingBlock}
-/>
+    <ConfirmModal
+      isOpen={!!examToDelete}
+      title="Excluir Meta de Prova"
+      message="Tem certeza que deseja excluir sua meta de prova?"
+      confirmText="Sim, excluir"
+      onConfirm={executeDeleteExamGoal}
+      onCancel={() => setExamToDelete(null)}
+      isLoading={isDeletingBlock}
+    />
     </div>
   )
 }

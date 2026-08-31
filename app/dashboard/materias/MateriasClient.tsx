@@ -25,7 +25,7 @@ const SubjectCard = ({ materia, onEdit }: { materia: Materia, onEdit: (m: Materi
       <h3 className="text-lg font-bold text-slate-900">{materia.name}</h3>
       <div className="flex items-center gap-1">
         <Link 
-          href={`/dashboard/materias/${encodeURIComponent(materia.name)}`}
+          href={`/dashboard/materias/${materia.id}`}
           title="Ver detalhes"
           className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-md transition flex items-center justify-center"
         >
@@ -196,7 +196,7 @@ const handleDelete = (id: string) => {
             </div>
             <h2 className="text-xl font-bold text-slate-900 mb-2">Você ainda não configurou nenhuma matéria</h2>
             <p className="text-slate-500 text-sm mb-6 max-w-sm">
-              Adicione suas matérias para organizar seus estudos e acompanhar seu progresso semanalmente.
+              Adicione suas matérias para organizar seus estudos e acompanhe seu progresso semanalmente.
             </p>
             <button
               onClick={openCreateModal}
@@ -288,14 +288,14 @@ const handleDelete = (id: string) => {
         </div>
       )}
     <ConfirmModal
-  isOpen={!!materiaToDelete}
-  title="Excluir Matéria"
-  message="Tem certeza que deseja excluir esta matéria? Todos os dados, tópicos e histórico vinculados a ela serão perdidos."
-  confirmText="Sim, excluir"
-  onConfirm={executeDeleteMateria}
-  onCancel={() => setMateriaToDelete(null)}
-  isLoading={isSaving}
-/>
+      isOpen={!!materiaToDelete}
+      title="Excluir Matéria"
+      message="Tem certeza que deseja excluir esta matéria? Todos os dados, tópicos e histórico vinculados a ela serão perdidos."
+      confirmText="Sim, excluir"
+      onConfirm={executeDeleteMateria}
+      onCancel={() => setMateriaToDelete(null)}
+      isLoading={isSaving}
+    />
     </div>
   )
 }

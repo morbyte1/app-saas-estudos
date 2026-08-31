@@ -5,7 +5,7 @@ import ConfirmModal from '@/components/ConfirmModal'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useToast } from '@/components/ToastContext'
 import { getMaterias } from '@/app/dashboard/materias/actions'
-import { getTopicosEAssuntos } from '@/app/dashboard/materias/[materia]/actions'
+import { getTopicosEAssuntos } from '@/app/dashboard/materias/[id]/actions'
 import { saveTimerSession, getTimerHistory, deleteTimerSession } from './actions'
 import { ChevronDown, Settings, Maximize, Minimize, Plus, ChevronRight, HelpCircle, X, CheckCircle, XCircle, Clock, Book, FileText, Play, Pause, Check, Coffee, Trash2, RefreshCw, RotateCcw } from 'lucide-react'
 

@@ -12,7 +12,7 @@ import {
   updateAssunto, 
   deleteAssunto, 
   toggleAssunto 
-} from '@/app/dashboard/materias/[materia]/actions'
+} from '@/app/dashboard/materias/[id]/actions'
 
 interface Materia {
   id: string
@@ -471,25 +471,25 @@ const handleDeleteAssunto = (assuntoId: string) => {
           </div>
         </div>
       )}
-<ConfirmModal
-  isOpen={!!topicoToDelete}
-  title="Excluir Tópico"
-  message="Tem certeza que deseja excluir este tópico? Todos os assuntos vinculados a ele também serão apagados."
-  confirmText="Sim, excluir"
-  onConfirm={executeDeleteTopico}
-  onCancel={() => setTopicoToDelete(null)}
-  isLoading={isDeletingItems}
-/>
+      <ConfirmModal
+        isOpen={!!topicoToDelete}
+        title="Excluir Tópico"
+        message="Tem certeza que deseja excluir este tópico? Todos os assuntos vinculados a ele também serão apagados."
+        confirmText="Sim, excluir"
+        onConfirm={executeDeleteTopico}
+        onCancel={() => setTopicoToDelete(null)}
+        isLoading={isDeletingItems}
+      />
 
-<ConfirmModal
-  isOpen={!!assuntoToDelete}
-  title="Excluir Assunto"
-  message="Tem certeza que deseja excluir este assunto?"
-  confirmText="Sim, excluir"
-  onConfirm={executeDeleteAssunto}
-  onCancel={() => setAssuntoToDelete(null)}
-  isLoading={isDeletingItems}
-/>
+      <ConfirmModal
+        isOpen={!!assuntoToDelete}
+        title="Excluir Assunto"
+        message="Tem certeza que deseja excluir este assunto?"
+        confirmText="Sim, excluir"
+        onConfirm={executeDeleteAssunto}
+        onCancel={() => setAssuntoToDelete(null)}
+        isLoading={isDeletingItems}
+      />
     </>
   )
 }

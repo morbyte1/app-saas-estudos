@@ -13,7 +13,7 @@ export async function getCalendarData() {
 
   if (userError || !user) {
     console.error('Error getting user:', userError?.message)
-    return { error: 'User not authenticated', events: [], subjects: [] }
+    return { error: 'User not authenticated', events: [], materias: [] }
   }
 
   // Fetch events
@@ -25,21 +25,21 @@ export async function getCalendarData() {
 
   if (eventsError) {
     console.error('Error fetching events:', eventsError.message)
-    return { error: eventsError.message, events: [], subjects: [] }
+    return { error: eventsError.message, events: [], materias: [] }
   }
 
-  // Fetch subjects
-  const { data: subjects, error: subjectsError } = await supabase
-    .from('subjects')
+  // Fetch materias instead of subjects
+  const { data: materias, error: materiasError } = await supabase
+    .from('materias')
     .select('*')
     .eq('user_id', user.id)
 
-  if (subjectsError) {
-    console.error('Error fetching subjects:', subjectsError.message)
-    return { error: subjectsError.message, events: events || [], subjects: [] }
+  if (materiasError) {
+    console.error('Error fetching materias:', materiasError.message)
+    return { error: materiasError.message, events: events || [], materias: [] }
   }
 
-  return { events: events || [], subjects: subjects || [] }
+  return { events: events || [], materias: materias || [] }
 }
 
 export async function createEvent(data: {
@@ -172,42 +172,6 @@ export async function toggleEventStatus(id: string, is_done: boolean) {
 
   revalidatePath('/dashboard/calendario')
   return { success: true }
-}
-
-export async function createSubject(data: {
-  name: string
-  color: string
-}) {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    console.error('Error getting user:', userError?.message)
-    return { error: 'User not authenticated', subject: null }
-  }
-
-  // CORREÇÃO: Cadeia direta .insert().select().single()
-  const { data: newSubject, error } = await supabase
-    .from('subjects')
-    .insert({
-      user_id: user.id,
-      name: data.name,
-      color: data.color,
-    })
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error creating subject:', error.message)
-    return { error: error.message, subject: null }
-  }
-
-  revalidatePath('/dashboard/calendario')
-  return { success: true, subject: newSubject }
 }
 
 export async function duplicateEvents(

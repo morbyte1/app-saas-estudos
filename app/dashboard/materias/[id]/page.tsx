@@ -1,20 +1,17 @@
-import { getMateriaByName, getTopicosEAssuntos } from './actions'
+import { getMateriaById, getTopicosEAssuntos } from './actions'
 import TopicsManager from '@/components/TopicsManager'
 import { redirect } from 'next/navigation'
 
 export default async function MateriaDetalhesPage({
   params
 }: {
-  params: Promise<{ materia: string }>
+  params: Promise<{ id: string }>
 }) {
   // 1. Aguarda a resolução dos parâmetros (Obrigatório no Next.js 16)
   const resolvedParams = await params
-  
-  // 2. Garante que o nome da matéria não venha com caracteres de URL (%20, %C3)
-  const materiaName = decodeURIComponent(resolvedParams.materia)
 
-  // 3. Busca a matéria no banco
-  const { materia, error: materiaError } = await getMateriaByName(materiaName)
+  // 2. Busca a matéria no banco pelo ID
+  const { materia, error: materiaError } = await getMateriaById(resolvedParams.id)
   
   // Se houver erro ou não encontrar a matéria, redireciona de volta
   if (materiaError || !materia) {

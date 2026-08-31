@@ -12,7 +12,6 @@ export default async function DashboardPage() {
   ])
 
   const events = calendarResult.error ? [] : (calendarResult.events || [])
-  const subjects = calendarResult.error ? [] : (calendarResult.subjects || [])
   const tasks = tasksResult.error ? [] : (tasksResult.tasks || [])
   const stats = statsResult?.success && statsResult.data ? statsResult.data : null
   const materias = materiasResult?.success && materiasResult.data ? materiasResult.data : []
@@ -20,7 +19,6 @@ export default async function DashboardPage() {
   return (
     <DashboardClient 
       initialEvents={events} 
-      initialSubjects={subjects} 
       initialTasks={tasks} 
       initialStats={stats as any} 
       initialMaterias={materias as any}
