@@ -1,5 +1,11 @@
 "use client";
 
+import { Dancing_Script } from "next/font/google";
+
+const dancing = Dancing_Script({
+  subsets: ["latin"],
+  weight: ["700"],
+});
 import {
   AlarmClockOff,
   ArrowRight,
@@ -71,23 +77,48 @@ const comparison = [
 export default function LandingPage() {
   return (
     <main className="scroll-smooth bg-[#F1F7ED] text-[#243E36] antialiased">
-      {/* 1. HERO */}
-      <section className="px-6 pt-20 pb-16 sm:pt-28 md:pb-24">
-        <div className="mx-auto max-w-3xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full bg-[#E0EEC6] px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-[#243E36]/80">
-            Revyza
-          </span>
-          <h1 className="mt-8 text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl md:text-6xl">
-            Você foca na prova. O Revyza cuida da burocracia.
+{/* 1. HERO (Agora Premium) */}
+      <section className="relative overflow-hidden px-6 pt-20 pb-16 sm:pt-28 md:pb-24">
+        
+        {/* EFEITO 2: Padrão de Pontilhados (Dot Pattern) cobrindo o fundo */}
+        <div className="absolute inset-0 z-0 bg-[radial-gradient(#d1d5db_1.5px,transparent_1.5px)] [background-size:24px_24px] opacity-70 pointer-events-none" />
+
+        {/* EFEITO 1: Brilho Radial (Glow) atrás do texto */}
+        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[300px] h-[300px] sm:w-[600px] sm:h-[400px] bg-[#7CA982]/25 rounded-full blur-[80px] -z-0 pointer-events-none" />
+
+        <div className="relative z-10 mx-auto max-w-3xl text-center">
+          
+          {/* EFEITO 3: Prova Social (Avatares) */}
+          <div className="mb-6 flex items-center justify-center gap-3">
+            <div className="flex -space-x-2">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-[#F1F7ED] bg-[#243E36] text-[10px] font-bold text-white shadow-sm">
+                📚
+              </div>
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-[#F1F7ED] bg-[#7CA982] text-[10px] font-bold text-white shadow-sm">
+                ⚡
+              </div>
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-[#F1F7ED] bg-[#C2A83E] text-[10px] font-bold text-white shadow-sm">
+                🎯
+              </div>
+            </div>
+            <span className="rounded-full bg-white/60 px-3 py-1 text-xs font-semibold text-[#243E36] shadow-sm backdrop-blur-sm border border-[#243E36]/5">
+              Mais de <strong className="text-[#7CA982]">20 estudantes</strong> já na fila
+            </span>
+          </div>
+
+          <h1 className="mt-6 text-4xl font-extrabold leading-[1.08] tracking-tight text-[#243E36] sm:text-5xl md:text-6xl drop-shadow-sm">
+            Você foca na prova. O <span className={`text-[#7CA982] ${dancing.className} font-normal tracking-normal`}>Revyza</span> cuida da burocracia.
           </h1>
+          
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#243E36]/75 md:text-xl">
             Sente-se e estude. Nós automatizamos o rastreio do seu tempo, calculamos sua
             precisão e dizemos exatamente onde você precisa melhorar.
           </p>
+          
           <div className="mt-10">
             <a
-              href="#garantir-vaga"
-              className="group inline-flex items-center gap-3 rounded-2xl bg-[#7CA982] px-8 py-4 text-base font-semibold text-white shadow-[0_8px_24px_-12px_rgba(36,62,54,0.35)] transition-all duration-300 hover:-translate-y-0.5 hover:brightness-105 md:text-lg"
+              href="/login"
+              className="group inline-flex items-center gap-3 rounded-2xl bg-[#7CA982] px-8 py-4 text-base font-semibold text-white shadow-[0_8px_24px_-12px_rgba(124,169,130,0.5)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-12px_rgba(124,169,130,0.6)] hover:brightness-105 md:text-lg"
             >
               Quero focar de verdade
               <ArrowRight
@@ -98,14 +129,23 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="mx-auto mt-16 max-w-6xl">
-          {/* Substitua pela imagem real:
-              <img src="/images/dashboard.png" alt="Dashboard do Revyza" className="aspect-video w-full rounded-2xl object-cover" /> */}
-          <div className="flex aspect-video flex-col items-center justify-center gap-3 rounded-2xl bg-[#E0EEC6] p-8 text-center ring-1 ring-[#243E36]/10">
-            <BarChart3 className="size-10 text-[#7CA982]" strokeWidth={1.5} aria-hidden />
-            <span className="text-sm font-medium text-[#243E36]/70">
-              Espaço para print do dashboard do Revyza
-            </span>
+        <div className="relative z-10 mx-auto mt-16 max-w-6xl">
+          {/* EFEITO EXTRA: Efeito de "Janela de Navegador" (Browser Mockup) para o Placeholder */}
+          <div className="overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-[#243E36]/10 transition-transform duration-700 hover:-translate-y-2">
+            {/* Barra superior do navegador fictício */}
+            <div className="flex items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-4 py-3">
+              <div className="size-2.5 rounded-full bg-red-400" />
+              <div className="size-2.5 rounded-full bg-amber-400" />
+              <div className="size-2.5 rounded-full bg-emerald-400" />
+            </div>
+            
+            {/* O interior do print */}
+            <div className="flex aspect-video flex-col items-center justify-center gap-3 bg-[#F1F7ED]/50 p-8 text-center">
+              <BarChart3 className="size-10 text-[#7CA982] animate-bounce" strokeWidth={1.5} aria-hidden />
+              <span className="text-sm font-medium text-[#243E36]/70">
+                Seu print do Dashboard virá aqui
+              </span>
+            </div>
           </div>
         </div>
       </section>
