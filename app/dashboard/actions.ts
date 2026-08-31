@@ -294,7 +294,7 @@ export async function getDashboardStats() {
         studiedMinutes,
         progress
       }
-    }).slice(0, 3)
+    }).sort((a, b) => b.progress - a.progress).slice(0, 3)
   }
 
   const todayMinutes = Math.floor(todaySeconds / 60)

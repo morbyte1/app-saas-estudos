@@ -468,13 +468,13 @@ export default function CalendarioPage() {
           </>
         ) : (
           <>
-            <div className="flex justify-between items-start mb-6">
+            <div className="flex flex-col md:flex-row md:items-start justify-between mb-6 gap-4">
               <div>
                 <h1 className="text-3xl font-extrabold text-slate-900">Planejamento</h1>
                 <p className="text-slate-500 mt-2">Organize seu cronograma de estudos</p>
               </div>
-              <div className="flex gap-4">
-                <div className="bg-white rounded-full px-5 py-2.5 border border-slate-200 shadow-sm flex items-center gap-4">
+              <div className="flex w-full md:w-auto">
+                <div className="bg-white rounded-full px-5 py-2.5 border border-slate-200 shadow-sm flex items-center justify-between md:justify-start gap-4 w-full md:w-auto">
                   <div className="flex items-center gap-3 border-r border-slate-100 pr-4">
                     <div className="bg-primary-100 p-1.5 rounded-full">
                       <Target className="w-4 h-4 text-primary-600" />
@@ -489,7 +489,7 @@ export default function CalendarioPage() {
                       setNewDailyGoal(dailyStats.goal.toString())
                       setIsDailyGoalModalOpen(true)
                     }} 
-                    className="text-slate-400 hover:text-primary-600 bg-slate-50 hover:bg-primary-50 p-1.5 rounded-full transition"
+                    className="text-slate-400 hover:text-primary-600 bg-slate-50 hover:bg-primary-50 p-1.5 rounded-full transition flex-shrink-0"
                     title="Editar meta diária"
                   >
                     <Edit2 className="w-3.5 h-3.5"/>
