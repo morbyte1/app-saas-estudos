@@ -21,20 +21,20 @@ const dancing = Dancing_Script({
 
 const pillars = [
   {
-    title: "Configure sua rotina em 3 cliques. Adeus, planilhas.",
-    body: "Nada de templates complexos ou páginas em branco. Cadastre suas matérias, defina metas semanais e deixe o Revyza dizer exatamente o que você precisa focar hoje. A organização deixa de ser um evento e passa a ser invisível.",
+    title: "Cadastra suas matérias em 3 cliques e pronto.",
+    body: "Sem template gigante, sem planilha em branco te encarando. Você coloca suas matérias, define quanto quer estudar por semana e o Revyza já te mostra o que fazer hoje. Organizar deixa de ser uma tarefa a parte — só acontece.",
     imageSrc: "/print-materias.png",
     imageAlt: "Aba Minhas Matérias do Revyza",
   },
   {
-    title: "Foco absoluto. Sem tocar no celular.",
-    body: "Um Timer minimalista integrado diretamente ao seu ambiente de estudos. Escolha entre Pomodoro ou Cronômetro Progressivo. Quando o tempo acabar, registre quantas questões você fez e quantas errou ali mesmo. Sem notificações, sem distrações.",
+    title: "Foco de verdade, sem distrações.",
+    body: "Um timer simples, direto na tela de estudo. Pomodoro ou cronômetro, você tem a liberdade de escolher até os minutos. Quando o tempo acaba, você já anota ali mesmo quantas questões fez e quantas errou. 100% da sua energia em um só objetivo.",
     imageSrc: "/print-timer.png",
-    imageAlt: "Timer blindado do Revyza",
+    imageAlt: "Timer do Revyza",
   },
   {
-    title: "Estude com métricas reais, não com intuição.",
-    body: "Você foca em resolver a lista, nós cuidamos da matemática. O Revyza gera gráficos automáticos do seu tempo de estudo, aponta quais matérias estão sendo abandonadas e analisa o verdadeiro motivo dos seus erros. Você descobre seu ponto cego meses antes da prova.",
+    title: "Números reais, não só a sensação de que estudou.",
+    body: "Você resolve a lista, o Revyza faz as contas. Ele monta gráficos do seu tempo de estudo, mostra quais matérias você anda deixando de lado e aponta o motivo dos seus erros. Você enxerga o que precisa ajustar meses antes da prova, não na véspera.",
     imageSrc: "/print-estatisticas.png",
     imageAlt: "Estatísticas de estudo do Revyza",
   },
@@ -42,47 +42,47 @@ const pillars = [
 
 const comparison = [
   {
-    label: "Tempo de configuração",
+    label: "Pra começar a usar",
     revyza: "Pronto em 3 cliques",
-    sheets: "Horas assistindo tutoriais",
-    timers: "Rápido, mas sem contexto",
+    sheets: "Um tutorial de 40 minutos no YouTube",
+    timers: "Rápido, mas não sabe nada sobre seus estudos",
   },
   {
-    label: "Foco e retenção",
-    revyza: "Ambiente blindado",
-    sheets: 'Procrastinação "organizando"',
-    timers: "Risco alto de abrir o feed",
+    label: "Foco",
+    revyza: "Feito pra não ter distração",
+    sheets: 'Você passa mais tempo formatando que estudando',
+    timers: "Fácil abrir outro app no meio do tempo",
   },
   {
-    label: "Análise de erros",
-    revyza: "Por matéria e motivo",
-    sheets: "Fórmulas manuais complexas",
+    label: "Onde você tá errando",
+    revyza: "Separado por matéria e motivo do erro",
+    sheets: "Só se você mesmo montar a fórmula certa",
     timers: "Inexistente",
   },
   {
-    label: "Métricas de evolução",
-    revyza: "Gráficos automáticos",
-    sheets: "Depende de você preencher",
-    timers: "Apenas mostra o tempo total",
+    label: "Sua evolução",
+    revyza: "Gráfico pronto e automático",
+    sheets: "Só se você lembrar de preencher",
+    timers: "Mostra só o tempo total, e olhe lá",
   },
 ];
 
 const faqs = [
   {
-    question: "O Revyza é totalmente gratuito?",
-    answer: "Para os 30 primeiros testadores da fase Beta, o acesso é 100% gratuito e não exige cartão de crédito. No futuro, o aplicativo terá planos pagos para novos usuários, mas meu foco agora é refinar a ferramenta com os feedbacks reais desta primeira turma."
+    question: "O Revyza é de graça mesmo?",
+    answer: "Pra quem entrar agora, nos primeiros 30 vagas da fase Beta, sim — 100% grátis, sem pedir cartão. Mais pra frente devo criar planos pagos pra quem chegar depois, mas por enquanto meu foco é ajustar o app com o feedback de quem tá usando desde o início."
   },
   {
     question: "Tem aplicativo para celular (iOS/Android)?",
-    answer: "O Revyza é um Web App, rodando direto no navegador. Você pode usá-lo no computador para ter imersão total nas sessões de estudo (o que eu recomendo para evitar distrações), ou acessar pelo navegador do celular quando precisar. Aplicativos nativos para as lojas de apps estão no radar para o futuro."
+    answer: "O Revyza roda direto no navegador, é um Web App. Dá pra usar no computador (recomendo, ajuda a manter o foco) ou abrir pelo navegador do celular quando precisar. App nativo pra loja ainda não existe, mas é algo que eu quero fazer no futuro."
   },
   {
-    question: "Posso apagar meus dados se eu não gostar?",
-    answer: 'Com certeza. Privacidade é o mínimo. Dentro da sua aba de Configurações, existe uma "Zona de Perigo" com um botão direto para excluir sua conta e apagar permanentemente todo o seu histórico de estudos do banco de dados. Nada seu fica preso no sistema.'
+    question: "Se eu não gostar, dá pra apagar meus dados?",
+    answer: 'Dá sim, sem enrolação. Lá nas Configurações tem uma área de "Zona de Perigo" com um botão pra excluir sua conta e apagar todo o histórico do banco de dados. Nada fica guardado depois que você pede pra sair.'
   },
   {
-    question: "Sinto falta de uma ferramenta específica. Posso sugerir?",
-    answer: 'É exatamente para isso que essa fase Beta serve! Ao entrar, você recebe o acesso ao canal exclusivo dos primeiros testadores. Funcionalidades como o "Caderno de Erros" já estão na lista de prioridades, e eu vou programar as próximas atualizações com base no que o nosso grupo decidir ser mais urgente.'
+    question: "Queria uma função que ainda não existe. Posso pedir?",
+    answer: 'Pode, e é literalmente pra isso que essa fase Beta existe. Quando você entra, ganha acesso ao grupo dos primeiros testadores. Coisas como o "Caderno de Erros" já estão na lista, e as próximas atualizações eu vou programar de acordo com o que o grupo pedir mais.'
   }
 ];
 
@@ -200,12 +200,12 @@ export default function LandingPage() {
           </div>
 
           <h1 className="mt-6 text-4xl font-extrabold leading-[1.08] tracking-tight text-[#243E36] sm:text-5xl md:text-6xl drop-shadow-sm">
-            Você foca na prova. O <span className={`text-[#7CA982] ${dancing.className} font-normal tracking-normal`}>Revyza</span> cuida da burocracia.
+          Você estuda. O <span className={`text-[#7CA982] ${dancing.className} font-normal tracking-normal`}>Revyza</span> cuida do resto.
           </h1>
           
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#243E36]/75 md:text-xl">
-            Sente-se e estude. Nós automatizamos o rastreio do seu tempo, calculamos sua
-            precisão e dizemos exatamente onde você precisa melhorar.
+            Senta e estuda, só isso. A gente conta seu tempo, calcula seu aproveitamento 
+            e mostra exatamente onde você precisa melhorar.
           </p>
           
           <div className="mt-10">
@@ -253,12 +253,10 @@ export default function LandingPage() {
         <ScrollReveal className="mx-auto max-w-3xl relative z-10">
           <AlarmClockOff className="size-10 text-[#C2A83E]" strokeWidth={1.5} aria-hidden />
           <h2 className="mt-8 text-3xl font-bold leading-tight tracking-tight text-[#F1F7ED] sm:text-4xl">
-            Você gasta mais tempo &quot;se organizando&quot; do que resolvendo questões?
+            Você já reparou que passa mais tempo se organizando do que estudando?
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-[#F1F7ED]/80">
-            A falsa produtividade é o maior ralo de tempo do estudante moderno. Passar 3
-            horas personalizando cores em um template de estudos não te aprova. Acertar
-            questões, sim. O seu futuro não depende de fórmulas complexas do Excel.
+            Isso tem nome: procrastinação disfarçada de produtividade. Gastar 3 horas deixando um template bonitinho não te aprova. Resolver questão aprova. E pra isso você não precisa saber fórmula de Excel.
           </p>
         </ScrollReveal>
       </section>
@@ -271,7 +269,7 @@ export default function LandingPage() {
               Como funciona
             </p>
             <h2 className="mt-4 max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl">
-              Três pilares para uma rotina sem atrito.
+              Três coisas que fazem sua rotina fluir.
             </h2>
           </ScrollReveal>
 
@@ -316,7 +314,7 @@ export default function LandingPage() {
       <section className="bg-white px-6 py-20 md:py-28">
         <ScrollReveal className="mx-auto max-w-5xl">
           <h2 className="max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl">
-            Por que o Revyza vence a sua planilha.
+            Por que o Revyza supera o aplicativo que você usa atualmente
           </h2>
 
           <div className="mt-10 overflow-x-auto pb-4">
@@ -363,27 +361,16 @@ export default function LandingPage() {
 
           <div className="mt-8 space-y-5 text-lg leading-relaxed text-[#243E36]/85">
             <p>
-              &quot;Como estudante, eu percebi que passava mais tempo lutando contra as
-              minhas ferramentas de organização do que realmente estudando. O Notion tinha
-              virado um buraco negro de templates complexos. As planilhas do Excel pareciam
-              um trabalho de contabilidade. E tentar usar o cronômetro do celular só servia
-              para me fazer abrir o Instagram e perder 40 minutos de foco.
+              &quot;Eu, como estudante, percebi que gastava mais energia brigando com meus apps de organização do que efetivamente estudando. O Notion virou um poço sem fundo de template. As planilhas do Excel pareciam tarefa de contabilidade. E o cronômetro do celular só me fazia abrir o Instagram e sumir 40 minutos
             </p>
             <p>
-              Eu cansei de tentar adaptar plataformas corporativas para a rotina caótica de
-              quem precisa sentar, estudar e passar. Eu só queria um ambiente onde eu
-              pudesse dar o play no cronômetro, ter a prova das minhas horas líquidas e
-              saber exatamente o motivo dos meus erros, sem atrito.
+              Cansei de tentar encaixar ferramenta de empresa na rotina bagunçada de quem só precisa sentar, estudar e passar. Eu queria uma coisa simples: apertar o play, saber quantas horas eu realmente estudei e entender por que eu tava errando, sem esse trabalho todo.
             </p>
             <p>
-              Como não encontrei essa ferramenta, resolvi sentar e programar eu mesmo. O
-              Revyza não é de uma megacorporação do Vale do Silício. É um projeto solo,
-              feito por quem estuda, para quem estuda. Hoje, estou abrindo a plataforma para
-              30 pessoas testarem comigo e ajudarem a decidir o futuro do aplicativo. Bora
-              estudar juntos?&quot;
+              Como não achei nada assim, resolvi programar eu mesmo. O Revyza não saiu de nenhuma empresa grande. É um projeto que eu tô fazendo sozinho, de quem estuda pra quem estuda. Agora tô abrindo pra 30 pessoas testarem comigo e ajudarem a decidir os próximos passos. Bora estudar junto?&quot;
             </p>
           </div>
-          <p className="mt-8 text-sm font-semibold text-[#243E36]">Arthur, Fundador e Desenvolvedor Solo.</p>
+          <p className="mt-8 text-sm font-semibold text-[#243E36]">Arthur Morais, criador do Revyza</p>
         </ScrollReveal>
       </section>
 
@@ -416,16 +403,16 @@ export default function LandingPage() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#7CA982]/10 rounded-full blur-[120px] pointer-events-none" />
         
         <ScrollReveal className="relative z-10 mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-extrabold tracking-tight text-[#F1F7ED] sm:text-5xl">Faça parte dos 30 primeiros.</h2>
+          <h2 className="text-3xl font-extrabold tracking-tight text-[#F1F7ED] sm:text-5xl">Garanta uma das 30 vagas.</h2>
           <p className="mt-6 text-lg leading-relaxed text-[#F1F7ED]/80">
-            O Revyza está em fase Beta fechada. Para garantir que o sistema rode com extrema velocidade e que eu consiga conversar com todos no grupo de feedbacks, estou liberando o acesso gratuito apenas para a nossa primeira tropa de 30 testadores. Se você quer parar de brigar com planilhas e começar a focar na aprovação, ocupe o seu lugar.
+            O Revyza ainda tá em fase Beta fechada. Pra manter tudo rápido e conseguir ouvir o feedback de todo mundo, só estou liberando acesso grátis pros primeiros 30 testadores. Se você quer parar de perder tempo com planilha e focar na aprovação, essa é a hora de entrar.
           </p>
           <div className="mt-10">
             <Link
               href="/login"
               className="group inline-flex items-center gap-3 rounded-2xl bg-[#C2A83E] px-8 py-4 text-base font-bold text-[#243E36] shadow-[0_8px_24px_-12px_rgba(194,168,62,0.4)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-12px_rgba(194,168,62,0.6)] hover:brightness-105 md:text-lg"
             >
-              Quero ser um dos 30 testadores
+              Quero uma das 30 vagas
               <ArrowRight className="size-5 transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
             </Link>
           </div>
@@ -438,7 +425,7 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col gap-8 md:flex-row md:items-end md:justify-between">
           <div>
             <Image src="/logo.png" alt="Revyza Logo" width={100} height={28} className="object-contain mb-1" />
-            <p className="text-sm text-[#243E36]/70">O ecossistema blindado para a sua aprovação.</p>
+            <p className="text-sm text-[#243E36]/70">Feito pra você focar no que importa: estudar.</p>
           </div>
           <nav className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-[#243E36]/75">
             <a className="transition-colors hover:text-[#7CA982]" href="mailto:seuemail@exemplo.com">Falar com o Fundador</a>
