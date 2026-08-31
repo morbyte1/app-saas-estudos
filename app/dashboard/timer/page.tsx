@@ -90,6 +90,12 @@ function ClockDisplay({ isRunning, phase, timerConfig, onPhaseChange, initialSec
     return `${String(minutes).padStart(2, '0')}:${String(remSeconds).padStart(2, '0')}`
   }
 
+  // Efeito para atualizar o tempo na aba do navegador
+  useEffect(() => {
+    document.title = `${formatTime(displaySeconds)} | Revyza`
+    return () => { document.title = 'Revyza' }
+  }, [displaySeconds])
+
   return (
     <div className={`text-6xl sm:text-[8rem] md:text-[10rem] font-bold tracking-tight mb-8 font-mono leading-none ${phase === 'rest' ? 'text-emerald-500' : 'text-slate-900'}`}>
       {formatTime(displaySeconds)}
@@ -104,6 +110,7 @@ export default function TimerPage() {
   const [isRunning, setIsRunning] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
+  const [resetKey, setResetKey] = useState(0)
   const { toast } = useToast()
   
   const [pomodoroCycles, setPomodoroCycles] = useState(0)
@@ -147,6 +154,14 @@ export default function TimerPage() {
     questionsDone: '',
     questionsWrong: ''
   })
+
+  // Tocar alarme na transição de estudo para descanso
+  useEffect(() => {
+    if (phase === 'rest') {
+      const audio = new Audio('/sound.mp3')
+      audio.play().catch(e => console.error("Erro ao tocar alarme:", e))
+    }
+  }, [phase])
 
   useEffect(() => {
     totalStudySecondsRef.current = totalStudySeconds
@@ -312,6 +327,7 @@ export default function TimerPage() {
       } else {
         setCurrentDisplaySeconds(0)
       }
+      setResetKey(prev => prev + 1)
     }
   }
 
@@ -326,7 +342,7 @@ export default function TimerPage() {
     setIsFinishModalOpen(true)
   }
 
-const handleConfirmFinish = async () => {
+  const handleConfirmFinish = async () => {
     setIsLoading(true)
 
     const qDone = parseInt(questionsDone) || 0
@@ -345,11 +361,11 @@ const handleConfirmFinish = async () => {
     })
 
     if (result.success) {
-      // CORREÇÃO: Força estritamente os estados a voltarem para 0
       setTotalStudySeconds(0)
       setCurrentDisplaySeconds(0)
       setPomodoroCycles(0)
       setPhase('idle')
+      setResetKey(prev => prev + 1)
       setIsFinishModalOpen(false)
       toast("Sessão salva com sucesso!", "success")
       
@@ -402,6 +418,7 @@ const handleConfirmFinish = async () => {
     } else {
       setCurrentDisplaySeconds(0)
     }
+    setResetKey(prev => prev + 1)
   }
 
   const openSettings = () => {
@@ -484,7 +501,7 @@ const handleConfirmFinish = async () => {
               <select
                 value={selectedMateriaId}
                 onChange={(e) => setSelectedMateriaId(e.target.value)}
-                className="w-full sm:w-auto appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none shadow-sm"
+                className="w-full sm:w-64 appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none shadow-sm"
               >
                 <option value="geral" className="text-slate-900 bg-white">Matéria: Geral</option>
                 {materias.map(m => (
@@ -500,7 +517,7 @@ const handleConfirmFinish = async () => {
               <select
                 value={selectedAssuntoId}
                 onChange={(e) => setSelectedAssuntoId(e.target.value)}
-                className="w-full sm:w-auto appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none shadow-sm"
+                className="w-full sm:w-64 appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none shadow-sm"
               >
                 <option value="geral" className="text-slate-900 bg-white">Assunto: Geral</option>
                 {assuntos.map(a => (
@@ -564,6 +581,7 @@ const handleConfirmFinish = async () => {
           )}
 
           <ClockDisplay 
+            key={resetKey}
             isRunning={isRunning} 
             phase={phase} 
             timerConfig={timerConfig} 
