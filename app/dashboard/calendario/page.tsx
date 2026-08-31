@@ -1,5 +1,6 @@
 'use client'
 
+import ConfirmModal from '@/components/ConfirmModal'
 import { useState, useEffect } from 'react'
 import { useToast } from '@/components/ToastContext'
 import { ChevronLeft, ChevronRight, Clock, Plus, MoreVertical, Check, X, Copy, Edit2, Target } from 'lucide-react'
@@ -51,6 +52,8 @@ export default function CalendarioPage() {
   })
   const [showNewSubject, setShowNewSubject] = useState(false)
   const [isSavingSubject, setIsSavingSubject] = useState(false)
+  const [eventToDelete, setEventToDelete] = useState<string | null>(null)
+  const [isDeletingEvent, setIsDeletingEvent] = useState(false)
   
   // Modal de Duplicação
   const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false)
@@ -309,13 +312,24 @@ export default function CalendarioPage() {
     }
   }
 
-  const deleteEvent = async (eventId: string) => {
-    const result = await deleteEventAction(eventId)
-    if (result.success) {
-      setEvents(events.filter(event => event.id !== eventId))
-      setOpenDropdownId(null)
-    }
+const executeDeleteEvent = async () => {
+  if (!eventToDelete) return
+  setIsDeletingEvent(true)
+  const result = await deleteEventAction(eventToDelete)
+  if (result.success) {
+    setEvents(events.filter(event => event.id !== eventToDelete))
+    setOpenDropdownId(null)
+    toast("Estudo excluído com sucesso!", "success")
+  } else {
+    toast("Erro ao excluir estudo.", "error")
   }
+  setIsDeletingEvent(false)
+  setEventToDelete(null)
+}
+
+const deleteEvent = (eventId: string) => {
+  setEventToDelete(eventId)
+}
 
   const openDuplicateModal = () => {
     const dayEvents = getEventsForSelectedDate()
@@ -976,6 +990,15 @@ export default function CalendarioPage() {
           </>
         )}
       </div>
+    <ConfirmModal
+  isOpen={!!eventToDelete}
+  title="Excluir Estudo"
+  message="Tem certeza que deseja remover este estudo do seu calendário?"
+  confirmText="Sim, excluir"
+  onConfirm={executeDeleteEvent}
+  onCancel={() => setEventToDelete(null)}
+  isLoading={isDeletingEvent}
+/>
     </div>
   )
 }

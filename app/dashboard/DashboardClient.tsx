@@ -1,5 +1,6 @@
 'use client'
 
+import ConfirmModal from '@/components/ConfirmModal'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Calendar, Clock, Target, TrendingUp, Plus, Flame, Check, X, Edit2, Trash2, Library } from 'lucide-react'
@@ -22,12 +23,18 @@ interface DashboardClientProps {
 }
 
 const QUOTES = [
-  "“A excelência é um hábito.” — Aristóteles",
-  "“A educação é a arma mais poderosa que você pode usar para mudar o mundo.” — Nelson Mandela",
-  "“Não é que eu seja tão inteligente; é que fico com os problemas por mais tempo.” — Albert Einstein",
-  "“O sucesso é a soma de pequenos esforços, repetidos dia após dia.” — Robert Collier",
-  "“A maneira de começar é parar de falar e começar a fazer.” — Walt Disney",
-  "“Você nunca sabe que resultados virão da sua ação. Mas se não fizer nada, não existirão resultados.” — Mahatma Gandhi"
+  "A aprovação não vem de um dia perfeito de 10 horas de estudo, mas da constância de fazer o seu melhor todos os dias.",
+  "Não espere pela motivação, confie na disciplina. Feito com foco é sempre melhor do que o perfeito não feito.",
+  "Cada questão que você acerta, ou entende porque errou, é um passo a menos entre você e a sua vaga.",
+  "O estudo é o único investimento onde você não tem como sair perdendo. Ninguém tira o que você aprendeu hoje.",
+  "Genialidade é só um nome bonito para quem teve a paciência de errar a mesma questão até aprender como faz.",
+  "Ninguém nasce sabendo a matéria toda. O segredo é não pular o assunto só porque ele parece impossível agora.",
+  "Sua vaga está sendo garantida agora, nessa revisão que você estava quase com preguiça e deixando pra amanhã.",
+  "Um bloco de 30 minutos de foco absoluto rende muito mais do que uma tarde inteira 'estudando' com o celular do lado.",
+  "O cronograma perfeito não faz a prova por você. Fecha as outras abas, dá o play no timer e só vai.",
+  "A vontade de estudar raramente vem antes de sentar na cadeira. Ela aparece depois dos primeiros 10 minutos. Só começa.",
+  "A ansiedade não resolve a prova e o cansaço faz parte. Foque no que você tem controle hoje: terminar essa lista.",
+  "Na dúvida se vai dar certo no final do ano, estuda. Pelo menos você garante que a sua parte está sendo feita."
 ]
 
 const TAGS_PADRAO = {
@@ -44,6 +51,9 @@ export default function DashboardClient({ initialEvents, initialSubjects, initia
   const [stats, setStats] = useState<DashboardStats | null>(initialStats)
   const [quoteOfDay, setQuoteOfDay] = useState(QUOTES[0])
   const { toast } = useToast()
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null)
+  const [examToDelete, setExamToDelete] = useState<string | null>(null)
+  const [isDeletingBlock, setIsDeletingBlock] = useState(false)
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
@@ -216,12 +226,21 @@ export default function DashboardClient({ initialEvents, initialSubjects, initia
     setIsTaskModalOpen(true)
   }
 
-  const handleDeleteTask = async (id: string) => {
-    if(confirm("Tem certeza que deseja excluir esta tarefa?")) {
-      const result = await deleteTask(id)
-      if(result.success) setTasks(tasks.filter(t => t.id !== id))
-    }
+  const executeDeleteTask = async () => {
+  if (!taskToDelete) return
+  setIsDeletingBlock(true)
+  const result = await deleteTask(taskToDelete)
+  if(result.success) {
+    setTasks(tasks.filter(t => t.id !== taskToDelete))
+    toast("Tarefa excluída!", "success")
   }
+  setIsDeletingBlock(false)
+  setTaskToDelete(null)
+}
+
+const handleDeleteTask = (id: string) => {
+  setTaskToDelete(id)
+}
 
   const handleToggleTask = async (id: string, currentStatus: boolean) => {
     const result = await toggleTaskStatus(id, !currentStatus)
@@ -265,15 +284,22 @@ export default function DashboardClient({ initialEvents, initialSubjects, initia
     setIsExamModalOpen(false)
   }
 
-  const handleDeleteExamGoal = async (id: string) => {
-    if(confirm("Tem certeza que deseja excluir sua meta de prova?")) {
-      const result = await deleteExamGoal(id)
-      if(result.success) {
-        setStats(prev => prev ? { ...prev, examGoal: null } : null)
-        setIsExamModalOpen(false)
-      }
-    }
+  const executeDeleteExamGoal = async () => {
+  if (!examToDelete) return
+  setIsDeletingBlock(true)
+  const result = await deleteExamGoal(examToDelete)
+  if(result.success) {
+    setStats(prev => prev ? { ...prev, examGoal: null } : null)
+    setIsExamModalOpen(false)
+    toast("Meta de prova excluída!", "success")
   }
+  setIsDeletingBlock(false)
+  setExamToDelete(null)
+}
+
+const handleDeleteExamGoal = (id: string) => {
+  setExamToDelete(id)
+}
 
   const renderTaskTag = (task: Task) => {
     if (task.tag_padrao) {
@@ -804,6 +830,25 @@ export default function DashboardClient({ initialEvents, initialSubjects, initia
           </div>
         </div>
       )}
+    <ConfirmModal
+  isOpen={!!taskToDelete}
+  title="Excluir Tarefa"
+  message="Tem certeza que deseja excluir esta tarefa?"
+  confirmText="Sim, excluir"
+  onConfirm={executeDeleteTask}
+  onCancel={() => setTaskToDelete(null)}
+  isLoading={isDeletingBlock}
+/>
+
+<ConfirmModal
+  isOpen={!!examToDelete}
+  title="Excluir Meta de Prova"
+  message="Tem certeza que deseja excluir sua meta de prova?"
+  confirmText="Sim, excluir"
+  onConfirm={executeDeleteExamGoal}
+  onCancel={() => setExamToDelete(null)}
+  isLoading={isDeletingBlock}
+/>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import ConfirmModal from '@/components/ConfirmModal'
 import { useState } from 'react'
 import { Plus, Clock, Percent, Book, BookOpen, Settings, Target, X, Trash2 } from 'lucide-react'
 import Link from 'next/link'
@@ -78,6 +79,7 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
   const [materias, setMaterias] = useState<Materia[]>(initialMaterias)
   const [estatisticas, setEstatisticas] = useState<Estatisticas>(initialEstatisticas)
 
+  const [materiaToDelete, setMateriaToDelete] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -133,20 +135,24 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
     closeModal()
   }
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Tem certeza que deseja excluir esta matéria? Todos os dados vinculados também poderão ser perdidos.")) {
-      setIsSaving(true)
-      const result = await deleteMateria(id)
-      if (result.success) {
-        setMaterias(materias.filter(m => m.id !== id))
-        toast('Matéria excluída com sucesso.', 'success')
-        closeModal()
-      } else {
-        toast('Erro ao excluir matéria.', 'error')
-      }
-      setIsSaving(false)
-    }
+  const executeDeleteMateria = async () => {
+  if (!materiaToDelete) return
+  setIsSaving(true)
+  const result = await deleteMateria(materiaToDelete)
+  if (result.success) {
+    setMaterias(materias.filter(m => m.id !== materiaToDelete))
+    toast('Matéria excluída com sucesso.', 'success')
+    closeModal()
+  } else {
+    toast('Erro ao excluir matéria.', 'error')
   }
+  setIsSaving(false)
+  setMateriaToDelete(null)
+}
+
+const handleDelete = (id: string) => {
+  setMateriaToDelete(id)
+}
 
   return (
     <div className="min-h-screen bg-slate-50 p-8">
@@ -281,6 +287,15 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
           </div>
         </div>
       )}
+    <ConfirmModal
+  isOpen={!!materiaToDelete}
+  title="Excluir Matéria"
+  message="Tem certeza que deseja excluir esta matéria? Todos os dados, tópicos e histórico vinculados a ela serão perdidos."
+  confirmText="Sim, excluir"
+  onConfirm={executeDeleteMateria}
+  onCancel={() => setMateriaToDelete(null)}
+  isLoading={isSaving}
+/>
     </div>
   )
 }

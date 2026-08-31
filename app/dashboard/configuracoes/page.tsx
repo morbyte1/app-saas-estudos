@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client'
 import { User, Mail, Lock, LogOut, Loader2, AlertTriangle, X } from 'lucide-react'
 import { updateUserProfile, updateUserEmail, updateUserPassword, deleteAccount } from './actions'
 import { signout } from '../actions'
+import ConfirmModal from '@/components/ConfirmModal'
 
 export default function ConfiguracoesPage() {
   const [fullName, setFullName] = useState('')
@@ -13,6 +14,7 @@ export default function ConfiguracoesPage() {
   const [password, setPassword] = useState('')
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isPending, startTransition] = useTransition()
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
   
   // Estados para exclusão de conta
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -189,13 +191,13 @@ export default function ConfiguracoesPage() {
                 </div>
               </div>
               
-              <button
-                onClick={() => startTransition(async () => await signout())}
-                disabled={isPending || isDeleting}
-                className="w-full mt-2 px-6 py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition disabled:opacity-50 whitespace-nowrap"
-              >
-                Sair da conta
-              </button>
+<button
+  onClick={() => setIsLogoutModalOpen(true)}
+  disabled={isPending || isDeleting}
+  className="w-full mt-2 px-6 py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition disabled:opacity-50 whitespace-nowrap"
+>
+  Sair da conta
+</button>
             </section>
 
             <section className="bg-white rounded-2xl p-6 border border-red-200 shadow-sm flex flex-col justify-between gap-4">
@@ -253,7 +255,6 @@ export default function ConfiguracoesPage() {
                 />
               </div>
             </div>
-
             <div className="flex gap-3 mt-8">
               <button
                 onClick={() => { setIsDeleteModalOpen(false); setDeletePassword('') }}
@@ -272,6 +273,16 @@ export default function ConfiguracoesPage() {
           </div>
         </div>
       )}
+    <ConfirmModal
+  isOpen={isLogoutModalOpen}
+  title="Sair da conta"
+  message="Tem certeza que deseja encerrar sua sessão neste dispositivo?"
+  confirmText="Sim, sair"
+  isDanger={false}
+  onConfirm={() => startTransition(async () => await signout())}
+  onCancel={() => setIsLogoutModalOpen(false)}
+  isLoading={isPending}
+/>
     </div>
   )
 }

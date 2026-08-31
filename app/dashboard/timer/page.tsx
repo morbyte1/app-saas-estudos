@@ -1,5 +1,6 @@
 'use client'
 
+import ConfirmModal from '@/components/ConfirmModal'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useToast } from '@/components/ToastContext'
 import { getMaterias } from '@/app/dashboard/materias/actions'
@@ -112,6 +113,8 @@ export default function TimerPage() {
   const [isMaximized, setIsMaximized] = useState(false)
   const [resetKey, setResetKey] = useState(0)
   const { toast } = useToast()
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
+  const [isResetTimerConfirmOpen, setIsResetTimerConfirmOpen] = useState(false)
   
   const [pomodoroCycles, setPomodoroCycles] = useState(0)
   const totalStudySecondsRef = useRef(totalStudySeconds)
@@ -316,20 +319,23 @@ export default function TimerPage() {
     setIsRunning(true)
   }
 
-  const handleResetTimer = () => {
-    if (confirm('Deseja realmente zerar o timer atual? O progresso não salvo será perdido.')) {
-      setIsRunning(false)
-      setTotalStudySeconds(0)
-      setPomodoroCycles(0)
-      setPhase('idle')
-      if (timerConfig.type === 'pomodoro') {
-        setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
-      } else {
-        setCurrentDisplaySeconds(0)
-      }
-      setResetKey(prev => prev + 1)
-    }
+  const executeResetTimer = () => {
+  setIsRunning(false)
+  setTotalStudySeconds(0)
+  setPomodoroCycles(0)
+  setPhase('idle')
+  if (timerConfig.type === 'pomodoro') {
+    setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
+  } else {
+    setCurrentDisplaySeconds(0)
   }
+  setResetKey(prev => prev + 1)
+  setIsResetTimerConfirmOpen(false)
+}
+
+const handleResetTimer = () => {
+  setIsResetTimerConfirmOpen(true)
+}
 
   const handleFinishRequest = () => {
     if (!selectedMateriaId || !selectedAssuntoId) {
@@ -386,20 +392,24 @@ export default function TimerPage() {
     setIsLoading(false)
   }
 
-  const handleDeleteSession = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este registro de estudo?')) {
-      setIsLoading(true)
-      const result = await deleteTimerSession(id)
-      
-      if (result.success) {
-        setHistorySessions(prev => prev.filter(session => session.id !== id))
-        toast("Registro excluído.", "success")
-      } else {
-        toast('Erro ao excluir registro: ' + result.error, "error")
-      }
-      setIsLoading(false)
-    }
+  const executeDeleteSession = async () => {
+  if (!sessionToDelete) return
+  setIsLoading(true)
+  const result = await deleteTimerSession(sessionToDelete)
+  
+  if (result.success) {
+    setHistorySessions(prev => prev.filter(session => session.id !== sessionToDelete))
+    toast("Registro excluído.", "success")
+  } else {
+    toast('Erro ao excluir registro: ' + result.error, "error")
   }
+  setIsLoading(false)
+  setSessionToDelete(null)
+}
+
+const handleDeleteSession = (id: string) => {
+  setSessionToDelete(id)
+}
 
   const handleSaveSettings = () => {
     if (isRunning || totalStudySeconds > 0 || currentDisplaySeconds > 0) {
@@ -1023,6 +1033,24 @@ export default function TimerPage() {
           </div>
         </div>
       )}
+    <ConfirmModal
+  isOpen={!!sessionToDelete}
+  title="Excluir Registro"
+  message="Tem certeza que deseja excluir este registro de estudo do seu histórico?"
+  confirmText="Sim, excluir"
+  onConfirm={executeDeleteSession}
+  onCancel={() => setSessionToDelete(null)}
+  isLoading={isLoading}
+/>
+
+<ConfirmModal
+  isOpen={isResetTimerConfirmOpen}
+  title="Zerar Timer"
+  message="Deseja realmente zerar o timer atual? O progresso não salvo será perdido."
+  confirmText="Sim, zerar"
+  onConfirm={executeResetTimer}
+  onCancel={() => setIsResetTimerConfirmOpen(false)}
+/>
     </div>
   )
 }

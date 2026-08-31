@@ -1,5 +1,6 @@
 'use client'
 
+import ConfirmModal from '@/components/ConfirmModal'
 import { useState } from 'react'
 import { Folder, BookOpen, PieChart, Plus, Clock, Check, Pencil, Trash2, X } from 'lucide-react'
 import { useToast } from '@/components/ToastContext'
@@ -43,6 +44,9 @@ export default function TopicsManager({
   const [topicos, setTopicos] = useState<Topico[]>(initialTopicos)
   const [assuntos, setAssuntos] = useState<Assunto[]>(initialAssuntos)
   const { toast } = useToast()
+  const [topicoToDelete, setTopicoToDelete] = useState<string | null>(null)
+  const [assuntoToDelete, setAssuntoToDelete] = useState<string | null>(null)
+  const [isDeletingItems, setIsDeletingItems] = useState(false)
 
   // Estados de Criação de Tópico
   const [isTopicoModalOpen, setIsTopicoModalOpen] = useState(false)
@@ -105,19 +109,25 @@ export default function TopicsManager({
     }
   }
 
-  const handleDeleteTopico = async (topicoId: string) => {
-    if (confirm("Tem certeza que deseja excluir este tópico? Todos os assuntos vinculados a ele também serão apagados.")) {
-      const result = await deleteTopico(topicoId)
-      if (result.success) {
-        setTopicos(topicos.filter(t => t.id !== topicoId))
-        setAssuntos(assuntos.filter(a => a.topico_id !== topicoId))
-        if (editingTopico?.id === topicoId) setEditingTopico(null)
-        toast('Tópico e seus assuntos excluídos!', 'success')
-      } else {
-        toast('Erro ao excluir tópico.', 'error')
-      }
-    }
+  const executeDeleteTopico = async () => {
+  if (!topicoToDelete) return
+  setIsDeletingItems(true)
+  const result = await deleteTopico(topicoToDelete)
+  if (result.success) {
+    setTopicos(topicos.filter(t => t.id !== topicoToDelete))
+    setAssuntos(assuntos.filter(a => a.topico_id !== topicoToDelete))
+    if (editingTopico?.id === topicoToDelete) setEditingTopico(null)
+    toast('Tópico e seus assuntos excluídos!', 'success')
+  } else {
+    toast('Erro ao excluir tópico.', 'error')
   }
+  setIsDeletingItems(false)
+  setTopicoToDelete(null)
+}
+
+const handleDeleteTopico = (topicoId: string) => {
+  setTopicoToDelete(topicoId)
+}
 
   // --- Handlers Assuntos ---
   const handleCreateAssunto = async () => {
@@ -160,18 +170,24 @@ export default function TopicsManager({
     }
   }
 
-  const handleDeleteAssunto = async (assuntoId: string) => {
-    if (confirm("Tem certeza que deseja excluir este assunto?")) {
-      const result = await deleteAssunto(assuntoId)
-      if (result.success) {
-        setAssuntos(assuntos.filter(a => a.id !== assuntoId))
-        if (editingAssunto?.id === assuntoId) setEditingAssunto(null)
-        toast('Assunto excluído com sucesso.', 'success')
-      } else {
-        toast('Erro ao excluir assunto.', 'error')
-      }
-    }
+  const executeDeleteAssunto = async () => {
+  if (!assuntoToDelete) return
+  setIsDeletingItems(true)
+  const result = await deleteAssunto(assuntoToDelete)
+  if (result.success) {
+    setAssuntos(assuntos.filter(a => a.id !== assuntoToDelete))
+    if (editingAssunto?.id === assuntoToDelete) setEditingAssunto(null)
+    toast('Assunto excluído com sucesso.', 'success')
+  } else {
+    toast('Erro ao excluir assunto.', 'error')
   }
+  setIsDeletingItems(false)
+  setAssuntoToDelete(null)
+}
+
+const handleDeleteAssunto = (assuntoId: string) => {
+  setAssuntoToDelete(assuntoId)
+}
 
   return (
     <>
@@ -455,6 +471,25 @@ export default function TopicsManager({
           </div>
         </div>
       )}
+<ConfirmModal
+  isOpen={!!topicoToDelete}
+  title="Excluir Tópico"
+  message="Tem certeza que deseja excluir este tópico? Todos os assuntos vinculados a ele também serão apagados."
+  confirmText="Sim, excluir"
+  onConfirm={executeDeleteTopico}
+  onCancel={() => setTopicoToDelete(null)}
+  isLoading={isDeletingItems}
+/>
+
+<ConfirmModal
+  isOpen={!!assuntoToDelete}
+  title="Excluir Assunto"
+  message="Tem certeza que deseja excluir este assunto?"
+  confirmText="Sim, excluir"
+  onConfirm={executeDeleteAssunto}
+  onCancel={() => setAssuntoToDelete(null)}
+  isLoading={isDeletingItems}
+/>
     </>
   )
 }
