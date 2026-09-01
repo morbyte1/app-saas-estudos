@@ -45,6 +45,56 @@ interface TimerClientProps {
   initialHistory: StudySession[]
 }
 
+// --- MOCK DATA E TUTORIAL ---
+const MOCK_MATERIAS: Materia[] = [
+  { id: 'mock1', name: 'Matemática', goalHours: 5, studiedHours: 0, studiedMinutes: 0, progress: 0 },
+  { id: 'mock2', name: 'Física', goalHours: 4, studiedHours: 0, studiedMinutes: 0, progress: 0 }
+]
+
+const MOCK_HISTORY: StudySession[] = [
+  {
+    id: 'mock-session-1',
+    duration_seconds: 5400,
+    questions_done: 25,
+    questions_wrong: 5,
+    session_date: new Date().toISOString().split('T')[0],
+    materias: { name: 'Matemática' },
+    assuntos: { name: 'Geometria Plana' }
+  },
+  {
+    id: 'mock-session-2',
+    duration_seconds: 3600,
+    questions_done: 15,
+    questions_wrong: 2,
+    session_date: new Date().toISOString().split('T')[0],
+    materias: { name: 'Física' },
+    assuntos: { name: 'Cinemática' }
+  }
+]
+
+const TUTORIAL_STEPS = [
+  {
+    id: 'step-selects',
+    title: "Organize seu histórico por matéria e assunto.",
+    text: "Não precisa digitar nada — já vem direto do seu planejamento, tudo organizado."
+  },
+  {
+    id: 'step-settings',
+    title: "Adaptamos da forma que melhor atende você!",
+    text: "Configure como preferir. Escolha entre cronômetro ou pomodoro com inúmeras opções de tempo e descanso."
+  },
+  {
+    id: 'step-timer',
+    title: "Só você e o relógio.",
+    text: "Inicie o timer e esqueça o mundo ao redor. Foque apenas no que importa com um design minimalista."
+  },
+  {
+    id: 'step-history',
+    title: "Organização é essencial!",
+    text: "Quando finalizar, tudo fica salvo assim! Fácil para procurar depois de alguns dias e revisar."
+  }
+]
+
 // Microcomponente Isolado para o Relógio
 function ClockDisplay({ isRunning, phase, timerConfig, onPhaseChange, initialSeconds }: any) {
   const [displaySeconds, setDisplaySeconds] = useState(initialSeconds)
@@ -110,6 +160,10 @@ function ClockDisplay({ isRunning, phase, timerConfig, onPhaseChange, initialSec
 }
 
 export default function TimerClient({ initialMaterias, initialHistory }: TimerClientProps) {
+  // Estados do Tutorial
+  const [isTutorialActive, setIsTutorialActive] = useState(false)
+  const [currentStep, setCurrentStep] = useState(0)
+
   const [totalStudySeconds, setTotalStudySeconds] = useState(0)
   const [currentDisplaySeconds, setCurrentDisplaySeconds] = useState(0)
   const [phase, setPhase] = useState<'idle' | 'study' | 'rest'>('idle')
@@ -169,22 +223,86 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
     questionsWrong: ''
   })
 
-  // Carrega configurações salvas no localStorage ao iniciar
+  // Inicializa o Tutorial em MODO DE TESTE (Sempre aparece)
   useEffect(() => {
+    setIsTutorialActive(true)
+    setCurrentStep(0)
+    setShowHistory(true)
+    
+    // Injeção do Timer Mock: 1h 35min 17s no modo cronômetro
+    const fakeSeconds = 5717 
+    setPhase('study')
+    setCurrentDisplaySeconds(fakeSeconds)
+    setTotalStudySeconds(fakeSeconds)
+    setIsRunning(false)
+    setTimerConfig(prev => ({ ...prev, type: 'cronometro' }))
+    
+    // Limpa a chave para manter o modo de teste rodando a cada refresh
+    localStorage.removeItem('revyza_has_seen_timer_tutorial')
+  }, [])
+
+  // Expande o Mock History durante o passo 3 (Histórico)
+  useEffect(() => {
+    if (isTutorialActive && currentStep === 3) {
+      const todayStr = new Date().toISOString().split('T')[0]
+      if (!expandedDates.includes(todayStr)) {
+        setExpandedDates([...expandedDates, todayStr])
+      }
+    }
+  }, [isTutorialActive, currentStep])
+
+  // Lógica de Scroll Automático para focar no elemento do passo atual
+  useEffect(() => {
+    if (isTutorialActive) {
+      const stepId = TUTORIAL_STEPS[currentStep]?.id
+      if (stepId) {
+        setTimeout(() => {
+          const el = document.getElementById(stepId)
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }, 150)
+      }
+    }
+  }, [isTutorialActive, currentStep])
+
+  // Controles do Tutorial
+  const handleNextStep = () => {
+    if (currentStep < TUTORIAL_STEPS.length - 1) {
+      setCurrentStep(prev => prev + 1)
+    } else {
+      finishTutorial()
+    }
+  }
+
+  const handlePrevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(prev => prev - 1)
+    }
+  }
+
+  const finishTutorial = () => {
+    setIsTutorialActive(false)
+    localStorage.setItem('revyza_has_seen_timer_tutorial', 'true')
+    
+    // Reseta o Timer visual fake para o estado real
+    setPhase('idle')
+    setTotalStudySeconds(0)
+    setPomodoroCycles(0)
+    setCurrentDisplaySeconds(0)
+    
+    // Tenta resgatar a configuração original do usuário
     const saved = localStorage.getItem('revyza-timer-config')
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
         setTimerConfig(parsed)
-        setDraftConfig(parsed)
-        if (parsed.type === 'pomodoro' && phase === 'idle' && currentDisplaySeconds === 0) {
+        if (parsed.type === 'pomodoro') {
           setCurrentDisplaySeconds(parsed.pomodoroStudy * 60)
         }
-      } catch (e) {
-        console.error("Erro ao carregar configurações do timer", e)
-      }
+      } catch(e) {}
     }
-  }, [])
+  }
 
   const previousPhaseRef = useRef(phase)
 
@@ -298,7 +416,6 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
         setPhase('rest')
         setCurrentDisplaySeconds(timerConfig.pomodoroRest * 60)
         
-        // Se a opção de Auto-Start estiver desativada no Pomodoro, pausa o Timer
         if (timerConfig.type === 'pomodoro' && !timerConfig.autoStartRest) {
           setIsRunning(false)
         }
@@ -335,7 +452,11 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
     return capitalize(formatted).replace('-feira', '-feira')
   }
 
-  const groupedHistory = historySessions.reduce((acc, session) => {
+  // Variáveis para mock dinâmico durante o tutorial
+  const displayMaterias = isTutorialActive ? MOCK_MATERIAS : materias
+  const displayHistory = isTutorialActive ? MOCK_HISTORY : historySessions
+
+  const groupedHistory = displayHistory.reduce((acc, session) => {
     if (!acc[session.session_date]) acc[session.session_date] = []
     acc[session.session_date].push(session)
     return acc
@@ -427,7 +548,6 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
     })
 
     if (result.success) {
-      // RESET DOS ESTADOS ANTES DE FECHAR O MODAL (Passo 4)
       setTotalStudySeconds(0)
       if (timerConfig.type === 'pomodoro') {
         setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
@@ -563,20 +683,59 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
   const selectedMateriaName = selectedMateriaId === 'geral' ? 'Geral' : (materias.find(m => m.id === selectedMateriaId)?.name || 'Geral')
   const selectedAssuntoName = selectedAssuntoId === 'geral' ? 'Geral' : (assuntos.find(a => a.id === selectedAssuntoId)?.name || 'Geral')
 
+  // Componente Tooltip do Tutorial sem "absolute" forçado para todos os passos
+  const TutorialTooltip = ({ stepIndex, className }: { stepIndex: number, className: string }) => {
+    if (!isTutorialActive || currentStep !== stepIndex) return null
+    const step = TUTORIAL_STEPS[stepIndex]
+    
+    return (
+      <div className={`bg-white rounded-2xl shadow-2xl p-6 border border-slate-100 w-[calc(100vw-2rem)] sm:w-[320px] max-w-[320px] animate-in fade-in ${className}`}>
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-xs font-bold text-primary-700 bg-primary-100 px-2.5 py-1 rounded-md">
+            Passo {stepIndex + 1}/{TUTORIAL_STEPS.length}
+          </span>
+          <button onClick={finishTutorial} className="text-slate-400 hover:text-slate-600 transition"><X className="w-4 h-4"/></button>
+        </div>
+        <h4 className="text-lg font-bold text-slate-900 mb-2">{step.title}</h4>
+        <p className="text-sm text-slate-600 mb-6 leading-relaxed">{step.text}</p>
+        <div className="flex items-center justify-between gap-2">
+          <button onClick={finishTutorial} className="text-sm font-semibold text-slate-400 hover:text-slate-600 transition">Pular</button>
+          <div className="flex gap-2">
+            {stepIndex > 0 && (
+              <button onClick={handlePrevStep} className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition">Anterior</button>
+            )}
+            <button onClick={handleNextStep} className="px-4 py-1.5 rounded-lg bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 transition shadow-sm">
+              {stepIndex === TUTORIAL_STEPS.length - 1 ? 'Entendi' : 'Próximo'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden p-8 flex flex-col items-center">
       
+      {/* Overlay Escuro do Tutorial */}
+      {isTutorialActive && (
+        <div className="fixed inset-0 bg-black/80 z-50 transition-opacity" />
+      )}
+
       <div className="max-w-7xl w-full flex-1 flex flex-col justify-between relative">
         
         {/* HEADER */}
-        <div className="mb-8">
+        <div className="mb-8 relative z-40">
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Timer</h1>
           <p className="text-sm text-slate-500 mt-2 font-medium">Gerencie seu tempo de estudo e foco</p>
         </div>
 
         {/* CONTROLES SUPERIORES */}
         <div className="flex flex-col sm:flex-row justify-between items-start w-full gap-4">
-          <div className="flex flex-col w-full sm:w-auto gap-3">
+          
+          {/* STEP 0: SELECTS */}
+          <div id="step-selects" className={`flex flex-col w-full sm:w-auto gap-3 ${isTutorialActive && currentStep === 0 ? 'relative z-[60] bg-white p-4 -m-4 rounded-2xl shadow-2xl ring-4 ring-primary-500' : 'relative z-40'}`}>
+            {isTutorialActive && currentStep === 0 && <div className="absolute inset-0 z-[65] rounded-2xl" onClick={(e) => e.stopPropagation()} />}
+            
             <div className="relative">
               <select
                 value={selectedMateriaId}
@@ -584,7 +743,7 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
                 className="w-full sm:w-64 appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none shadow-sm"
               >
                 <option value="geral" className="text-slate-900 bg-white">Matéria: Geral</option>
-                {materias.map(m => (
+                {displayMaterias.map(m => (
                   <option key={m.id} value={m.id} className="text-slate-900 bg-white">
                     Matéria: {m.name}
                   </option>
@@ -600,17 +759,30 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
                 className="w-full sm:w-64 appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none shadow-sm"
               >
                 <option value="geral" className="text-slate-900 bg-white">Assunto: Geral</option>
-                {assuntos.map(a => (
-                  <option key={a.id} value={a.id} className="text-slate-900 bg-white">
-                    Assunto: {a.name}
-                  </option>
-                ))}
+                {isTutorialActive ? (
+                  <>
+                    <option value="mock-1" className="text-slate-900 bg-white">Assunto: Geometria Plana</option>
+                    <option value="mock-2" className="text-slate-900 bg-white">Assunto: Cinemática</option>
+                  </>
+                ) : (
+                  assuntos.map(a => (
+                    <option key={a.id} value={a.id} className="text-slate-900 bg-white">
+                      Assunto: {a.name}
+                    </option>
+                  ))
+                )}
               </select>
               <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
+
+            {/* Absolute positioning for Step 0 because it's a small container */}
+            <TutorialTooltip stepIndex={0} className="absolute top-full mt-4 left-0 z-[70] slide-in-from-top-4" />
           </div>
 
-          <div className="flex gap-3 items-center self-end sm:self-auto">
+          {/* STEP 1: CONFIGURAÇÕES */}
+          <div id="step-settings" className={`flex gap-3 items-center self-end sm:self-auto ${isTutorialActive && currentStep === 1 ? 'relative z-[60] bg-white p-3 -m-3 rounded-2xl shadow-2xl ring-4 ring-primary-500' : 'relative z-40'}`}>
+            {isTutorialActive && currentStep === 1 && <div className="absolute inset-0 z-[65] rounded-2xl" onClick={(e) => e.stopPropagation()} />}
+            
             <button 
               onClick={openSettings}
               className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 shadow-sm"
@@ -623,12 +795,17 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
             >
               <Maximize className="w-4 h-4" />
             </button>
+            
+            {/* Absolute positioning for Step 1 because it's a small container */}
+            <TutorialTooltip stepIndex={1} className="absolute top-full mt-4 right-0 origin-top-right z-[70] slide-in-from-top-4" />
           </div>
         </div>
 
         {/* CENTRO (TIMER E CONTROLES) */}
-        <div className={isMaximized ? "fixed inset-0 z-50 bg-slate-50 flex flex-col items-center justify-center p-4 md:p-8 animate-in fade-in duration-200" : "flex flex-col items-center justify-center flex-1 my-10"}>
-          
+        {/* STEP 2: O TIMER EM SI */}
+        <div id="step-timer" className={`${isMaximized ? "fixed inset-0 z-[100] bg-slate-50 flex flex-col items-center justify-center p-4 md:p-8 animate-in fade-in duration-200" : "flex flex-col items-center justify-center flex-1 my-10"} ${isTutorialActive && currentStep === 2 && !isMaximized ? 'relative z-[60] bg-white p-6 sm:p-8 rounded-3xl shadow-2xl ring-4 ring-primary-500' : 'relative z-40'}`}>
+          {isTutorialActive && currentStep === 2 && !isMaximized && <div className="absolute inset-0 z-[65] rounded-3xl" onClick={(e) => e.stopPropagation()} />}
+
           {isMaximized && (
             <button 
               onClick={() => setIsMaximized(false)}
@@ -669,7 +846,7 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
             onPhaseChange={handlePhaseChange}
           />
 
-          <div className="flex flex-wrap gap-4 justify-center mb-8">
+          <div className="flex flex-wrap gap-4 justify-center mb-8 relative z-50">
             {phase === 'idle' && currentDisplaySeconds === 0 ? (
               <button
                 onClick={handleStart}
@@ -728,7 +905,7 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
           </div>
           
           {!isMaximized && (
-            <div className="flex flex-col items-center gap-2 px-2 text-center">
+            <div className="flex flex-col items-center gap-2 px-2 text-center relative z-50">
               <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 text-slate-500 text-xs font-medium">
                 <HelpCircle className="w-4 h-4 text-primary-600 hidden sm:block" />
                 <span>Esqueceu de ligar o timer ou estudou fora daqui? Manda seu tempo aí embaixo</span>
@@ -742,20 +919,29 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
               </button>
             </div>
           )}
+
+          {/* Renderizado na própria flow (static/relative) no fim da caixa branca */}
+          {!isMaximized && <TutorialTooltip stepIndex={2} className="relative z-[70] mt-8 mx-auto slide-in-from-bottom-4" />}
         </div>
 
         {/* RODAPÉ (HISTÓRICO) */}
-        <div className="w-full pb-8">
+        {/* STEP 3: O HISTÓRICO */}
+        <div id="step-history" className={`w-full pb-8 flex flex-col ${isTutorialActive && currentStep === 3 ? 'relative z-[60] bg-white p-6 rounded-3xl shadow-2xl ring-4 ring-primary-500' : 'relative z-40'}`}>
+          {isTutorialActive && currentStep === 3 && <div className="absolute inset-0 z-[65] rounded-3xl" onClick={(e) => e.stopPropagation()} />}
+          
           <button 
             onClick={() => setShowHistory(!showHistory)}
-            className="flex items-center justify-center w-full md:w-auto gap-2 mb-4 hover:opacity-80 transition-opacity"
+            className="flex items-center justify-center w-full md:w-auto gap-2 mb-4 hover:opacity-80 transition-opacity relative z-50"
           >
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">HISTÓRICO</h3>
             <Plus className={`w-4 h-4 text-slate-900 transition-transform duration-300 ${showHistory ? 'rotate-45' : ''}`} />
           </button>
+
+          {/* Renderizado na própria flow (static/relative) sob o botão "Histórico" */}
+          <TutorialTooltip stepIndex={3} className="relative z-[70] mx-auto mb-6 slide-in-from-bottom-4" />
           
           {showHistory && (
-            <div className="w-full flex flex-col gap-3 animate-in slide-in-from-bottom-2 fade-in duration-200">
+            <div className="w-full flex flex-col gap-3 animate-in slide-in-from-bottom-2 fade-in duration-200 relative z-50">
               {Object.keys(groupedHistory).length === 0 ? (
                 <div className="text-sm text-slate-500 bg-white p-6 rounded-2xl text-center border border-slate-200 flex flex-col items-center gap-2 shadow-sm">
                   <Clock className="w-8 h-8 text-slate-300 mb-1" />
@@ -830,9 +1016,9 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
 
       </div>
 
-      {/* MODAL DE CONFIGURAÇÕES */}
+      {/* MODAL DE CONFIGURAÇÕES (O Tutorial consegue clicar aqui livremente pois z-[150] é maior que o z-[80] do Overlay Escuro) */}
       {isSettingsOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[150] p-4 animate-overlay">
           <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-slate-900">Configurações do Timer</h3>
@@ -939,7 +1125,7 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
 
       {/* MODAL DE FINALIZAÇÃO DA SESSÃO */}
       {isFinishModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[150] p-4 animate-overlay">
           <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-slate-900">Finalizar Estudo</h3>
@@ -1015,7 +1201,7 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
 
       {/* MODAL DE ENVIO MANUAL */}
       {isManualModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[150] p-4 animate-overlay">
           <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-slate-900">Enviar Estudo Manual</h3>
