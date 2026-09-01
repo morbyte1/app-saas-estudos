@@ -2,8 +2,9 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { type EmailOtpType } from '@supabase/supabase-js'
+import { redirect } from 'next/navigation'
 
-export async function verifyTokenAction(token_hash: string, type: string) {
+export async function verifyTokenAction(token_hash: string, type: string, next: string) {
   const supabase = await createClient()
   
   const { error } = await supabase.auth.verifyOtp({
@@ -12,8 +13,8 @@ export async function verifyTokenAction(token_hash: string, type: string) {
   })
 
   if (error) {
-    return { error: 'Link inválido ou já expirado. Por favor, solicite um novo acesso.' }
+    return { error: 'Link inválido ou expirado. Por favor, solicite um novo acesso e certifique-se de abrir no mesmo dispositivo.' }
   }
 
-  return { success: true }
+  redirect(next)
 }

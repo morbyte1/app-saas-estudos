@@ -23,11 +23,9 @@ function ConfirmarContent() {
     }
 
     startTransition(async () => {
-      const res = await verifyTokenAction(token_hash, type)
-      if (res.error) {
+      const res = await verifyTokenAction(token_hash, type, next)
+      if (res?.error) {
         setError(res.error)
-      } else {
-        router.push(next)
       }
     })
   }

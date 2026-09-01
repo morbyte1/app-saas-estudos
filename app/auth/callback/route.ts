@@ -5,11 +5,9 @@ export async function GET(request: Request) {
   
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type')
-  const next = searchParams.get('next') ?? '/dashboard'
+  const next = searchParams.get('next') ?? searchParams.get('redirect_to') ?? '/dashboard'
 
   if (token_hash && type) {
-    // Redireciona para uma página que exige interação humana para impedir
-    // que scanners de e-mail consumam o token_hash acidentalmente via GET.
     const confirmUrl = new URL('/auth/confirmar', origin)
     confirmUrl.searchParams.set('token_hash', token_hash)
     confirmUrl.searchParams.set('type', type)
@@ -18,6 +16,5 @@ export async function GET(request: Request) {
     return NextResponse.redirect(confirmUrl)
   }
 
-  // Se o link for inválido ou não possuir os parâmetros mínimos, envia de volta ao login
   return NextResponse.redirect(`${origin}/login?error=link_invalido`)
 }
