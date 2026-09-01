@@ -41,7 +41,7 @@ export async function signupAction(formData: FormData) {
   // VERIFICAÇÃO DO LIMITE DE 30 USUÁRIOS
   const { data: userCount, error: countError } = await supabase.rpc('get_user_count')
   
-  if (!countError && userCount !== null && userCount >= 0) {
+  if (!countError && userCount !== null && userCount >= 30) {
     return { error: 'Vagas esgotadas', isWaitlist: true }
   }
 
