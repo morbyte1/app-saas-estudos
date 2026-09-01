@@ -1,23 +1,28 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { type EmailOtpType } from '@supabase/supabase-js'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
-  const code = searchParams.get('code')
   
-  // Captura para onde o usuário deve ir após o SSR definir os cookies
+  const token_hash = searchParams.get('token_hash')
+  const type = searchParams.get('type') as EmailOtpType | null
   const next = searchParams.get('next') ?? '/dashboard'
 
-  if (code) {
+  if (token_hash && type) {
     const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    
+    // Troca o hash do e-mail por uma sessão de usuário ativa
+    const { error } = await supabase.auth.verifyOtp({
+      type,
+      token_hash,
+    })
     
     if (!error) {
-      // Cookies definidos com sucesso, libera para a página protegida
       return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
-  // Falha de segurança, link usado ou expirado
-  return NextResponse.redirect(`${origin}/login`)
+  // Se o link for inválido ou tiver expirado, envia de volta ao login
+  return NextResponse.redirect(`${origin}/login?error=link_invalido`)
 }

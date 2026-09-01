@@ -89,9 +89,13 @@ export async function resetPasswordAction(email: string) {
 
   const supabase = await createClient()
 
+  // Remove a barra final do domínio, caso exista, para evitar URLs inválidas (ex: //auth)
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://revyza.com.br').replace(/\/$/, '')
+  const redirectUrl = `${siteUrl}/auth/callback?next=/login/reset-password`
+
   // O Supabase vai injetar esse link dentro do seu {{ .ConfirmationURL }}
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://revyza.com.br'}/auth/callback?next=/login/reset-password`,
+    redirectTo: redirectUrl,
   })
 
   if (error) {
