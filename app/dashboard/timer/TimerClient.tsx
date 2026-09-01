@@ -222,24 +222,22 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
     questionsDone: '',
     questionsWrong: ''
   })
-
-  // Inicializa o Tutorial em MODO DE TESTE (Sempre aparece)
-// Inicializa o Tutorial em MODO DE TESTE (Sempre aparece)
   useEffect(() => {
-    setIsTutorialActive(true)
-    setCurrentStep(0)
-    setShowHistory(true)
+    const hasSeenTutorial = localStorage.getItem('revyza_has_seen_timer_tutorial')
     
-    // Injeção do Timer Mock: 1h 35min 17s no modo cronômetro
-    const fakeSeconds = 5717 
-    setPhase('study')
-    setCurrentDisplaySeconds(fakeSeconds)
-    setTotalStudySeconds(fakeSeconds)
-    setIsRunning(false)
-    setTimerConfig(prev => ({ ...prev, type: 'cronometro' }))
-    
-    // Limpa a chave para manter o modo de teste rodando a cada refresh
-    localStorage.removeItem('revyza_has_seen_timer_tutorial')
+    if (!hasSeenTutorial) {
+      setIsTutorialActive(true)
+      setCurrentStep(0)
+      setShowHistory(true)
+      
+      // Injeção do Timer Mock: 1h 35min 17s no modo cronômetro (Apenas para demonstração visual)
+      const fakeSeconds = 5717 
+      setPhase('study')
+      setCurrentDisplaySeconds(fakeSeconds)
+      setTotalStudySeconds(fakeSeconds)
+      setIsRunning(false)
+      setTimerConfig(prev => ({ ...prev, type: 'cronometro' }))
+    }
   }, [])
 
   // Expande o Mock History durante o passo 3 (Histórico)
