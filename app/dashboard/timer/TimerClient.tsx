@@ -224,6 +224,7 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
   })
 
   // Inicializa o Tutorial em MODO DE TESTE (Sempre aparece)
+// Inicializa o Tutorial em MODO DE TESTE (Sempre aparece)
   useEffect(() => {
     setIsTutorialActive(true)
     setCurrentStep(0)
