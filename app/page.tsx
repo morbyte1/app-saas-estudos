@@ -174,9 +174,9 @@ export default function LandingPage() {
             <Link href="/login" className="text-sm font-semibold text-[#243E36] hover:text-[#7CA982] transition-colors">
               Entrar
             </Link>
-            <Link href="/login" className="rounded-full bg-[#243E36] px-5 py-2 text-sm font-semibold text-[#F1F7ED] shadow-sm transition-all hover:bg-[#7CA982] hover:-translate-y-0.5">
-              Cadastrar
-            </Link>
+<Link href="/login?tab=cadastrar" className="rounded-full bg-[#243E36] px-5 py-2 text-sm font-semibold text-[#F1F7ED] shadow-sm transition-all hover:bg-[#7CA982] hover:-translate-y-0.5">
+  Cadastrar
+</Link>
           </div>
         </div>
       </nav>
@@ -408,13 +408,10 @@ export default function LandingPage() {
             O Revyza ainda tá em fase Beta fechada. Pra manter tudo rápido e conseguir ouvir o feedback de todo mundo, só estou liberando acesso grátis pros primeiros 30 testadores. Se você quer parar de perder tempo com planilha e focar na aprovação, essa é a hora de entrar.
           </p>
           <div className="mt-10">
-            <Link
-              href="/login"
-              className="group inline-flex items-center gap-3 rounded-2xl bg-[#C2A83E] px-8 py-4 text-base font-bold text-[#243E36] shadow-[0_8px_24px_-12px_rgba(194,168,62,0.4)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-12px_rgba(194,168,62,0.6)] hover:brightness-105 md:text-lg"
-            >
-              Quero uma das 30 vagas
-              <ArrowRight className="size-5 transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
-            </Link>
+<Link href="/login?tab=cadastrar" className="group inline-flex items-center gap-3 rounded-2xl bg-[#C2A83E] px-8 py-4 text-base font-bold text-[#243E36] shadow-[0_8px_24px_-12px_rgba(194,168,62,0.4)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-12px_rgba(194,168,62,0.6)] hover:brightness-105 md:text-lg">
+  Quero uma das 30 vagas
+  <ArrowRight className="size-5 transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
+</Link>
           </div>
           <p className="mt-5 text-sm text-[#F1F7ED]/60">Acesso 100% gratuito. Sem cartão de crédito.</p>
         </ScrollReveal>
