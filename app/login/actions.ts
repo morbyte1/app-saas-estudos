@@ -89,6 +89,7 @@ export async function resetPasswordAction(email: string) {
 
   const supabase = await createClient()
 
+  // O Supabase vai injetar esse link dentro do seu {{ .ConfirmationURL }}
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://revyza.com.br'}/auth/callback?next=/login/reset-password`,
   })
