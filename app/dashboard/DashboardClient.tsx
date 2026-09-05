@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Calendar, Clock, Target, TrendingUp, Plus, Flame, Check, X, Edit2, Trash2, Library, BookOpen, ChevronLeft } from 'lucide-react'
+import { Calendar, Clock, Target, TrendingUp, Plus, Flame, Check, X, Edit2, Trash2, Library, BookOpen, ChevronLeft, HelpCircle } from 'lucide-react'
 import { useToast } from '@/components/ToastContext'
 import { getTasks, createTask, updateTask, deleteTask, toggleTaskStatus, createExamGoal, updateExamGoal, deleteExamGoal, updateDailyGoal } from './actions'
 
@@ -64,11 +64,21 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
   const [examCountdown, setExamCountdown] = useState({ days: 0, hours: 0, minutes: 0 })
 
   // Estados de Onboarding
-  const [showOnboarding, setShowOnboarding] = useState(true) // Setado para aparecer sempre (para fins de teste atual)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const [onboardingStep, setOnboardingStep] = useState(1)
   const [selectedExam, setSelectedExam] = useState('')
   const [selectedHours, setSelectedHours] = useState(0)
   const [isSavingOnboarding, setIsSavingOnboarding] = useState(false)
+  const [isManualHour, setIsManualHour] = useState(false)
+  const [showTooltip, setShowTooltip] = useState(false)
+
+  // Verifica primeiro login para exibir o onboarding
+  useEffect(() => {
+    const hasDoneOnboarding = localStorage.getItem('revyza_onboarding_done')
+    if (!hasDoneOnboarding && initialMaterias.length === 0 && !initialStats?.examGoal) {
+      setShowOnboarding(true)
+    }
+  }, [initialMaterias.length, initialStats?.examGoal])
 
   useEffect(() => {
     const now = new Date()
@@ -217,6 +227,7 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
     }
 
     toast("Pronto! Tudo configurado.", "success")
+    localStorage.setItem('revyza_onboarding_done', 'true')
     setShowOnboarding(false)
     setIsSavingOnboarding(false)
     
@@ -715,7 +726,10 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
       {showOnboarding && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-overlay">
           <div className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl animate-modal relative overflow-hidden">
-            <button onClick={() => setShowOnboarding(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
+            <button onClick={() => {
+              setShowOnboarding(false)
+              localStorage.setItem('revyza_onboarding_done', 'true')
+            }} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
               <X className="w-5 h-5" />
             </button>
             
@@ -726,7 +740,25 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
                     <Target className="w-6 h-6" />
                   </div>
                 </div>
-                <h2 className="text-2xl font-extrabold text-slate-900 text-center mb-2">Qual prova você vai fazer?</h2>
+                
+                <div className="flex items-center justify-center gap-2 mb-2 relative">
+                  <h2 className="text-2xl font-extrabold text-slate-900 text-center">Qual prova você vai fazer?</h2>
+                  <div 
+                    className="relative flex items-center"
+                    onMouseEnter={() => setShowTooltip(true)}
+                    onMouseLeave={() => setShowTooltip(false)}
+                    onClick={() => setShowTooltip(!showTooltip)}
+                  >
+                    <HelpCircle className="w-5 h-5 text-slate-400 cursor-help hover:text-primary-600 transition-colors" />
+                    {showTooltip && (
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-72 p-4 bg-slate-900 text-white text-xs leading-relaxed rounded-xl shadow-xl z-[110] text-center animate-in fade-in slide-in-from-bottom-1">
+                        Usamos essa informação para fornecer um modelo pré-configurado de matérias e assuntos para estudar, economizando seu tempo nessa etapa. Caso não saiba ainda o que deseja ou quer configurar manualmente clique na segunda opção.
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900"></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
                 <p className="text-sm text-slate-500 text-center mb-8">Selecione o seu objetivo principal para configurarmos o sistema.</p>
                 
                 <div className="space-y-3">
@@ -795,14 +827,53 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
                   {[2, 4, 6, 8].map(hours => (
                     <button
                       key={hours}
-                      onClick={() => setSelectedHours(hours)}
+                      onClick={() => {
+                        setSelectedHours(hours)
+                        setIsManualHour(false)
+                      }}
                       className={`p-4 rounded-2xl border-2 transition-all font-bold text-lg ${
-                        selectedHours === hours ? 'border-primary-600 bg-primary-50 text-primary-700 shadow-sm' : 'border-slate-100 hover:border-primary-300 text-slate-600 hover:bg-slate-50'
+                        selectedHours === hours && !isManualHour ? 'border-primary-600 bg-primary-50 text-primary-700 shadow-sm' : 'border-slate-100 hover:border-primary-300 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
                       {hours}h{hours === 8 && '+'} / dia
                     </button>
                   ))}
+                  
+                  {!isManualHour ? (
+                    <button
+                      onClick={() => {
+                        setIsManualHour(true)
+                        setSelectedHours(0) 
+                      }}
+                      className="col-span-2 p-4 rounded-2xl border-2 border-slate-100 hover:border-primary-300 text-slate-600 hover:bg-slate-50 transition-all font-bold text-sm"
+                    >
+                      Digitar manualmente
+                    </button>
+                  ) : (
+                    <div className="col-span-2 p-4 rounded-2xl border-2 border-primary-600 bg-primary-50 shadow-sm transition-all flex items-center justify-between">
+                      <span className="text-sm font-bold text-primary-700">Horas diárias:</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={selectedHours || ''}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value)
+                            if (!isNaN(val) && val > 0) setSelectedHours(val)
+                            else setSelectedHours(0)
+                          }}
+                          onKeyDown={(e) => {
+                            if (['.', ',', 'e', 'E', '-', '+'].includes(e.key)) e.preventDefault()
+                          }}
+                          className="w-20 px-3 py-1.5 border border-primary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-center font-bold text-primary-900 bg-white"
+                          placeholder="Ex: 5"
+                          autoFocus
+                        />
+                        <span className="text-sm font-bold text-primary-700">h / dia</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <button
@@ -818,7 +889,7 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
         </div>
       )}
 
-      {/* MODAL DE TAREFAS (Restante permanece inalterado...) */}
+      {/* MODAL DE TAREFAS */}
       {isTaskModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
           <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
@@ -909,7 +980,7 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
         </div>
       )}
 
-      {/* MODAL DE META DE PROVA (Restante permanece inalterado...) */}
+      {/* MODAL DE META DE PROVA */}
       {isExamModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
           <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl animate-modal">
