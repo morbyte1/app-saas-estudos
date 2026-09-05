@@ -27,13 +27,28 @@ export async function getTodosAssuntos() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Usuário não autenticado', data: [] }
 
+  // Buscamos o materia_id através do relacionamento com a tabela topicos
   const { data, error } = await supabase
     .from('assuntos')
-    .select('id, name, materia_id')
+    .select(`
+      id, 
+      name, 
+      topicos (
+        materia_id
+      )
+    `)
     .eq('user_id', user.id)
 
   if (error) return { error: error.message, data: [] }
-  return { success: true, data: data || [] }
+
+  // Formatamos os dados para que o frontend receba exatamente { id, name, materia_id }
+  const formattedData = data?.map((item: any) => ({
+    id: item.id,
+    name: item.name,
+    materia_id: item.topicos?.materia_id || null
+  })) || []
+
+  return { success: true, data: formattedData }
 }
 
 export async function createQuestaoErro(data: {

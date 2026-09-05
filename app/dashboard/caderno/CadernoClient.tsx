@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Flame, X, AlertTriangle, CheckCircle2, Pencil, Trash2, Calendar } from 'lucide-react'
 import { useToast } from '@/components/ToastContext'
+import ConfirmModal from '@/components/ConfirmModal'
 import { createQuestaoErro, deleteQuestaoErro, editQuestaoErro, handleRevisaoQuestao } from './actions'
 
 const MOTIVOS = ['Não sabia o conteúdo', 'Confundi conceitos', 'Descuido / Cálculo', 'Falta de atenção', 'Interpretação']
@@ -20,6 +21,15 @@ export default function CadernoClient({ initialMaterias, initialAssuntos, initia
   const [erros, setErros] = useState(initialErros)
   const [isSaving, setIsSaving] = useState(false)
   const [editandoId, setEditandoId] = useState<string | null>(null)
+
+  // Estados do Modal de Exclusão
+  const [questaoToDelete, setQuestaoToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // Sincroniza o estado local com as atualizações do servidor
+  useEffect(() => {
+    setErros(initialErros)
+  }, [initialErros])
 
   // Form State
   const [materiaId, setMateriaId] = useState('')
@@ -94,17 +104,25 @@ export default function CadernoClient({ initialMaterias, initialAssuntos, initia
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta questão?')) return
+  const handleDeleteClick = (id: string) => {
+    setQuestaoToDelete(id)
+  }
+
+  const executeDeleteQuestao = async () => {
+    if (!questaoToDelete) return
+    setIsDeleting(true)
     
-    const res = await deleteQuestaoErro(id)
+    const res = await deleteQuestaoErro(questaoToDelete)
     if (res.success) {
       toast('Questão excluída com sucesso!', 'success')
-      setErros(erros.filter(e => e.id !== id))
-      if (editandoId === id) resetForm()
+      setErros(erros.filter(e => e.id !== questaoToDelete))
+      if (editandoId === questaoToDelete) resetForm()
     } else {
       toast('Erro ao excluir a questão.', 'error')
     }
+    
+    setIsDeleting(false)
+    setQuestaoToDelete(null)
   }
 
   const handleSaveQuestao = async () => {
@@ -144,8 +162,11 @@ export default function CadernoClient({ initialMaterias, initialAssuntos, initia
     if (!questaoAtual) return
 
     if (acertou) {
+      const amanha = new Date()
+      amanha.setDate(amanha.getDate() + 1)
+      setErros(erros.map(e => e.id === questaoAtual.id ? { ...e, proxima_revisao: amanha.toISOString().split('T')[0] } : e))
+      
       await handleRevisaoQuestao(questaoAtual.id, true)
-      setErros(erros.filter(e => e.id !== questaoAtual.id)) 
       avancarQuestao()
     } else {
       setNovoMotivo('')
@@ -159,8 +180,17 @@ export default function CadernoClient({ initialMaterias, initialAssuntos, initia
       toast('Selecione o novo motivo e confiança.', 'error')
       return
     }
+
+    const amanha = new Date()
+    amanha.setDate(amanha.getDate() + 1)
+    setErros(erros.map(e => e.id === questaoAtual.id ? { 
+      ...e, 
+      proxima_revisao: amanha.toISOString().split('T')[0],
+      motivo_erro: novoMotivo,
+      confianca: novaConfianca
+    } : e))
+
     await handleRevisaoQuestao(questaoAtual.id, false, novoMotivo, novaConfianca)
-    setErros(erros.filter(e => e.id !== questaoAtual.id)) 
     setIsReevaluating(false)
     avancarQuestao()
   }
@@ -227,7 +257,7 @@ export default function CadernoClient({ initialMaterias, initialAssuntos, initia
                         <button onClick={() => handleEditClick(erro)} className="p-1.5 text-slate-400 hover:text-primary-600 bg-slate-50 hover:bg-primary-50 rounded-lg transition">
                           <Pencil className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDelete(erro.id)} className="p-1.5 text-slate-400 hover:text-red-600 bg-slate-50 hover:bg-red-50 rounded-lg transition">
+                        <button onClick={() => handleDeleteClick(erro.id)} className="p-1.5 text-slate-400 hover:text-red-600 bg-slate-50 hover:bg-red-50 rounded-lg transition">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -475,6 +505,16 @@ export default function CadernoClient({ initialMaterias, initialAssuntos, initia
             )}
           </div>
         )}
+
+        <ConfirmModal
+          isOpen={!!questaoToDelete}
+          title="Excluir Questão"
+          message="Tem certeza que deseja excluir esta questão do seu caderno de erros?"
+          confirmText="Sim, excluir"
+          onConfirm={executeDeleteQuestao}
+          onCancel={() => setQuestaoToDelete(null)}
+          isLoading={isDeleting}
+        />
       </div>
     </div>
   )
