@@ -2,10 +2,10 @@
 
 import ConfirmModal from '@/components/ConfirmModal'
 import { useState } from 'react'
-import { Plus, Clock, Percent, Book, BookOpen, Settings, Target, X, Trash2 } from 'lucide-react'
+import { Plus, Clock, Percent, Book, BookOpen, Settings, Target, X, Trash2, Rocket } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from '@/components/ToastContext'
-import { createMateria, updateMateria, deleteMateria, Materia } from './actions'
+import { createMateria, updateMateria, deleteMateria, importEnemDataAction, Materia } from './actions'
 
 const StatCard = ({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number }) => (
   <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
@@ -68,6 +68,7 @@ interface Estatisticas {
   totalFocus: string
   progress: string
   activeSubjects: number
+  dailyGoalHours: number // Novo campo recebido
 }
 
 interface MateriasClientProps {
@@ -82,6 +83,7 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
   const [materiaToDelete, setMateriaToDelete] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [modalData, setModalData] = useState({ name: '', goalHours: '' })
   const { toast } = useToast()
@@ -136,23 +138,35 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
   }
 
   const executeDeleteMateria = async () => {
-  if (!materiaToDelete) return
-  setIsSaving(true)
-  const result = await deleteMateria(materiaToDelete)
-  if (result.success) {
-    setMaterias(materias.filter(m => m.id !== materiaToDelete))
-    toast('Matéria excluída com sucesso.', 'success')
-    closeModal()
-  } else {
-    toast('Erro ao excluir matéria.', 'error')
+    if (!materiaToDelete) return
+    setIsSaving(true)
+    const result = await deleteMateria(materiaToDelete)
+    if (result.success) {
+      setMaterias(materias.filter(m => m.id !== materiaToDelete))
+      toast('Matéria excluída com sucesso.', 'success')
+      closeModal()
+    } else {
+      toast('Erro ao excluir matéria.', 'error')
+    }
+    setIsSaving(false)
+    setMateriaToDelete(null)
   }
-  setIsSaving(false)
-  setMateriaToDelete(null)
-}
 
-const handleDelete = (id: string) => {
-  setMateriaToDelete(id)
-}
+  const handleImportEnem = async () => {
+    setIsImporting(true)
+    const result = await importEnemDataAction(estatisticas.dailyGoalHours)
+    
+    if (result.success) {
+      toast('Trilha do ENEM importada com sucesso! Recarregando página...', 'success')
+      // Um pequeno delay e reload total para garantir que Next.js pegue o novo State da página
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
+    } else {
+      toast(`Erro na importação: ${result.error}`, 'error')
+      setIsImporting(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 p-8">
@@ -190,21 +204,46 @@ const handleDelete = (id: string) => {
         </div>
 
         {materias.length === 0 ? (
-          <div className="flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-200 rounded-3xl p-16 text-center shadow-sm">
-            <div className="bg-slate-50 p-4 rounded-full mb-4">
-              <BookOpen className="w-12 h-12 text-slate-300" />
+          <>
+            {/* Banner de Importação (Combate à tela em branco) */}
+            <div className="mb-6 w-full bg-primary-600 text-white rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-[60px] pointer-events-none"></div>
+              <div className="flex items-center gap-5 relative z-10">
+                <div className="bg-white/20 p-4 rounded-2xl flex-shrink-0">
+                  <Rocket className="w-8 h-8" />
+                </div>
+                <div>
+                  <h3 className="text-xl md:text-2xl font-extrabold mb-1">Deseja importar todos os conteúdos cobrados do ENEM?</h3>
+                  <p className="text-primary-100 font-medium text-sm max-w-lg leading-relaxed">
+                    Nós montamos uma grade completa e vamos distribuir as horas de estudo automaticamente com base na sua meta de {estatisticas.dailyGoalHours}h diárias.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleImportEnem}
+                disabled={isImporting}
+                className="w-full md:w-auto px-8 py-3.5 bg-white text-primary-600 font-bold rounded-xl hover:bg-primary-50 transition shadow-sm disabled:opacity-75 whitespace-nowrap relative z-10"
+              >
+                {isImporting ? 'Importando Conteúdo...' : 'Sim, importar trilha'}
+              </button>
             </div>
-            <h2 className="text-xl font-bold text-slate-900 mb-2">Você ainda não configurou nenhuma matéria</h2>
-            <p className="text-slate-500 text-sm mb-6 max-w-sm">
-              Adicione suas matérias para organizar seus estudos e acompanhe seu progresso semanalmente.
-            </p>
-            <button
-              onClick={openCreateModal}
-              className="px-6 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition shadow-sm"
-            >
-              Adicionar Primeira Matéria
-            </button>
-          </div>
+
+            <div className="flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-200 rounded-3xl p-16 text-center shadow-sm">
+              <div className="bg-slate-50 p-4 rounded-full mb-4">
+                <BookOpen className="w-12 h-12 text-slate-300" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 mb-2">Você ainda não configurou nenhuma matéria</h2>
+              <p className="text-slate-500 text-sm mb-6 max-w-sm">
+                Adicione suas matérias para organizar seus estudos e acompanhe seu progresso semanalmente.
+              </p>
+              <button
+                onClick={openCreateModal}
+                className="px-6 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition shadow-sm"
+              >
+                Adicionar Primeira Matéria
+              </button>
+            </div>
+          </>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {materias.map(materia => (
@@ -262,7 +301,7 @@ const handleDelete = (id: string) => {
             <div className="flex gap-2 mt-8">
               {editingId && (
                 <button
-                  onClick={() => handleDelete(editingId)}
+                  onClick={() => setMateriaToDelete(editingId)}
                   disabled={isSaving}
                   className="flex items-center justify-center p-2.5 border border-red-200 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition disabled:opacity-50"
                   title="Excluir Matéria"
@@ -287,15 +326,16 @@ const handleDelete = (id: string) => {
           </div>
         </div>
       )}
-    <ConfirmModal
-      isOpen={!!materiaToDelete}
-      title="Excluir Matéria"
-      message="Tem certeza que deseja excluir esta matéria? Todos os dados, tópicos e histórico vinculados a ela serão perdidos."
-      confirmText="Sim, excluir"
-      onConfirm={executeDeleteMateria}
-      onCancel={() => setMateriaToDelete(null)}
-      isLoading={isSaving}
-    />
+      
+      <ConfirmModal
+        isOpen={!!materiaToDelete}
+        title="Excluir Matéria"
+        message="Tem certeza que deseja excluir esta matéria? Todos os dados, tópicos e histórico vinculados a ela serão perdidos."
+        confirmText="Sim, excluir"
+        onConfirm={executeDeleteMateria}
+        onCancel={() => setMateriaToDelete(null)}
+        isLoading={isSaving}
+      />
     </div>
   )
 }

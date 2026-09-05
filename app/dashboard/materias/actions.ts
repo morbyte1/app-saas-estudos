@@ -2,6 +2,8 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import fs from 'fs'
+import path from 'path'
 
 export interface Materia {
   id: string
@@ -11,6 +13,12 @@ export interface Materia {
   studiedMinutes: number
   progress: number
 }
+
+// Tipagem do arquivo JSON
+export type EnemAssunto = string;
+export type EnemTopico = { name: string; assuntos: EnemAssunto[] };
+export type EnemMateria = { name: string; default_goal_ratio: number; topicos: EnemTopico[] };
+export type EnemData = { vestibular: string; exam_target: { name: string; target_date: string }; materias: EnemMateria[] };
 
 // Utilitário para pegar a data do início da semana (Domingo) no formato YYYY-MM-DD
 const getStartOfWeekString = () => {
@@ -32,14 +40,17 @@ export async function getEstatisticas() {
     return { error: 'Usuário não autenticado' }
   }
 
-  const { data: materias, error } = await supabase
-    .from('materias')
-    .select('id, goal_hours')
-    .eq('user_id', user.id)
+  const [materiasRes, userSettingsRes] = await Promise.all([
+    supabase.from('materias').select('id, goal_hours').eq('user_id', user.id),
+    supabase.from('user_settings').select('daily_goal_hours').eq('user_id', user.id).maybeSingle()
+  ])
 
-  if (error) {
-    console.error('Erro ao buscar estatísticas:', error.message)
-    return { error: error.message }
+  const materias = materiasRes.data
+  const dailyGoalHours = userSettingsRes.data?.daily_goal_hours || 3
+
+  if (materiasRes.error) {
+    console.error('Erro ao buscar estatísticas:', materiasRes.error.message)
+    return { error: materiasRes.error.message }
   }
 
   if (!materias || materias.length === 0) {
@@ -48,7 +59,8 @@ export async function getEstatisticas() {
       data: {
         totalFocus: "0h 0min",
         progress: "0%",
-        activeSubjects: 0
+        activeSubjects: 0,
+        dailyGoalHours
       }
     }
   }
@@ -98,7 +110,8 @@ export async function getEstatisticas() {
     data: {
       totalFocus: `${totalHours}h ${remainingMinutes}min`,
       progress: `${averageProgress}%`,
-      activeSubjects: materias.length
+      activeSubjects: materias.length,
+      dailyGoalHours
     }
   }
 }
@@ -163,17 +176,51 @@ export async function getMaterias() {
   return { success: true, data: formattedMaterias }
 }
 
+export async function importEnemDataAction(dailyHours: number) {
+  const supabase = await createClient()
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) return { error: 'Usuário não autenticado' }
+
+  try {
+    const filePath = path.join(process.cwd(), 'data', 'enem.json')
+    if (!fs.existsSync(filePath)) {
+       return { error: 'Arquivo de trilha não encontrado no servidor.' }
+    }
+    const fileContents = fs.readFileSync(filePath, 'utf8')
+    const enemData: EnemData = JSON.parse(fileContents)
+
+    const weeklyHours = dailyHours * 7
+
+    // Mapeando a carga horária de cada matéria baseado no ratio do JSON
+    const payload = enemData.materias.map(m => ({
+      name: m.name,
+      goal_hours: Math.max(1, Math.round(weeklyHours * m.default_goal_ratio)),
+      topicos: m.topicos
+    }))
+
+    // Chamando a Stored Procedure para garantir consistência e performance
+    const { error: rpcError } = await supabase.rpc('import_enem_data', {
+      p_user_id: user.id,
+      p_materias: payload
+    })
+
+    if (rpcError) throw rpcError
+
+    revalidatePath('/dashboard')
+    revalidatePath('/dashboard/materias')
+    return { success: true }
+  } catch (error: any) {
+    console.error('Erro ao importar trilha ENEM:', error.message)
+    return { error: error.message }
+  }
+}
+
 export async function createMateria(data: { name: string, goalHours: number }) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    return { error: 'Usuário não autenticado' }
-  }
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) return { error: 'Usuário não autenticado' }
 
   const { data: newMateria, error } = await supabase
     .from('materias')
@@ -188,80 +235,37 @@ export async function createMateria(data: { name: string, goalHours: number }) {
     .select()
     .single()
 
-  if (error) {
-    console.error('Erro ao criar matéria:', error.message)
-    return { error: error.message }
-  }
+  if (error) return { error: error.message }
 
   revalidatePath('/dashboard/materias')
-
-  const formattedMateria: Materia = {
-    id: newMateria.id,
-    name: newMateria.name,
-    goalHours: newMateria.goal_hours,
-    studiedHours: 0,
-    studiedMinutes: 0,
-    progress: 0
-  }
-
-  return { success: true, data: formattedMateria }
+  return { success: true, data: { ...newMateria, goalHours: newMateria.goal_hours, studiedHours: 0, studiedMinutes: 0, progress: 0 } as Materia }
 }
 
 export async function updateMateria(id: string, data: { name: string, goalHours: number }) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    return { error: 'Usuário não autenticado' }
-  }
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) return { error: 'Usuário não autenticado' }
 
   const { data: updatedMateria, error } = await supabase
     .from('materias')
-    .update({
-      name: data.name,
-      goal_hours: data.goalHours
-    })
+    .update({ name: data.name, goal_hours: data.goalHours })
     .eq('id', id)
     .eq('user_id', user.id)
     .select()
     .single()
 
-  if (error) {
-    console.error('Erro ao atualizar matéria:', error.message)
-    return { error: error.message }
-  }
+  if (error) return { error: error.message }
 
   revalidatePath('/dashboard/materias')
-
-  // Ao invés de buscar os cálculos novamente aqui, a tela já recarrega via revalidatePath,
-  // mas fornecemos um fallback funcional na resposta:
-  const formattedMateria: Materia = {
-    id: updatedMateria.id,
-    name: updatedMateria.name,
-    goalHours: updatedMateria.goal_hours,
-    studiedHours: updatedMateria.studied_hours,
-    studiedMinutes: updatedMateria.studied_minutes,
-    progress: Number(updatedMateria.progress)
-  }
-
-  return { success: true, data: formattedMateria }
+  return { success: true, data: { ...updatedMateria, goalHours: updatedMateria.goal_hours, studiedHours: updatedMateria.studied_hours, studiedMinutes: updatedMateria.studied_minutes, progress: Number(updatedMateria.progress) } as Materia }
 }
 
 export async function deleteMateria(id: string) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    return { error: 'Usuário não autenticado' }
-  }
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) return { error: 'Usuário não autenticado' }
 
   const { error } = await supabase
     .from('materias')
@@ -269,10 +273,7 @@ export async function deleteMateria(id: string) {
     .eq('id', id)
     .eq('user_id', user.id)
 
-  if (error) {
-    console.error('Erro ao excluir matéria:', error.message)
-    return { error: error.message }
-  }
+  if (error) return { error: error.message }
 
   revalidatePath('/dashboard/materias')
   return { success: true }

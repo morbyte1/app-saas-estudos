@@ -1,0 +1,508 @@
+{
+  "vestibular": "ENEM",
+  "exam_target": {
+    "name": "ENEM 2026",
+    "target_date": "2026-11-01T13:30:00Z"
+  },
+  "materias": [
+    {
+      "name": "Matemática",
+      "default_goal_ratio": 0.20,
+      "topicos": [
+        {
+          "name": "Matemática Básica",
+          "assuntos": [
+            "Operações Básicas e Regra de Sinais",
+            "Frações e Números Decimais",
+            "Potenciação e Radiciação",
+            "Razão, Proporção e Escala Cartográfica",
+            "Regra de Três Simples e Composta",
+            "Porcentagem e Matemática Financeira"
+          ]
+        },
+        {
+          "name": "Álgebra e Funções",
+          "assuntos": [
+            "Expressões Algébricas e Equações (1º e 2º Grau)",
+            "Noções de Conjuntos",
+            "Leitura e Interpretação de Gráficos",
+            "Conceito de Função",
+            "Função Afim (1º Grau)",
+            "Função Quadrática (2º Grau)",
+            "Função Exponencial e Logaritmos"
+          ]
+        },
+        {
+          "name": "Estatística",
+          "assuntos": [
+            "Leitura de Tabelas e Gráficos Complexos",
+            "Medidas de Tendência Central (Média Simples, Ponderada, Moda e Mediana)",
+            "Medidas de Dispersão (Desvio Padrão e Variância)"
+          ]
+        },
+        {
+          "name": "Análise Combinatória e Probabilidade",
+          "assuntos": [
+            "Princípio Fundamental da Contagem (PFC) e Fatorial",
+            "Arranjo e Combinação Simples",
+            "Probabilidade (Conceito, União de Eventos e Condicional)"
+          ]
+        },
+        {
+          "name": "Geometria Plana",
+          "assuntos": [
+            "Retas, Ângulos e Polígonos Regulares",
+            "Triângulos (Classificação e Propriedades)",
+            "Semelhança de Triângulos",
+            "Teorema de Tales e Pitágoras",
+            "Relações Trigonométricas no Triângulo Retângulo",
+            "Circunferência, Círculo e Cálculo de Áreas Planas"
+          ]
+        },
+        {
+          "name": "Geometria Espacial",
+          "assuntos": [
+            "Projeção Ortogonal e Vistas Espaciais",
+            "Prismas (Cálculo de Volume e Área)",
+            "Cilindros (Cálculo de Volume e Área)",
+            "Pirâmides (Cálculo de Volume e Área)",
+            "Cones (Cálculo de Volume e Área)",
+            "Esferas (Cálculo de Volume e Área)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Biologia",
+      "default_goal_ratio": 0.08,
+      "topicos": [
+        {
+          "name": "Ecologia e Ciências Ambientais",
+          "assuntos": [
+            "Conceitos Básicos de Ecologia",
+            "Cadeias e Teias Alimentares",
+            "Relações Ecológicas (Harmônicas e Desarmônicas)",
+            "Ciclo da Água",
+            "Ciclo do Carbono",
+            "Ciclo do Nitrogênio",
+            "Dinâmica de Populações",
+            "Biomas Brasileiros",
+            "Desmatamento e Degradação do Solo",
+            "Poluição da Água e do Ar",
+            "Aquecimento Global e Efeito Estufa"
+          ]
+        },
+        {
+          "name": "Citologia (Biologia Celular)",
+          "assuntos": [
+            "Teoria Celular e Tipos de Células",
+            "Membrana Plasmática",
+            "Transporte Passivo (Difusão e Osmose)",
+            "Transporte Ativo (Bomba de Sódio e Potássio)",
+            "Organelas Citoplasmáticas e suas Funções",
+            "Fotossíntese",
+            "Respiração Celular",
+            "Mitose",
+            "Meiose"
+          ]
+        },
+        {
+          "name": "Fisiologia e Anatomia Humana",
+          "assuntos": [
+            "Sistema Digestório e Nutrição",
+            "Sistema Respiratório",
+            "Sistema Cardiovascular",
+            "Sistema Imunológico",
+            "Soros e Vacinas",
+            "Sistema Excretor",
+            "Sistema Endócrino",
+            "Sistema Nervoso"
+          ]
+        },
+        {
+          "name": "Saúde, Higiene e Doenças",
+          "assuntos": [
+            "Vírus",
+            "Bactérias",
+            "Protozoários",
+            "Doenças Endêmicas no Brasil",
+            "Dengue, Zika e Chikungunya",
+            "Malária",
+            "Doença de Chagas",
+            "Leishmaniose"
+          ]
+        },
+        {
+          "name": "Genética, Evolução e Biotecnologia",
+          "assuntos": [
+            "Conceitos Básicos de Genética",
+            "Primeira Lei de Mendel",
+            "Segunda Lei de Mendel",
+            "Sistema ABO e Fator Rh",
+            "Mutações e Doenças Genéticas",
+            "Biotecnologia e Engenharia Genética",
+            "Transgênicos e Clonagem",
+            "Lamarckismo",
+            "Darwinismo",
+            "Neodarwinismo",
+            "Especiação e Isolamento Reprodutivo"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Física",
+      "default_goal_ratio": 0.08,
+      "topicos": [
+        {
+          "name": "Cinemática",
+          "assuntos": [
+            "Grandezas Físicas e Unidades de Medida",
+            "Velocidade Escalar Média",
+            "Movimento Retilíneo Uniforme (MRU)",
+            "Aceleração Escalar Média",
+            "Movimento Retilíneo Uniformemente Variado (MRUV)",
+            "Queda Livre e Lançamento Vertical",
+            "Movimento Circular Uniforme (MCU)"
+          ]
+        },
+        {
+          "name": "Dinâmica e Estática",
+          "assuntos": [
+            "Primeira Lei de Newton (Inércia)",
+            "Segunda Lei de Newton (Princípio Fundamental da Dinâmica)",
+            "Terceira Lei de Newton (Ação e Reação)",
+            "Força de Atrito",
+            "Força Peso e Força Normal",
+            "Trabalho de uma Força",
+            "Potência Mecânica",
+            "Energia Cinética",
+            "Energia Potencial Gravitacional",
+            "Energia Potencial Elástica",
+            "Conservação da Energia Mecânica",
+            "Estática do Ponto Material"
+          ]
+        },
+        {
+          "name": "Termologia",
+          "assuntos": [
+            "Escalas Termométricas e Conversões",
+            "Dilatação Térmica",
+            "Calor Sensível",
+            "Calor Latente",
+            "Processos de Propagação de Calor (Condução, Convecção e Irradiação)",
+            "Estudo dos Gases Ideais",
+            "Primeira Lei da Termodinâmica",
+            "Máquinas Térmicas e Rendimento"
+          ]
+        },
+        {
+          "name": "Ondulatória e Acústica",
+          "assuntos": [
+            "Natureza e Tipos de Ondas",
+            "Equação Fundamental da Onda",
+            "Espectro Eletromagnético",
+            "Reflexão de Ondas",
+            "Refração de Ondas",
+            "Difração",
+            "Interferência",
+            "Ressonância",
+            "Qualidades Fisiológicas do Som (Altura, Intensidade e Timbre)"
+          ]
+        },
+        {
+          "name": "Óptica Geométrica",
+          "assuntos": [
+            "Princípios da Óptica Geométrica",
+            "Reflexão da Luz",
+            "Espelhos Planos",
+            "Espelhos Esféricos",
+            "Refração da Luz",
+            "Lentes Esféricas",
+            "Óptica da Visão (Miopia e Hipermetropia)"
+          ]
+        },
+        {
+          "name": "Eletrodinâmica",
+          "assuntos": [
+            "Carga Elétrica e Eletrização",
+            "Corrente Elétrica",
+            "Tensão Elétrica (DDP)",
+            "Primeira Lei de Ohm",
+            "Segunda Lei de Ohm",
+            "Potência Elétrica",
+            "Consumo de Energia Elétrica",
+            "Associação de Resistores em Série",
+            "Associação de Resistores em Paralelo",
+            "Aparelhos de Medida (Amperímetro e Voltímetro)",
+            "Curto-circuito e Disjuntores"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Química",
+      "default_goal_ratio": 0.09,
+      "topicos": [
+        {
+          "name": "Química Básica e Geral",
+          "assuntos": [
+            "Separação de Misturas",
+            "Modelos Atômicos",
+            "Tabela Periódica (Propriedades e Organização)",
+            "Ligações Iônicas",
+            "Ligações Covalentes",
+            "Ligações Metálicas",
+            "Geometria Molecular",
+            "Polaridade das Moléculas",
+            "Forças Intermoleculares",
+            "Funções Inorgânicas (Ácidos, Bases, Sais e Óxidos)"
+          ]
+        },
+        {
+          "name": "Físico-Química",
+          "assuntos": [
+            "Massa Molar e Mol",
+            "Cálculo Estequiométrico Básico",
+            "Estequiometria (Rendimento e Pureza)",
+            "Concentração Comum",
+            "Molaridade",
+            "Termoquímica (Reações Endotérmicas e Exotérmicas)",
+            "Lei de Hess",
+            "Cinética Química (Fatores que Alteram a Velocidade)",
+            "Equilíbrio Químico",
+            "Deslocamento de Equilíbrio (Princípio de Le Chatelier)",
+            "Potencial Hidrogeniônico (pH e pOH)",
+            "Oxirredução",
+            "Pilhas (Células Galvânicas)",
+            "Eletrólise"
+          ]
+        },
+        {
+          "name": "Química Orgânica",
+          "assuntos": [
+            "Classificação de Cadeias Carbônicas",
+            "Hidrocarbonetos",
+            "Funções Oxigenadas (Álcool, Fenol, Éter, Aldeído, Cetona, Ácido Carboxílico, Éster)",
+            "Funções Nitrogenadas (Amina, Amida)",
+            "Nomenclatura IUPAC",
+            "Isomeria Plana",
+            "Isomeria Espacial (Óptica e Geométrica)",
+            "Reações de Oxidação Orgânica",
+            "Reações de Substituição e Adição",
+            "Polímeros Sintéticos e Naturais"
+          ]
+        },
+        {
+          "name": "Química Ambiental",
+          "assuntos": [
+            "Ciclos Biogeoquímicos",
+            "Chuva Ácida",
+            "Efeito Estufa",
+            "Camada de Ozônio",
+            "Tratamento de Água e Esgoto",
+            "Lixo, Reciclagem e Sustentabilidade"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ciências Humanas",
+      "default_goal_ratio": 0.20,
+      "topicos": [
+        {
+          "name": "Geografia Física e Ambiental",
+          "assuntos": [
+            "Cartografia (Escalas, Coordenadas e Fusos Horários)",
+            "Geomorfologia (Relevo e Agentes Internos/Externos)",
+            "Estrutura Geológica do Brasil",
+            "Climatologia e Mudanças Climáticas",
+            "Fenômenos Climáticos (El Niño e La Niña)",
+            "Hidrografia Brasileira",
+            "Biomas Brasileiros e Domínios Morfoclimáticos",
+            "Impactos Ambientais e Sustentabilidade"
+          ]
+        },
+        {
+          "name": "Geografia Humana e Econômica",
+          "assuntos": [
+            "Dinâmica Demográfica Brasileira",
+            "Migrações Internas e Internacionais",
+            "Urbanização Brasileira",
+            "Problemas Urbanos e Segregação Espacial",
+            "Espaço Agrário e Estrutura Fundiária",
+            "O Agronegócio no Brasil",
+            "Indústria e Matrizes Energéticas",
+            "Globalização",
+            "Blocos Econômicos e Nova Ordem Mundial"
+          ]
+        },
+        {
+          "name": "História do Brasil",
+          "assuntos": [
+            "Brasil Colônia (Economia Açucareira)",
+            "Ciclo do Ouro e Sociedade Mineradora",
+            "Escravidão e Resistência Negra",
+            "Primeiro Reinado e Período Regencial",
+            "Segundo Reinado (Economia Cafeeira e Fim da Escravidão)",
+            "República Velha (Oligarquias e Movimentos Sociais)",
+            "Era Vargas",
+            "Governos Populistas (Dutra a Jango)",
+            "Ditadura Militar (1964-1985)",
+            "Redemocratização e Brasil Contemporâneo"
+          ]
+        },
+        {
+          "name": "História Geral",
+          "assuntos": [
+            "Antiguidade Clássica (Grécia e Roma)",
+            "Idade Média (Feudalismo e Crise do Século XIV)",
+            "Idade Moderna (Renascimento, Reformas e Absolutismo)",
+            "Expansão Marítima e Colonização das Américas",
+            "Revolução Industrial",
+            "Revolução Francesa e Iluminismo",
+            "Imperialismo e Neocolonialismo",
+            "Primeira Guerra Mundial",
+            "Segunda Guerra Mundial e Nazifascismo",
+            "Guerra Fria e Descolonização"
+          ]
+        },
+        {
+          "name": "Filosofia",
+          "assuntos": [
+            "Origem da Filosofia e Pré-Socráticos",
+            "Filosofia Antiga (Sócrates, Platão)",
+            "Filosofia Antiga (Aristóteles)",
+            "Filosofia Moderna (Racionalismo de Descartes)",
+            "Filosofia Moderna (Empirismo de Locke e Hume)",
+            "Contratualistas (Hobbes, Locke, Rousseau)",
+            "Ética e Política em Maquiavel",
+            "Filosofia Contemporânea (Kant e Nietzsche)"
+          ]
+        },
+        {
+          "name": "Sociologia",
+          "assuntos": [
+            "Surgimento da Sociologia e Positivismo",
+            "Émile Durkheim (Fato Social e Coesão)",
+            "Karl Marx (Classes Sociais e Capitalismo)",
+            "Max Weber (Ação Social e Dominação)",
+            "Mundo do Trabalho (Taylorismo, Fordismo, Toyotismo)",
+            "Movimentos Sociais",
+            "Cidadania e Direitos Humanos",
+            "Cultura e Identidade",
+            "Indústria Cultural e Escola de Frankfurt",
+            "Sociologia Brasileira (Florestan Fernandes, Gilberto Freyre, Sérgio Buarque)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Linguagens",
+      "default_goal_ratio": 0.20,
+      "topicos": [
+        {
+          "name": "Compreensão e Interpretação Textual",
+          "assuntos": [
+            "Leitura e Interpretação de Textos Verbais",
+            "Leitura e Interpretação de Textos Não Verbais (Gráficos, Imagens)",
+            "Análise de Campanhas Publicitárias",
+            "Análise de Charges e Tirinhas",
+            "Intencionalidade Discursiva (Propósito do Autor)",
+            "Intertextualidade",
+            "Metalinguagem e Ironia"
+          ]
+        },
+        {
+          "name": "Estudos Linguísticos e Gramática",
+          "assuntos": [
+            "Funções da Linguagem",
+            "Figuras de Linguagem (Metáfora, Metonímia, Paradoxo, etc.)",
+            "Variação Linguística e Preconceito Linguístico",
+            "Norma-Padrão vs. Linguagem Coloquial",
+            "Tipologia Textual (Narração, Descrição, Dissertação, etc.)",
+            "Gêneros Textuais (Notícia, Crônica, Artigo, etc.)",
+            "Coesão e Coerência Textual",
+            "Uso dos Conectivos"
+          ]
+        },
+        {
+          "name": "Literatura",
+          "assuntos": [
+            "Quinhentismo e Literatura de Informação",
+            "Barroco",
+            "Arcadismo",
+            "Romantismo",
+            "Realismo e Naturalismo",
+            "Machado de Assis e Obra",
+            "Parnasianismo e Simbolismo",
+            "Pré-Modernismo",
+            "Modernismo no Brasil (1ª Geração - Semana de 22)",
+            "Modernismo no Brasil (2ª Geração - Poesia e Prosa)",
+            "Modernismo no Brasil (3ª Geração - Geração de 45)",
+            "Literatura Contemporânea"
+          ]
+        },
+        {
+          "name": "Artes",
+          "assuntos": [
+            "Movimentos Artísticos de Vanguarda (Cubismo, Surrealismo, Dadaísmo, etc.)",
+            "Modernismo nas Artes Plásticas (Tarsila do Amaral, Anita Malfatti)",
+            "Arte Contemporânea",
+            "Arte Urbana e Grafite",
+            "Arte Indígena e Africana no Brasil"
+          ]
+        },
+        {
+          "name": "Educação Física",
+          "assuntos": [
+            "Práticas Corporais e Saúde",
+            "Padrões de Beleza e Corpo Mídia",
+            "Esporte de Alto Rendimento vs. Esporte Participação",
+            "Danças e Lutas como Manifestação Cultural",
+            "Doping e Ética no Esporte"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Redação",
+      "default_goal_ratio": 0.15,
+      "topicos": [
+        {
+          "name": "Estrutura do Texto Dissertativo-Argumentativo",
+          "assuntos": [
+            "Introdução (Estratégias de Contextualização)",
+            "Construção da Tese",
+            "Desenvolvimento (Tópico Frasal e Desdobramento)",
+            "Tipos de Argumentação (Autoridade, Causa e Consequência, etc.)",
+            "Conclusão (Retomada da Tese e Fechamento)"
+          ]
+        },
+        {
+          "name": "Competências Avaliativas do ENEM",
+          "assuntos": [
+            "Competência 1: Domínio da Norma-Padrão Escrita",
+            "Competência 2: Compreensão da Proposta e Estrutura",
+            "Competência 2: Uso Legítimo e Pertinente de Repertório Sociocultural",
+            "Competência 3: Projeto de Texto (Seleção e Organização de Argumentos)",
+            "Competência 4: Mecanismos Linguísticos (Coesão Referencial e Sequencial)",
+            "Competência 5: Agente, Ação e Meio/Modo da Proposta",
+            "Competência 5: Efeito e Detalhamento da Proposta de Intervenção"
+          ]
+        },
+        {
+          "name": "Eixos Temáticos e Repertório",
+          "assuntos": [
+            "Meio Ambiente e Sustentabilidade",
+            "Tecnologia, Inteligência Artificial e Redes Sociais",
+            "Saúde Pública, Pandemias e Saúde Mental",
+            "Direitos Humanos, Inclusão e Minorias Sociais",
+            "Cultura, Educação e Identidade Nacional",
+            "Segurança Pública e Violência"
+          ]
+        }
+      ]
+    }
+  ]
+}

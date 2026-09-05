@@ -3,9 +3,9 @@
 import ConfirmModal from '@/components/ConfirmModal'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Calendar, Clock, Target, TrendingUp, Plus, Flame, Check, X, Edit2, Trash2, Library } from 'lucide-react'
+import { Calendar, Clock, Target, TrendingUp, Plus, Flame, Check, X, Edit2, Trash2, Library, BookOpen } from 'lucide-react'
 import { useToast } from '@/components/ToastContext'
-import { getTasks, createTask, updateTask, deleteTask, toggleTaskStatus, createExamGoal, updateExamGoal, deleteExamGoal } from './actions'
+import { getTasks, createTask, updateTask, deleteTask, toggleTaskStatus, createExamGoal, updateExamGoal, deleteExamGoal, updateDailyGoal } from './actions'
 
 interface Event { id: string; title: string; time: string; duration: number; subject_id: string; is_done: boolean; event_date: string }
 interface Materia { id: string; name: string }
@@ -48,20 +48,26 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
   const [stats, setStats] = useState<DashboardStats | null>(initialStats)
   const [quoteOfDay, setQuoteOfDay] = useState(QUOTES[0])
   const { toast } = useToast()
+  
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null)
   const [examToDelete, setExamToDelete] = useState<string | null>(null)
   const [isDeletingBlock, setIsDeletingBlock] = useState(false)
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
-  
-  // O selection mescla 'materia:ID' ou 'tag:NOME'
   const [taskModalData, setTaskModalData] = useState<{title: string; selection: string; priority: 'baixa' | 'normal' | 'alta';}>({title: '', selection: '', priority: 'normal'})
 
   const [isExamModalOpen, setIsExamModalOpen] = useState(false)
   const [editingExamId, setEditingExamId] = useState<string | null>(null)
   const [examForm, setExamForm] = useState({ name: '', date: '', time: '' })
   const [examCountdown, setExamCountdown] = useState({ days: 0, hours: 0, minutes: 0 })
+
+  // Estados de Onboarding
+  const [showOnboarding, setShowOnboarding] = useState(true) // Setado para aparecer sempre (para fins de teste atual)
+  const [onboardingStep, setOnboardingStep] = useState(1)
+  const [selectedExam, setSelectedExam] = useState('')
+  const [selectedHours, setSelectedHours] = useState(0)
+  const [isSavingOnboarding, setIsSavingOnboarding] = useState(false)
 
   useEffect(() => {
     const now = new Date()
@@ -98,7 +104,7 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
   useEffect(() => {
     const mainElement = document.getElementById('main-scroll-container')
     
-    if (isTaskModalOpen || isExamModalOpen) {
+    if (isTaskModalOpen || isExamModalOpen || showOnboarding) {
       document.body.classList.add('overflow-hidden')
       mainElement?.classList.add('!overflow-hidden')
     } else {
@@ -110,7 +116,7 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
       document.body.classList.remove('overflow-hidden')
       mainElement?.classList.remove('!overflow-hidden')
     }
-  }, [isTaskModalOpen, isExamModalOpen])
+  }, [isTaskModalOpen, isExamModalOpen, showOnboarding])
 
   const today = new Date()
   const formattedToday = today.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
@@ -167,6 +173,43 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
     return colors[color || 'purple'] || colors.purple
   }
 
+  // --- Handlers do Onboarding ---
+  const handleSaveOnboarding = async () => {
+    setIsSavingOnboarding(true)
+    
+    // 1. Atualizar horas diárias
+    const hoursRes = await updateDailyGoal(selectedHours)
+    if (hoursRes.error) {
+      toast("Erro ao salvar horas diárias.", "error")
+      setIsSavingOnboarding(false)
+      return
+    }
+
+    // 2. Criar ou Atualizar a meta da Prova
+    const targetDate = new Date('2026-11-08T13:00:00').toISOString()
+    let goalRes
+    if (stats?.examGoal) {
+      goalRes = await updateExamGoal(stats.examGoal.id, { name: 'ENEM 2026', target_date: targetDate })
+    } else {
+      goalRes = await createExamGoal({ name: 'ENEM 2026', target_date: targetDate })
+    }
+
+    if (goalRes.error) {
+      toast("Erro ao configurar meta do ENEM.", "error")
+    } else if (goalRes.goal) {
+      setStats(prev => prev ? { 
+        ...prev, 
+        dailyGoalHours: selectedHours,
+        examGoal: { id: goalRes.goal.id, name: goalRes.goal.name, target_date: goalRes.goal.target_date } 
+      } : null)
+      toast("Pronto! Tudo configurado.", "success")
+      setShowOnboarding(false)
+    }
+    
+    setIsSavingOnboarding(false)
+  }
+
+  // --- Handlers de Tarefas e Metas (existentes) ---
   const openTaskModal = () => {
     setIsTaskModalOpen(true)
     setTaskModalData({ title: '', selection: materias.length > 0 ? `materia:${materias[0].id}` : 'tag:simulado', priority: 'normal' })
@@ -219,20 +262,18 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
   }
 
   const executeDeleteTask = async () => {
-  if (!taskToDelete) return
-  setIsDeletingBlock(true)
-  const result = await deleteTask(taskToDelete)
-  if(result.success) {
-    setTasks(tasks.filter(t => t.id !== taskToDelete))
-    toast("Tarefa excluída!", "success")
+    if (!taskToDelete) return
+    setIsDeletingBlock(true)
+    const result = await deleteTask(taskToDelete)
+    if(result.success) {
+      setTasks(tasks.filter(t => t.id !== taskToDelete))
+      toast("Tarefa excluída!", "success")
+    }
+    setIsDeletingBlock(false)
+    setTaskToDelete(null)
   }
-  setIsDeletingBlock(false)
-  setTaskToDelete(null)
-}
 
-const handleDeleteTask = (id: string) => {
-  setTaskToDelete(id)
-}
+  const handleDeleteTask = (id: string) => setTaskToDelete(id)
 
   const handleToggleTask = async (id: string, currentStatus: boolean) => {
     const result = await toggleTaskStatus(id, !currentStatus)
@@ -277,21 +318,19 @@ const handleDeleteTask = (id: string) => {
   }
 
   const executeDeleteExamGoal = async () => {
-  if (!examToDelete) return
-  setIsDeletingBlock(true)
-  const result = await deleteExamGoal(examToDelete)
-  if(result.success) {
-    setStats(prev => prev ? { ...prev, examGoal: null } : null)
-    setIsExamModalOpen(false)
-    toast("Meta de prova excluída!", "success")
+    if (!examToDelete) return
+    setIsDeletingBlock(true)
+    const result = await deleteExamGoal(examToDelete)
+    if(result.success) {
+      setStats(prev => prev ? { ...prev, examGoal: null } : null)
+      setIsExamModalOpen(false)
+      toast("Meta de prova excluída!", "success")
+    }
+    setIsDeletingBlock(false)
+    setExamToDelete(null)
   }
-  setIsDeletingBlock(false)
-  setExamToDelete(null)
-}
 
-const handleDeleteExamGoal = (id: string) => {
-  setExamToDelete(id)
-}
+  const handleDeleteExamGoal = (id: string) => setExamToDelete(id)
 
   const renderTaskTag = (task: Task) => {
     if (task.tag_padrao) {
@@ -537,8 +576,7 @@ const handleDeleteExamGoal = (id: string) => {
                   </div>
                 ) : (
                   eventsWithStatus.map((event) => {
-                    const materia = materias.find(m => m.id === event.subject_id)
-                    const colorClass = getSubjectColorClass('purple') // Removido cor da materia que não existia nela
+                    const colorClass = getSubjectColorClass('purple')
 
                     return (
                       <div key={event.id} className="flex items-center gap-4">
@@ -658,7 +696,94 @@ const handleDeleteExamGoal = (id: string) => {
         </div>
       </div>
 
-      {/* MODAL DE TAREFAS */}
+      {/* MODAL DE ONBOARDING */}
+      {showOnboarding && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-overlay">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl animate-modal relative overflow-hidden">
+            <button onClick={() => setShowOnboarding(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
+              <X className="w-5 h-5" />
+            </button>
+            
+            {onboardingStep === 1 && (
+              <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="flex justify-center mb-4">
+                  <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center text-primary-600">
+                    <Target className="w-6 h-6" />
+                  </div>
+                </div>
+                <h2 className="text-2xl font-extrabold text-slate-900 text-center mb-2">Qual prova você vai fazer?</h2>
+                <p className="text-sm text-slate-500 text-center mb-8">Selecione o seu objetivo principal para configurarmos o sistema.</p>
+                
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setSelectedExam('ENEM')}
+                    className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
+                      selectedExam === 'ENEM' ? 'border-primary-600 bg-primary-50 shadow-sm' : 'border-slate-100 hover:border-primary-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+                      selectedExam === 'ENEM' ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      EN
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold text-slate-900">ENEM 2026</p>
+                      <p className="text-xs text-slate-500">Exame Nacional do Ensino Médio</p>
+                    </div>
+                  </button>
+                </div>
+                
+                <button
+                  onClick={() => setOnboardingStep(2)}
+                  disabled={!selectedExam}
+                  className="w-full mt-8 py-3.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Continuar
+                </button>
+              </div>
+            )}
+
+            {onboardingStep === 2 && (
+              <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                <button onClick={() => setOnboardingStep(1)} className="absolute -top-1 -left-2 p-2 text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1 text-sm font-semibold">
+                  Voltar
+                </button>
+                <div className="flex justify-center mb-4 mt-2">
+                  <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center text-primary-600">
+                    <Clock className="w-6 h-6" />
+                  </div>
+                </div>
+                <h2 className="text-2xl font-extrabold text-slate-900 text-center mb-2">Quantas horas por dia?</h2>
+                <p className="text-sm text-slate-500 text-center mb-8">Defina uma meta realista. Qual a sua disponibilidade diária de estudos?</p>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  {[2, 4, 6, 8].map(hours => (
+                    <button
+                      key={hours}
+                      onClick={() => setSelectedHours(hours)}
+                      className={`p-4 rounded-2xl border-2 transition-all font-bold text-lg ${
+                        selectedHours === hours ? 'border-primary-600 bg-primary-50 text-primary-700 shadow-sm' : 'border-slate-100 hover:border-primary-300 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      {hours}h{hours === 8 && '+'} / dia
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={handleSaveOnboarding}
+                  disabled={!selectedHours || isSavingOnboarding}
+                  className="w-full mt-8 py-3.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSavingOnboarding ? 'Salvando...' : 'Finalizar Configuração'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE TAREFAS (Restante permanece inalterado...) */}
       {isTaskModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
           <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
@@ -749,7 +874,7 @@ const handleDeleteExamGoal = (id: string) => {
         </div>
       )}
 
-      {/* MODAL DE META DE PROVA */}
+      {/* MODAL DE META DE PROVA (Restante permanece inalterado...) */}
       {isExamModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
           <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl animate-modal">
@@ -820,25 +945,26 @@ const handleDeleteExamGoal = (id: string) => {
           </div>
         </div>
       )}
-    <ConfirmModal
-      isOpen={!!taskToDelete}
-      title="Excluir Tarefa"
-      message="Tem certeza que deseja excluir esta tarefa?"
-      confirmText="Sim, excluir"
-      onConfirm={executeDeleteTask}
-      onCancel={() => setTaskToDelete(null)}
-      isLoading={isDeletingBlock}
-    />
+      
+      <ConfirmModal
+        isOpen={!!taskToDelete}
+        title="Excluir Tarefa"
+        message="Tem certeza que deseja excluir esta tarefa?"
+        confirmText="Sim, excluir"
+        onConfirm={executeDeleteTask}
+        onCancel={() => setTaskToDelete(null)}
+        isLoading={isDeletingBlock}
+      />
 
-    <ConfirmModal
-      isOpen={!!examToDelete}
-      title="Excluir Meta de Prova"
-      message="Tem certeza que deseja excluir sua meta de prova?"
-      confirmText="Sim, excluir"
-      onConfirm={executeDeleteExamGoal}
-      onCancel={() => setExamToDelete(null)}
-      isLoading={isDeletingBlock}
-    />
+      <ConfirmModal
+        isOpen={!!examToDelete}
+        title="Excluir Meta de Prova"
+        message="Tem certeza que deseja excluir sua meta de prova?"
+        confirmText="Sim, excluir"
+        onConfirm={executeDeleteExamGoal}
+        onCancel={() => setExamToDelete(null)}
+        isLoading={isDeletingBlock}
+      />
     </div>
   )
 }
