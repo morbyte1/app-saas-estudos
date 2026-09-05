@@ -40,13 +40,15 @@ export async function getEstatisticas() {
     return { error: 'Usuário não autenticado' }
   }
 
-  const [materiasRes, userSettingsRes] = await Promise.all([
+  const [materiasRes, userSettingsRes, examGoalsRes] = await Promise.all([
     supabase.from('materias').select('id, goal_hours').eq('user_id', user.id),
-    supabase.from('user_settings').select('daily_goal_hours').eq('user_id', user.id).maybeSingle()
+    supabase.from('user_settings').select('daily_goal_hours').eq('user_id', user.id).maybeSingle(),
+    supabase.from('exam_goals').select('name').eq('user_id', user.id).gte('target_date', new Date().toISOString()).order('target_date', { ascending: true }).limit(1)
   ])
 
   const materias = materiasRes.data
   const dailyGoalHours = userSettingsRes.data?.daily_goal_hours || 3
+  const examGoalName = examGoalsRes.data && examGoalsRes.data.length > 0 ? examGoalsRes.data[0].name : null
 
   if (materiasRes.error) {
     console.error('Erro ao buscar estatísticas:', materiasRes.error.message)
@@ -60,7 +62,8 @@ export async function getEstatisticas() {
         totalFocus: "0h 0min",
         progress: "0%",
         activeSubjects: 0,
-        dailyGoalHours
+        dailyGoalHours,
+        examGoalName
       }
     }
   }
@@ -111,7 +114,8 @@ export async function getEstatisticas() {
       totalFocus: `${totalHours}h ${remainingMinutes}min`,
       progress: `${averageProgress}%`,
       activeSubjects: materias.length,
-      dailyGoalHours
+      dailyGoalHours,
+      examGoalName
     }
   }
 }

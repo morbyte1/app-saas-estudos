@@ -63,3 +63,28 @@ export async function deleteAccount(password: string) {
   revalidatePath('/', 'layout')
   redirect('/login')
 }
+export async function updateExamPreference(examType: 'ENEM' | 'OUTRO') {
+  const supabase = await createClient()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) return { error: 'Usuário não autenticado' }
+
+  const { data: examGoals } = await supabase
+    .from('exam_goals')
+    .select('*')
+    .eq('user_id', user.id)
+
+  if (examType === 'ENEM') {
+    const targetDate = new Date('2026-11-08T13:00:00').toISOString()
+    if (examGoals && examGoals.length > 0) {
+      await supabase.from('exam_goals').update({ name: 'ENEM 2026', target_date: targetDate }).eq('id', examGoals[0].id)
+    } else {
+      await supabase.from('exam_goals').insert({ user_id: user.id, name: 'ENEM 2026', target_date: targetDate })
+    }
+  } else {
+    if (examGoals && examGoals.length > 0) {
+      await supabase.from('exam_goals').delete().eq('user_id', user.id)
+    }
+  }
+  revalidatePath('/dashboard', 'layout')
+  return { success: true }
+}

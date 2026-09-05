@@ -3,10 +3,11 @@
 import { useState, useEffect, useTransition } from 'react'
 import { useToast } from '@/components/ToastContext'
 import { createClient } from '@/utils/supabase/client'
-import { User, Mail, Lock, LogOut, Loader2, AlertTriangle, X } from 'lucide-react'
-import { updateUserProfile, updateUserEmail, updateUserPassword, deleteAccount } from './actions'
+import { User, Mail, Lock, LogOut, Loader2, AlertTriangle, X, Target } from 'lucide-react'
+import { updateUserProfile, updateUserEmail, updateUserPassword, deleteAccount, updateExamPreference } from './actions'
 import { signout } from '../actions'
 import ConfirmModal from '@/components/ConfirmModal'
+
 
 export default function ConfiguracoesPage() {
   const [fullName, setFullName] = useState('')
@@ -15,7 +16,37 @@ export default function ConfiguracoesPage() {
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isPending, startTransition] = useTransition()
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
+  const [examPreference, setExamPreference] = useState<'ENEM' | 'OUTRO'>('OUTRO')
   
+useEffect(() => {
+    async function loadUserData() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setFullName(user.user_metadata?.full_name || '')
+        setEmail(user.email || '')
+        
+        // Puxa a preferência da meta
+        const { data: examGoals } = await supabase.from('exam_goals').select('name').eq('user_id', user.id)
+        if (examGoals && examGoals.length > 0 && examGoals[0].name === 'ENEM 2026') {
+            setExamPreference('ENEM')
+        } else {
+            setExamPreference('OUTRO')
+        }
+      }
+      setIsLoadingData(false)
+    }
+    loadUserData()
+  }, [])
+
+  const handleUpdateExamPreference = () => {
+    startTransition(async () => {
+      const res = await updateExamPreference(examPreference)
+      if (res.error) toast(res.error, 'error')
+      else toast('Preferência de prova atualizada com sucesso!', 'success')
+    })
+  }
+
   // Estados para exclusão de conta
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [deletePassword, setDeletePassword] = useState('')
@@ -175,6 +206,36 @@ export default function ConfiguracoesPage() {
                   Atualizar Senha
                 </button>
               </div>
+            </div>
+          </section>
+
+{/* Sessão: Prova Foco */}
+          <section className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-primary-50 p-2 rounded-lg text-primary-600">
+                <Target className="w-5 h-5" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-900">Prova Foco</h2>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 items-end">
+              <div className="w-full">
+                <label className="block text-sm font-medium text-slate-700 mb-2">Qual prova você vai fazer?</label>
+                <select
+                  value={examPreference}
+                  onChange={(e) => setExamPreference(e.target.value as 'ENEM' | 'OUTRO')}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-slate-900 bg-white"
+                >
+                  <option value="ENEM">ENEM</option>
+                  <option value="OUTRO">Nenhuma prova (Focar apenas em estudar)</option>
+                </select>
+              </div>
+              <button
+                onClick={handleUpdateExamPreference}
+                disabled={isPending || isDeleting}
+                className="w-full sm:w-auto px-6 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50 whitespace-nowrap"
+              >
+                Salvar Preferência
+              </button>
             </div>
           </section>
 

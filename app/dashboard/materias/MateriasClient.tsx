@@ -7,6 +7,14 @@ import Link from 'next/link'
 import { useToast } from '@/components/ToastContext'
 import { createMateria, updateMateria, deleteMateria, importEnemDataAction, Materia } from './actions'
 
+interface Estatisticas {
+  totalFocus: string
+  progress: string
+  activeSubjects: number
+  dailyGoalHours: number // Novo campo recebido
+  examGoalName?: string | null // Campo para a prova atual
+}
+
 const StatCard = ({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number }) => (
   <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
     <div className="bg-primary-50 p-3 rounded-xl text-primary-600">
@@ -206,27 +214,29 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
         {materias.length === 0 ? (
           <>
             {/* Banner de Importação (Combate à tela em branco) */}
-            <div className="mb-6 w-full bg-primary-600 text-white rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-[60px] pointer-events-none"></div>
-              <div className="flex items-center gap-5 relative z-10">
-                <div className="bg-white/20 p-4 rounded-2xl flex-shrink-0">
-                  <Rocket className="w-8 h-8" />
+            {estatisticas.examGoalName === 'ENEM 2026' && (
+              <div className="mb-6 w-full bg-primary-600 text-white rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-[60px] pointer-events-none"></div>
+                <div className="flex items-center gap-5 relative z-10">
+                  <div className="bg-white/20 p-4 rounded-2xl flex-shrink-0">
+                    <Rocket className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl md:text-2xl font-extrabold mb-1">Deseja importar todos os conteúdos cobrados do ENEM?</h3>
+                    <p className="text-primary-100 font-medium text-sm max-w-lg leading-relaxed">
+                      Nós montamos uma grade completa e vamos distribuir as horas de estudo automaticamente com base na sua meta de {estatisticas.dailyGoalHours}h diárias.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-xl md:text-2xl font-extrabold mb-1">Deseja importar todos os conteúdos cobrados do ENEM?</h3>
-                  <p className="text-primary-100 font-medium text-sm max-w-lg leading-relaxed">
-                    Nós montamos uma grade completa e vamos distribuir as horas de estudo automaticamente com base na sua meta de {estatisticas.dailyGoalHours}h diárias.
-                  </p>
-                </div>
+                <button
+                  onClick={handleImportEnem}
+                  disabled={isImporting}
+                  className="w-full md:w-auto px-8 py-3.5 bg-white text-primary-600 font-bold rounded-xl hover:bg-primary-50 transition shadow-sm disabled:opacity-75 whitespace-nowrap relative z-10"
+                >
+                  {isImporting ? 'Importando Conteúdo...' : 'Sim, importar trilha'}
+                </button>
               </div>
-              <button
-                onClick={handleImportEnem}
-                disabled={isImporting}
-                className="w-full md:w-auto px-8 py-3.5 bg-white text-primary-600 font-bold rounded-xl hover:bg-primary-50 transition shadow-sm disabled:opacity-75 whitespace-nowrap relative z-10"
-              >
-                {isImporting ? 'Importando Conteúdo...' : 'Sim, importar trilha'}
-              </button>
-            </div>
+            )}
 
             <div className="flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-200 rounded-3xl p-16 text-center shadow-sm">
               <div className="bg-slate-50 p-4 rounded-full mb-4">

@@ -1,9 +1,10 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Calendar, Clock, Target, TrendingUp, Plus, Flame, Check, X, Edit2, Trash2, Library, BookOpen } from 'lucide-react'
+import { Calendar, Clock, Target, TrendingUp, Plus, Flame, Check, X, Edit2, Trash2, Library, BookOpen, ChevronLeft } from 'lucide-react'
 import { useToast } from '@/components/ToastContext'
 import { getTasks, createTask, updateTask, deleteTask, toggleTaskStatus, createExamGoal, updateExamGoal, deleteExamGoal, updateDailyGoal } from './actions'
 
@@ -122,6 +123,7 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
   const formattedToday = today.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
   const capitalizedToday = formattedToday.charAt(0).toUpperCase() + formattedToday.slice(1)
 
+  const router = useRouter()
   const year = today.getFullYear()
   const month = String(today.getMonth() + 1).padStart(2, '0')
   const day = String(today.getDate()).padStart(2, '0')
@@ -186,27 +188,40 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
     }
 
     // 2. Criar ou Atualizar a meta da Prova
-    const targetDate = new Date('2026-11-08T13:00:00').toISOString()
-    let goalRes
-    if (stats?.examGoal) {
-      goalRes = await updateExamGoal(stats.examGoal.id, { name: 'ENEM 2026', target_date: targetDate })
+    if (selectedExam === 'ENEM') {
+      const targetDate = new Date('2026-11-08T13:00:00').toISOString()
+      let goalRes
+      if (stats?.examGoal) {
+        goalRes = await updateExamGoal(stats.examGoal.id, { name: 'ENEM 2026', target_date: targetDate })
+      } else {
+        goalRes = await createExamGoal({ name: 'ENEM 2026', target_date: targetDate })
+      }
+
+      if (goalRes.error) {
+        toast("Erro ao configurar meta do ENEM.", "error")
+      } else if (goalRes.goal) {
+        setStats(prev => prev ? { 
+          ...prev, 
+          dailyGoalHours: selectedHours,
+          examGoal: { id: goalRes.goal.id, name: goalRes.goal.name, target_date: goalRes.goal.target_date } 
+        } : null)
+      }
     } else {
-      goalRes = await createExamGoal({ name: 'ENEM 2026', target_date: targetDate })
+      // Se for "Nenhuma", deleta a meta existente se houver
+      if (stats?.examGoal) {
+        await deleteExamGoal(stats.examGoal.id)
+        setStats(prev => prev ? { ...prev, dailyGoalHours: selectedHours, examGoal: null } : null)
+      } else {
+        setStats(prev => prev ? { ...prev, dailyGoalHours: selectedHours } : null)
+      }
     }
 
-    if (goalRes.error) {
-      toast("Erro ao configurar meta do ENEM.", "error")
-    } else if (goalRes.goal) {
-      setStats(prev => prev ? { 
-        ...prev, 
-        dailyGoalHours: selectedHours,
-        examGoal: { id: goalRes.goal.id, name: goalRes.goal.name, target_date: goalRes.goal.target_date } 
-      } : null)
-      toast("Pronto! Tudo configurado.", "success")
-      setShowOnboarding(false)
-    }
-    
+    toast("Pronto! Tudo configurado.", "success")
+    setShowOnboarding(false)
     setIsSavingOnboarding(false)
+    
+    // Força a sincronização com o Calendário e demais páginas do lado do cliente
+    router.refresh()
   }
 
   // --- Handlers de Tarefas e Metas (existentes) ---
@@ -731,6 +746,23 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
                       <p className="text-xs text-slate-500">Exame Nacional do Ensino Médio</p>
                     </div>
                   </button>
+
+                  <button
+                    onClick={() => setSelectedExam('NENHUMA')}
+                    className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
+                      selectedExam === 'NENHUMA' ? 'border-primary-600 bg-primary-50 shadow-sm' : 'border-slate-100 hover:border-primary-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+                      selectedExam === 'NENHUMA' ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      --
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold text-slate-900">Não tenho prova específica</p>
+                      <p className="text-xs text-slate-500">Quero apenas focar em estudar</p>
+                    </div>
+                  </button>
                 </div>
                 
                 <button
@@ -744,9 +776,12 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
             )}
 
             {onboardingStep === 2 && (
-              <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                <button onClick={() => setOnboardingStep(1)} className="absolute -top-1 -left-2 p-2 text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1 text-sm font-semibold">
-                  Voltar
+              <div className="animate-in fade-in slide-in-from-right-4 duration-300 relative pt-4">
+                <button 
+                  onClick={() => setOnboardingStep(1)} 
+                  className="absolute -top-4 -left-4 p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1 text-sm font-semibold"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Voltar
                 </button>
                 <div className="flex justify-center mb-4 mt-2">
                   <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center text-primary-600">
