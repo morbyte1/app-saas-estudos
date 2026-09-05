@@ -70,7 +70,7 @@ const comparison = [
 const faqs = [
   {
     question: "O Revyza é de graça mesmo?",
-    answer: "Durante essa fase Beta, sim — 100% grátis, sem pedir cartão. Posteriomente, irei sim trabalhar com planos pagos para ajudar na manutenção do servidor. Todavia, não se preocupa, quem entrar durante essa fase terá o acesso vitalício de graça."
+    answer: "Durante essa fase Beta, sim — 100% grátis, sem pedir cartão. Posteriormente irei sim trabalhar com planos pagos para ajudar na manutenção do servidor. Todavia, não se preocupa: quem entrar durante essa fase terá o acesso vitalício de graça."
   },
   {
     question: "Tem aplicativo para celular (iOS/Android)?",
@@ -200,8 +200,8 @@ export default function LandingPage() {
           </h1>
           
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#243E36]/75 md:text-xl">
-            Sentar e estudar deve ser sua única preocupação. Nós contabilziamos seu tempo, calcula seu aproveitamento 
-            e mostra exatamente onde você precisa melhorar.
+            Sentar e estudar deve ser sua única preocupação. Nós contabilizamos o seu tempo, calculamos seu aproveitamento 
+            e mostramos exatamente onde você precisa melhorar.
           </p>
           
           <div className="mt-10">
@@ -418,12 +418,12 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col gap-8 md:flex-row md:items-end md:justify-between">
           <div>
             <Image src="/logo.png" alt="Revyza Logo" width={100} height={28} className="object-contain mb-1" />
-            <p className="text-sm text-[#243E36]/70">Feito pra você focar no que importa.</p>
+            {/* <p className="text-sm text-[#243E36]/70">Feito pra você focar no que importa.</p> */}
           </div>
           <nav className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-[#243E36]/75">
 {/* <a className="transition-colors hover:text-[#7CA982]" href="mailto:seuemail@exemplo.com">Falar com o Fundador</a> */}
 {/* <a className="transition-colors hover:text-[#7CA982]" href="https://wa.me/seulinkdegrupo" target="_blank" rel="noopener noreferrer">Comunidade VIP</a> */}
-            <Link className="transition-colors hover:text-[#7CA982]" href="#">Termos e Privacidade</Link>
+            {/* <Link className="transition-colors hover:text-[#7CA982]" href="#">Termos e Privacidade</Link> */}
           </nav>
         </div>
         <p className="mx-auto mt-10 max-w-6xl border-t border-[#243E36]/10 pt-6 text-xs text-[#243E36]/55">
