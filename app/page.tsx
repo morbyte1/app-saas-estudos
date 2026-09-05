@@ -70,19 +70,15 @@ const comparison = [
 const faqs = [
   {
     question: "O Revyza é de graça mesmo?",
-    answer: "Pra quem entrar agora, nos primeiros 30 vagas da fase Beta, sim — 100% grátis, sem pedir cartão. Mais pra frente devo criar planos pagos pra quem chegar depois, mas por enquanto meu foco é ajustar o app com o feedback de quem tá usando desde o início."
+    answer: "Durante essa fase Beta, sim — 100% grátis, sem pedir cartão. Posteriomente, irei sim trabalhar com planos pagos para ajudar na manutenção do servidor. Todavia, não se preocupa, quem entrar durante essa fase terá o acesso vitalício de graça."
   },
   {
     question: "Tem aplicativo para celular (iOS/Android)?",
     answer: "O Revyza roda direto no navegador, é um Web App. Dá pra usar no computador (recomendo, ajuda a manter o foco) ou abrir pelo navegador do celular quando precisar. App nativo pra loja ainda não existe, mas é algo que eu quero fazer no futuro."
   },
   {
-    question: "Se eu não gostar, dá pra apagar meus dados?",
-    answer: 'Dá sim, sem enrolação. Lá nas Configurações tem uma área de "Zona de Perigo" com um botão pra excluir sua conta e apagar todo o histórico do banco de dados. Nada fica guardado depois que você pede pra sair.'
-  },
-  {
     question: "Queria uma função que ainda não existe. Posso pedir?",
-    answer: 'Pode, e é literalmente pra isso que essa fase Beta existe. Quando você entra, ganha acesso ao grupo dos primeiros testadores. Coisas como o "Caderno de Erros" já estão na lista, e as próximas atualizações eu vou programar de acordo com o que o grupo pedir mais.'
+    answer: 'Pode, e é pra isso que essa fase Beta existe. Quando você entra, ganha acesso ao grupo dos primeiros testadores. Terá contato direto comigo para fazer alguma sugestão ou recomendação.'
   }
 ];
 
@@ -204,7 +200,7 @@ export default function LandingPage() {
           </h1>
           
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#243E36]/75 md:text-xl">
-            Senta e estuda, só isso. A gente conta seu tempo, calcula seu aproveitamento 
+            Sentar e estudar deve ser sua única preocupação. Nós contabilziamos seu tempo, calcula seu aproveitamento 
             e mostra exatamente onde você precisa melhorar.
           </p>
           
@@ -256,7 +252,7 @@ export default function LandingPage() {
             Você já reparou que passa mais tempo se organizando do que estudando?
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-[#F1F7ED]/80">
-            Isso tem nome: procrastinação disfarçada de produtividade. Gastar 3 horas deixando um template bonitinho não te aprova. Resolver questão aprova. E pra isso você não precisa saber fórmula de Excel.
+            Isso tem nome: procrastinação disfarçada de produtividade. Gastar 3 horas deixando um template bonitinho não te aprova, resolver questão sim! E pra isso você não precisa saber fórmula de Excel.
           </p>
         </ScrollReveal>
       </section>
@@ -370,7 +366,7 @@ export default function LandingPage() {
               Como não achei nada assim, resolvi programar eu mesmo. O Revyza não saiu de nenhuma empresa grande. É um projeto que eu tô fazendo sozinho, de quem estuda pra quem estuda. Agora tô abrindo pra 30 pessoas testarem comigo e ajudarem a decidir os próximos passos. Bora estudar junto?&quot;
             </p>
           </div>
-          <p className="mt-8 text-sm font-semibold text-[#243E36]">Arthur Morais, criador do Revyza</p>
+          <p className="mt-8 text-sm font-semibold text-[#243E36]">Arthur, criador do Revyza</p>
         </ScrollReveal>
       </section>
 
@@ -405,7 +401,7 @@ export default function LandingPage() {
         <ScrollReveal className="relative z-10 mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-extrabold tracking-tight text-[#F1F7ED] sm:text-5xl">Garanta uma das 30 vagas.</h2>
           <p className="mt-6 text-lg leading-relaxed text-[#F1F7ED]/80">
-            O Revyza ainda tá em fase Beta fechada. Pra manter tudo rápido e conseguir ouvir o feedback de todo mundo, só estou liberando acesso grátis pros primeiros 30 testadores. Se você quer parar de perder tempo com planilha e focar na aprovação, essa é a hora de entrar.
+            O Revyza ainda tá em fase Beta fechada. Pra manter tudo rápido e conseguir ouvir o feedback de todo mundo, só estou liberando acesso grátis para os primeiros 30 testadores. Se você quer parar de perder tempo com planilha e focar na aprovação, essa é a hora de entrar.
           </p>
           <div className="mt-10">
 <Link href="/login?tab=cadastrar" className="group inline-flex items-center gap-3 rounded-2xl bg-[#C2A83E] px-8 py-4 text-base font-bold text-[#243E36] shadow-[0_8px_24px_-12px_rgba(194,168,62,0.4)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-12px_rgba(194,168,62,0.6)] hover:brightness-105 md:text-lg">
@@ -422,11 +418,11 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col gap-8 md:flex-row md:items-end md:justify-between">
           <div>
             <Image src="/logo.png" alt="Revyza Logo" width={100} height={28} className="object-contain mb-1" />
-            <p className="text-sm text-[#243E36]/70">Feito pra você focar no que importa: estudar.</p>
+            <p className="text-sm text-[#243E36]/70">Feito pra você focar no que importa.</p>
           </div>
           <nav className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-[#243E36]/75">
-            <a className="transition-colors hover:text-[#7CA982]" href="mailto:seuemail@exemplo.com">Falar com o Fundador</a>
-            <a className="transition-colors hover:text-[#7CA982]" href="https://wa.me/seulinkdegrupo" target="_blank" rel="noopener noreferrer">Comunidade VIP</a>
+{/* <a className="transition-colors hover:text-[#7CA982]" href="mailto:seuemail@exemplo.com">Falar com o Fundador</a> */}
+{/* <a className="transition-colors hover:text-[#7CA982]" href="https://wa.me/seulinkdegrupo" target="_blank" rel="noopener noreferrer">Comunidade VIP</a> */}
             <Link className="transition-colors hover:text-[#7CA982]" href="#">Termos e Privacidade</Link>
           </nav>
         </div>
