@@ -17,14 +17,14 @@ import {
   ArrowLeft,
   Menu,
   X,
-  FileQuestion
+  LuBookMarked
 } from 'lucide-react'
 
 const navigation = [
   { name: 'Painel Geral', href: '/dashboard', icon: LayoutGrid },
   { name: 'Timer', href: '/dashboard/timer', icon: Clock },
   { name: 'Minhas Matérias', href: '/dashboard/materias', icon: BookOpen },
-  { name: 'Caderno de Erros', href: '/dashboard/caderno', icon: FileQuestion },
+  { name: 'Caderno de Erros', href: '/dashboard/caderno', icon: LuBookMarked },
   { name: 'Calendário', href: '/dashboard/calendario', icon: Calendar },
   { name: 'Estatísticas', href: '/dashboard/estatisticas', icon: BarChart2 },
 ]
