@@ -725,7 +725,7 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
       {/* MODAL DE ONBOARDING */}
       {showOnboarding && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-overlay">
-          <div className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl animate-modal relative overflow-hidden">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl animate-modal relative">
             <button onClick={() => {
               setShowOnboarding(false)
               localStorage.setItem('revyza_onboarding_done', 'true')

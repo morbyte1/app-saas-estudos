@@ -98,9 +98,11 @@ const TUTORIAL_STEPS = [
 // Microcomponente Isolado para o Relógio
 function ClockDisplay({ isRunning, phase, timerConfig, onPhaseChange, initialSeconds }: any) {
   const [displaySeconds, setDisplaySeconds] = useState(initialSeconds)
+  const displaySecondsRef = useRef<number>(initialSeconds)
   const lastTickRef = useRef<number>(Date.now())
 
   useEffect(() => {
+    displaySecondsRef.current = initialSeconds
     setDisplaySeconds(initialSeconds)
   }, [initialSeconds, timerConfig.type])
 
@@ -117,20 +119,22 @@ function ClockDisplay({ isRunning, phase, timerConfig, onPhaseChange, initialSec
         if (deltaSeconds >= 1) {
           lastTickRef.current += deltaSeconds * 1000
 
-          setDisplaySeconds((prev: number) => {
-            if (timerConfig.type === 'cronometro' && phase === 'study') {
-              onPhaseChange('tick_study', deltaSeconds)
-              return prev + deltaSeconds
+          if (timerConfig.type === 'cronometro' && phase === 'study') {
+            onPhaseChange('tick_study', deltaSeconds)
+            displaySecondsRef.current += deltaSeconds
+            setDisplaySeconds(displaySecondsRef.current)
+          } else {
+            const next = displaySecondsRef.current - deltaSeconds
+            if (next <= 0) {
+              displaySecondsRef.current = 0
+              setDisplaySeconds(0)
+              onPhaseChange('end_phase')
             } else {
-              const next = prev - deltaSeconds
-              if (next <= 0) {
-                onPhaseChange('end_phase')
-                return 0
-              }
               if (phase === 'study') onPhaseChange('tick_study', deltaSeconds)
-              return next
+              displaySecondsRef.current = next
+              setDisplaySeconds(next)
             }
-          })
+          }
         }
       }, 500)
     }
@@ -170,6 +174,7 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
   const [isRunning, setIsRunning] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   const [resetKey, setResetKey] = useState(0)
   const { toast } = useToast()
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
@@ -222,7 +227,9 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
     questionsDone: '',
     questionsWrong: ''
   })
+
   useEffect(() => {
+    setIsMounted(true)
     const hasSeenTutorial = localStorage.getItem('revyza_has_seen_timer_tutorial')
     
     if (!hasSeenTutorial) {
@@ -237,7 +244,33 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
       setTotalStudySeconds(fakeSeconds)
       setIsRunning(false)
       setTimerConfig(prev => ({ ...prev, type: 'cronometro' }))
+    } else {
+      // CORREÇÃO: Carregar configurações salvas para usuários que já passaram do tutorial
+      const saved = localStorage.getItem('revyza-timer-config')
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved)
+          setTimerConfig(parsed)
+          setDraftConfig(parsed) // Sincroniza o rascunho do modal
+          if (parsed.type === 'pomodoro') {
+            setCurrentDisplaySeconds(parsed.pomodoroStudy * 60)
+          }
+        } catch(e) {
+          console.error("Erro ao carregar configurações do timer", e)
+        }
+      }
     }
+  }, [])
+
+  // Listener para API de Fullscreen Nativo
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setIsMaximized(false)
+      }
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
 
   // Expande o Mock History durante o passo 3 (Histórico)
@@ -280,7 +313,7 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
     }
   }
 
-  const finishTutorial = () => {
+const finishTutorial = () => {
     setIsTutorialActive(false)
     localStorage.setItem('revyza_has_seen_timer_tutorial', 'true')
     
@@ -296,26 +329,34 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
       try {
         const parsed = JSON.parse(saved)
         setTimerConfig(parsed)
+        setDraftConfig(parsed) // CORREÇÃO: Mantém o draft sincronizado após o tutorial
         if (parsed.type === 'pomodoro') {
           setCurrentDisplaySeconds(parsed.pomodoroStudy * 60)
         }
-      } catch(e) {}
+      } catch(e) {
+        console.error("Erro ao carregar configurações do timer", e)
+      }
     }
   }
-
   const previousPhaseRef = useRef(phase)
 
-  // Tocar alarme na transição de estudo para descanso e vice-versa
+  // CORREÇÃO: Tocar alarme apenas nas transições permitidas (Pomodoro ida/volta e Cronômetro apenas volta)
   useEffect(() => {
-    if (
-      (phase === 'rest' && previousPhaseRef.current === 'study') ||
-      (phase === 'idle' && previousPhaseRef.current === 'rest')
-    ) {
+    const isGoingToRest = phase === 'rest' && previousPhaseRef.current === 'study';
+    const isReturningFromRest = phase === 'idle' && previousPhaseRef.current === 'rest';
+
+    if (isReturningFromRest) {
+      // Toca em ambos (Pomodoro e Cronômetro) na volta do descanso
+      const audio = new Audio('/sound.mp3')
+      audio.play().catch(e => console.error("Erro ao tocar alarme:", e))
+    } else if (isGoingToRest && timerConfig.type === 'pomodoro') {
+      // Toca apenas no Pomodoro na ida para o descanso
       const audio = new Audio('/sound.mp3')
       audio.play().catch(e => console.error("Erro ao tocar alarme:", e))
     }
+    
     previousPhaseRef.current = phase
-  }, [phase])
+  }, [phase, timerConfig.type])
 
   useEffect(() => {
     totalStudySecondsRef.current = totalStudySeconds
@@ -419,11 +460,18 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
           setIsRunning(false)
         }
       } else {
+        // Quando o descanso termina (volta para a fase idle)
         setIsRunning(false)
         setPhase('idle')
+        
         if (timerConfig.type === 'pomodoro') {
           setPomodoroCycles(c => c + 1)
           setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
+        } else if (timerConfig.type === 'cronometro') {
+          // CORREÇÃO: Devolve o tempo total acumulado para a tela
+          setCurrentDisplaySeconds(totalStudySecondsRef.current)
+          // Força o relógio a re-renderizar com o tempo correto imediatamente
+          setResetKey(prev => prev + 1) 
         }
       }
     }
@@ -451,7 +499,6 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
     return capitalize(formatted).replace('-feira', '-feira')
   }
 
-  // Variáveis para mock dinâmico durante o tutorial
   const displayMaterias = isTutorialActive ? MOCK_MATERIAS : materias
   const displayHistory = isTutorialActive ? MOCK_HISTORY : historySessions
 
@@ -483,12 +530,34 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
 
   const handlePause = () => setIsRunning(false)
   
+  // CORREÇÃO: "Descansar Agora" no Cronômetro forçando a reinicialização da key para que o ClockDisplay assimile o novo tempo imediatamente
   const handleRestNow = () => {
     if (timerConfig.type !== 'cronometro' || phase !== 'study') return
     const restSecs = Math.floor(totalStudySeconds * (timerConfig.cronometroRestPerc / 100))
     setPhase('rest')
     setCurrentDisplaySeconds(restSecs)
+    setResetKey(prev => prev + 1) // Força o remount do ClockDisplay
     setIsRunning(true)
+  }
+
+  // CORREÇÃO: Alternar modo tela cheia integrando API de Fullscreen e uso do Portal
+  const toggleMaximize = () => {
+    if (!isMaximized) {
+      setIsMaximized(true)
+      const elem = document.documentElement
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch((err) => {
+          console.error("Erro ao entrar em tela cheia:", err)
+        })
+      }
+    } else {
+      setIsMaximized(false)
+      if (document.exitFullscreen && document.fullscreenElement) {
+        document.exitFullscreen().catch((err) => {
+          console.error("Erro ao sair da tela cheia:", err)
+        })
+      }
+    }
   }
 
   const executeResetTimer = () => {
@@ -522,6 +591,15 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
       toast("Selecione uma matéria e um assunto antes de finalizar.", "error")
       return
     }
+
+    // Saída automática do modo tela cheia para evitar conflito com o modal
+    if (isMaximized) {
+      setIsMaximized(false)
+      if (document.exitFullscreen && document.fullscreenElement) {
+        document.exitFullscreen().catch((err) => console.error("Erro ao sair da tela cheia:", err))
+      }
+    }
+
     setIsRunning(false)
     setQuestionsDone('')
     setQuestionsWrong('')
@@ -682,7 +760,7 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
   const selectedMateriaName = selectedMateriaId === 'geral' ? 'Geral' : (materias.find(m => m.id === selectedMateriaId)?.name || 'Geral')
   const selectedAssuntoName = selectedAssuntoId === 'geral' ? 'Geral' : (assuntos.find(a => a.id === selectedAssuntoId)?.name || 'Geral')
 
-  // Componente Tooltip do Tutorial sem "absolute" forçado para todos os passos
+  // Componente Tooltip do Tutorial
   const TutorialTooltip = ({ stepIndex, className }: { stepIndex: number, className: string }) => {
     if (!isTutorialActive || currentStep !== stepIndex) return null
     const step = TUTORIAL_STEPS[stepIndex]
@@ -712,8 +790,128 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
     )
   }
 
+  const renderTimerContent = () => (
+    <>
+      {isMaximized && (
+        <button 
+          onClick={toggleMaximize}
+          className="absolute top-8 right-8 w-12 h-12 flex items-center justify-center rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors shadow-sm z-[110]"
+          title="Voltar ao normal"
+        >
+          <Minimize className="w-5 h-5" />
+        </button>
+      )}
+
+      {isMaximized && (
+         <div className="mb-10 text-center animate-in slide-in-from-top-4 duration-300">
+           <h2 className="text-2xl font-bold text-slate-900">{selectedMateriaName}</h2>
+           <p className="text-slate-500 font-medium">{selectedAssuntoName}</p>
+         </div>
+      )}
+
+      {timerConfig.type === 'pomodoro' && (
+        <div className="mb-2 text-primary-600 font-bold uppercase tracking-widest text-sm animate-in fade-in flex items-center gap-2">
+          <RefreshCw className="w-5 h-5" />
+          Ciclos Concluídos: {pomodoroCycles}
+        </div>
+      )}
+
+      {phase === 'rest' && (
+        <div className="mb-4 text-emerald-500 font-bold uppercase tracking-widest text-sm animate-pulse flex items-center gap-2">
+          <Coffee className="w-5 h-5" />
+          Tempo de Descanso
+        </div>
+      )}
+
+      <ClockDisplay 
+        key={resetKey}
+        isRunning={isRunning} 
+        phase={phase} 
+        timerConfig={timerConfig} 
+        initialSeconds={currentDisplaySeconds}
+        onPhaseChange={handlePhaseChange}
+      />
+
+      <div className="flex flex-wrap gap-4 justify-center mb-8 relative z-50">
+        {phase === 'idle' && currentDisplaySeconds === 0 ? (
+          <button
+            onClick={handleStart}
+            disabled={isLoading}
+            className="px-6 py-3 md:px-8 md:py-3.5 bg-primary-600 text-white font-bold rounded-full hover:bg-primary-700 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
+          >
+            <Play className="w-4 h-4 fill-current" /> Iniciar
+          </button>
+        ) : (
+          <>
+            {isRunning ? (
+              <button
+                onClick={handlePause}
+                disabled={isLoading}
+                className="px-6 py-3 md:px-8 md:py-3.5 bg-slate-200 text-slate-800 font-bold rounded-full hover:bg-slate-300 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2"
+              >
+                <Pause className="w-4 h-4 fill-current" /> Pausar
+              </button>
+            ) : (
+              <button
+                onClick={handleStart}
+                disabled={isLoading}
+                className="px-6 py-3 md:px-8 md:py-3.5 bg-primary-600 text-white font-bold rounded-full hover:bg-primary-700 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
+              >
+                <Play className="w-4 h-4 fill-current" /> Retomar
+              </button>
+            )}
+
+            <button
+              onClick={handleFinishRequest}
+              disabled={isLoading}
+              className="px-6 py-3 md:px-8 md:py-3.5 bg-slate-900 text-white font-bold rounded-full hover:bg-slate-800 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
+            >
+              <Check className="w-4 h-4 stroke-[3]" /> Finalizar
+            </button>
+
+            {timerConfig.type === 'cronometro' && phase === 'study' && totalStudySeconds > 300 && (
+              <button
+                onClick={handleRestNow}
+                disabled={totalStudySeconds === 0}
+                className="px-6 py-3 md:px-8 md:py-3.5 bg-amber-100 text-amber-800 font-bold rounded-full hover:bg-amber-200 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2 border border-amber-200"
+              >
+                <Coffee className="w-4 h-4" /> Descansar Agora
+              </button>
+            )}
+
+            <button
+              onClick={handleResetTimer}
+              disabled={isLoading}
+              className="px-6 py-3 md:px-8 md:py-3.5 bg-red-100 text-red-800 font-bold rounded-full hover:bg-red-200 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2 border border-red-200"
+            >
+              <RotateCcw className="w-4 h-4" /> Reiniciar
+            </button>
+          </>
+        )}
+      </div>
+      
+      {!isMaximized && (
+        <div className="flex flex-col items-center gap-2 px-2 text-center relative z-50">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 text-slate-500 text-xs font-medium">
+            <HelpCircle className="w-4 h-4 text-primary-600 hidden sm:block" />
+            <span>Esqueceu de ligar o timer ou estudou fora daqui? Manda seu tempo aí embaixo</span>
+          </div>
+          <button 
+            onClick={openManualModal}
+            className="px-6 py-2.5 bg-white text-slate-700 rounded-full text-xs font-bold uppercase hover:bg-slate-100 shadow-sm transition-colors border border-slate-200 flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Enviar tempo manual
+          </button>
+        </div>
+      )}
+
+      {!isMaximized && <TutorialTooltip stepIndex={2} className="relative z-[70] mt-8 mx-auto slide-in-from-bottom-4" />}
+    </>
+  )
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden p-8 flex flex-col items-center">
+    <div className="w-full h-full min-h-full bg-slate-50 text-slate-900 overflow-x-hidden p-4 md:p-8 flex flex-col items-center">
       
       {/* Overlay Escuro do Tutorial */}
       {isTutorialActive && (
@@ -774,7 +972,6 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
               <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
-            {/* Absolute positioning for Step 0 because it's a small container */}
             <TutorialTooltip stepIndex={0} className="absolute top-full mt-4 left-0 z-[70] slide-in-from-top-4" />
           </div>
 
@@ -789,138 +986,28 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
               <Settings className="w-4 h-4" />
             </button>
             <button 
-              onClick={() => setIsMaximized(true)}
+              onClick={toggleMaximize}
               className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 shadow-sm"
             >
               <Maximize className="w-4 h-4" />
             </button>
             
-            {/* Absolute positioning for Step 1 because it's a small container */}
             <TutorialTooltip stepIndex={1} className="absolute top-full mt-4 right-0 origin-top-right z-[70] slide-in-from-top-4" />
           </div>
         </div>
 
         {/* CENTRO (TIMER E CONTROLES) */}
         {/* STEP 2: O TIMER EM SI */}
-        <div id="step-timer" className={`${isMaximized ? "fixed inset-0 z-[100] bg-slate-50 flex flex-col items-center justify-center p-4 md:p-8 animate-in fade-in duration-200" : "flex flex-col items-center justify-center flex-1 my-10"} ${isTutorialActive && currentStep === 2 && !isMaximized ? 'relative z-[60] bg-white p-6 sm:p-8 rounded-3xl shadow-2xl ring-4 ring-primary-500' : 'relative z-40'}`}>
+        <div 
+          id="step-timer" 
+          className={
+            isMaximized 
+              ? "fixed inset-0 z-[100] bg-slate-50 flex flex-col items-center justify-center p-4 md:p-8 animate-in fade-in duration-200 overflow-x-hidden overflow-y-auto" 
+              : `flex flex-col items-center justify-center flex-1 my-10 ${isTutorialActive && currentStep === 2 ? 'relative z-[60] bg-white p-6 sm:p-8 rounded-3xl shadow-2xl ring-4 ring-primary-500' : 'relative z-40'}`
+          }
+        >
           {isTutorialActive && currentStep === 2 && !isMaximized && <div className="absolute inset-0 z-[65] rounded-3xl" onClick={(e) => e.stopPropagation()} />}
-
-          {isMaximized && (
-            <button 
-              onClick={() => setIsMaximized(false)}
-              className="absolute top-8 right-8 w-12 h-12 flex items-center justify-center rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors shadow-sm"
-              title="Voltar ao normal"
-            >
-              <Minimize className="w-5 h-5" />
-            </button>
-          )}
-
-          {isMaximized && (
-             <div className="mb-10 text-center animate-in slide-in-from-top-4 duration-300">
-               <h2 className="text-2xl font-bold text-slate-900">{selectedMateriaName}</h2>
-               <p className="text-slate-500 font-medium">{selectedAssuntoName}</p>
-             </div>
-          )}
-
-          {timerConfig.type === 'pomodoro' && (
-            <div className="mb-2 text-primary-600 font-bold uppercase tracking-widest text-sm animate-in fade-in flex items-center gap-2">
-              <RefreshCw className="w-5 h-5" />
-              Ciclos Concluídos: {pomodoroCycles}
-            </div>
-          )}
-
-          {phase === 'rest' && (
-            <div className="mb-4 text-emerald-500 font-bold uppercase tracking-widest text-sm animate-pulse flex items-center gap-2">
-              <Coffee className="w-5 h-5" />
-              Tempo de Descanso
-            </div>
-          )}
-
-          <ClockDisplay 
-            key={resetKey}
-            isRunning={isRunning} 
-            phase={phase} 
-            timerConfig={timerConfig} 
-            initialSeconds={currentDisplaySeconds}
-            onPhaseChange={handlePhaseChange}
-          />
-
-          <div className="flex flex-wrap gap-4 justify-center mb-8 relative z-50">
-            {phase === 'idle' && currentDisplaySeconds === 0 ? (
-              <button
-                onClick={handleStart}
-                disabled={isLoading}
-                className="px-6 py-3 md:px-8 md:py-3.5 bg-primary-600 text-white font-bold rounded-full hover:bg-primary-700 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
-              >
-                <Play className="w-4 h-4 fill-current" /> Iniciar
-              </button>
-            ) : (
-              <>
-                {isRunning ? (
-                  <button
-                    onClick={handlePause}
-                    disabled={isLoading}
-                    className="px-6 py-3 md:px-8 md:py-3.5 bg-slate-200 text-slate-800 font-bold rounded-full hover:bg-slate-300 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2"
-                  >
-                    <Pause className="w-4 h-4 fill-current" /> Pausar
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleStart}
-                    disabled={isLoading}
-                    className="px-6 py-3 md:px-8 md:py-3.5 bg-primary-600 text-white font-bold rounded-full hover:bg-primary-700 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
-                  >
-                    <Play className="w-4 h-4 fill-current" /> Retomar
-                  </button>
-                )}
-
-                <button
-                  onClick={handleFinishRequest}
-                  disabled={isLoading}
-                  className="px-6 py-3 md:px-8 md:py-3.5 bg-slate-900 text-white font-bold rounded-full hover:bg-slate-800 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
-                >
-                  <Check className="w-4 h-4 stroke-[3]" /> Finalizar
-                </button>
-
-                {timerConfig.type === 'cronometro' && phase === 'study' && totalStudySeconds > 300 && (
-                  <button
-                    onClick={handleRestNow}
-                    disabled={totalStudySeconds === 0}
-                    className="px-6 py-3 md:px-8 md:py-3.5 bg-amber-100 text-amber-800 font-bold rounded-full hover:bg-amber-200 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2 border border-amber-200"
-                  >
-                    <Coffee className="w-4 h-4" /> Descansar Agora
-                  </button>
-                )}
-
-                <button
-                  onClick={handleResetTimer}
-                  disabled={isLoading}
-                  className="px-6 py-3 md:px-8 md:py-3.5 bg-red-100 text-red-800 font-bold rounded-full hover:bg-red-200 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-sm flex items-center gap-2 border border-red-200"
-                >
-                  <RotateCcw className="w-4 h-4" /> Reiniciar
-                </button>
-              </>
-            )}
-          </div>
-          
-          {!isMaximized && (
-            <div className="flex flex-col items-center gap-2 px-2 text-center relative z-50">
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 text-slate-500 text-xs font-medium">
-                <HelpCircle className="w-4 h-4 text-primary-600 hidden sm:block" />
-                <span>Esqueceu de ligar o timer ou estudou fora daqui? Manda seu tempo aí embaixo</span>
-              </div>
-              <button 
-                onClick={openManualModal}
-                className="px-6 py-2.5 bg-white text-slate-700 rounded-full text-xs font-bold uppercase hover:bg-slate-100 shadow-sm transition-colors border border-slate-200 flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Enviar tempo manual
-              </button>
-            </div>
-          )}
-
-          {/* Renderizado na própria flow (static/relative) no fim da caixa branca */}
-          {!isMaximized && <TutorialTooltip stepIndex={2} className="relative z-[70] mt-8 mx-auto slide-in-from-bottom-4" />}
+          {renderTimerContent()}
         </div>
 
         {/* RODAPÉ (HISTÓRICO) */}
@@ -936,7 +1023,6 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
             <Plus className={`w-4 h-4 text-slate-900 transition-transform duration-300 ${showHistory ? 'rotate-45' : ''}`} />
           </button>
 
-          {/* Renderizado na própria flow (static/relative) sob o botão "Histórico" */}
           <TutorialTooltip stepIndex={3} className="relative z-[70] mx-auto mb-6 slide-in-from-bottom-4" />
           
           {showHistory && (
@@ -1015,7 +1101,7 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
 
       </div>
 
-      {/* MODAL DE CONFIGURAÇÕES (O Tutorial consegue clicar aqui livremente pois z-[150] é maior que o z-[80] do Overlay Escuro) */}
+      {/* MODAL DE CONFIGURAÇÕES */}
       {isSettingsOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[150] p-4 animate-overlay">
           <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
