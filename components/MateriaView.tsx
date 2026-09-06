@@ -47,17 +47,24 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
   
   const [isDeletingItems, setIsDeletingItems] = useState(false)
 
-  // Cálculos de Visão Geral
-  const now = new Date()
-  const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()))
+  // Cálculos de Visão Geral (Sincronizado com os dados do Timer e Fuso BRT)
+  const today = new Date()
+  today.setHours(today.getHours() - 3) 
+  const currentDayOfWeek = today.getDay() 
+  const startOfWeek = new Date(today)
+  startOfWeek.setDate(today.getDate() - currentDayOfWeek)
+  const startOfWeekStr = startOfWeek.toISOString().split('T')[0]
   
-  const weekSessions = sessions.filter(s => new Date(s.created_at) >= startOfWeek)
+  const weekSessions = sessions.filter(s => {
+    const sessionDate = s.session_date || (s.created_at ? s.created_at.substring(0, 10) : '')
+    return sessionDate >= startOfWeekStr
+  })
   const weekSeconds = weekSessions.reduce((acc, s) => acc + (s.duration_seconds || 0), 0)
   const weekHours = Math.floor(weekSeconds / 3600)
   const weekMinutes = Math.floor((weekSeconds % 3600) / 60)
   
-  const totalQuestions = sessions.reduce((acc, s) => acc + (s.questions_answered || 0), 0)
-  const totalErrors = sessions.reduce((acc, s) => acc + (s.errors || 0), 0)
+  const totalQuestions = sessions.reduce((acc, s) => acc + (s.questions_total || 0), 0)
+  const totalErrors = sessions.reduce((acc, s) => acc + (s.questions_wrong || 0), 0)
   const accuracy = totalQuestions > 0 ? Math.round(((totalQuestions - totalErrors) / totalQuestions) * 100) : null
 
   const lastSession = sessions.length > 0 ? new Date(sessions[0].created_at) : null
@@ -259,7 +266,8 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
                         <h2 className="text-xl font-extrabold text-slate-900 group-hover/topico:text-primary-700 transition-colors">
                           {topico.name}
                         </h2>
-                        <div className="flex items-center gap-1 opacity-0 group-hover/topico:opacity-100 transition-opacity">
+                        {/* AQUI: Botões do Tópico agora sempre visíveis */}
+                        <div className="flex items-center gap-1">
                           <button onClick={() => { setEditingTopico(topico); setEditTopicoName(topico.name) }} className="p-1.5 text-slate-400 hover:text-primary-600 rounded-lg bg-slate-50 hover:bg-primary-50 transition" title="Editar tópico"><Pencil className="w-4 h-4" /></button>
                           <button onClick={() => setActiveTopicoId(topico.id)} className="p-1.5 text-slate-400 hover:text-primary-600 rounded-lg bg-slate-50 hover:bg-primary-50 transition" title="Novo assunto"><Plus className="w-5 h-5" /></button>
                         </div>
@@ -291,7 +299,8 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
                                     <span className="text-[11px] font-bold uppercase tracking-wider">{formatTime(assunto.duration_minutes * 60)}</span>
                                   </div>
                                 )}
-                                <div className="flex gap-1 opacity-0 group-hover/assunto:opacity-100 transition-opacity">
+                                {/* AQUI: Botões do Assunto agora sempre visíveis */}
+                                <div className="flex gap-1">
                                   <button onClick={() => { setEditingAssunto(assunto); setEditAssuntoName(assunto.name) }} className="p-1.5 text-slate-400 hover:text-primary-600 bg-slate-100 hover:bg-primary-50 rounded-lg transition" title="Editar"><Pencil className="w-3.5 h-3.5" /></button>
                                 </div>
                               </div>
@@ -321,7 +330,8 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
               <div className="flex flex-col gap-4">
                 {sessions.slice(0, 5).map(session => {
                   const assuntoRelacionado = assuntos.find(a => a.id === session.assunto_id)
-                  const acertos = (session.questions_answered || 0) - (session.errors || 0)
+                  const acertos = session.questions_done ?? ((session.questions_total || 0) - (session.questions_wrong || 0))
+                  const erros = session.questions_wrong || 0
                   
                   return (
                     <div key={session.id} className="border border-slate-100 rounded-2xl p-4 hover:border-primary-200 transition-colors bg-slate-50/50">
@@ -336,10 +346,10 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
                       <p className="text-sm font-bold text-slate-800 line-clamp-1 mb-2">
                         {assuntoRelacionado?.name || 'Sessão geral'}
                       </p>
-                      {session.questions_answered > 0 && (
+                      {(session.questions_total > 0 || session.questions_done > 0) && (
                         <div className="flex items-center gap-3 text-xs font-semibold">
                           <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100"><Check className="w-3 h-3" /> {acertos}</span>
-                          <span className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-100"><X className="w-3 h-3" /> {session.errors}</span>
+                          <span className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-100"><X className="w-3 h-3" /> {erros}</span>
                         </div>
                       )}
                     </div>

@@ -20,20 +20,22 @@ interface MateriasClientProps {
   initialEstatisticas: Estatisticas
 }
 
-// Helper para exibição amigável da data
+// Helper para exibição amigável da data (Sincronizado com BRT)
 function getRelativeTime(dateStr: string | null) {
   if (!dateStr) return null
   const today = new Date()
-  today.setHours(today.getHours() - 3) // BRT
-  const todayStr = today.toISOString().split('T')[0]
+  today.setUTCHours(today.getUTCHours() - 3) // BRT
+  
+  const getYYYYMMDD = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+  const todayStr = getYYYYMMDD(today)
   if (dateStr === todayStr) return 'Hoje'
 
   const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
-  if (dateStr === yesterday.toISOString().split('T')[0]) return 'Ontem'
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1)
+  if (dateStr === getYYYYMMDD(yesterday)) return 'Ontem'
 
   const diffTime = Math.abs(today.getTime() - new Date(dateStr + 'T12:00:00Z').getTime())
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
   return `Há ${diffDays} dias`
 }
 
@@ -41,7 +43,7 @@ const StatusBadge = ({ status }: { status: Materia['status'] }) => {
   const styles = {
     'Não iniciada': 'bg-slate-100 text-slate-600',
     'No ritmo': 'bg-primary-100 text-primary-700',
-    'Atenção': 'bg-amber-100 text-amber-700',
+    'Atrasado': 'bg-red-100 text-red-700',
     'Meta alcançada': 'bg-emerald-100 text-emerald-700'
   }
   return (

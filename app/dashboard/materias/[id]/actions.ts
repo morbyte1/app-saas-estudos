@@ -198,7 +198,7 @@ export async function getMateriaSessions(materiaId: string) {
 
   const { data, error } = await supabase
     .from('study_sessions')
-    .select('id, duration_seconds, questions_answered, errors, assunto_id, created_at')
+    .select('id, duration_seconds, questions_total, questions_wrong, questions_done, session_date, assunto_id, created_at')
     .eq('materia_id', materiaId)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
