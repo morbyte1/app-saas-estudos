@@ -11,6 +11,27 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 type PeriodKey = '7' | '14' | '30' | 'all'
 
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload
+    const hours = Math.floor(data.rawSeconds / 3600)
+    const minutes = Math.floor((data.rawSeconds % 3600) / 60)
+    
+    let timeStr = ''
+    if (hours > 0) timeStr += `${hours}h `
+    timeStr += `${minutes}min estudados`
+    if (data.rawSeconds === 0) timeStr = '0min estudados'
+
+    return (
+      <div className="bg-white p-3 rounded-xl shadow-lg border border-slate-100">
+        <p className="text-slate-500 text-xs font-bold mb-1">{data.fullDate}</p>
+        <p className="text-slate-900 text-sm font-extrabold">{timeStr}</p>
+      </div>
+    )
+  }
+  return null
+}
+
 export default function DashboardClient({ initialEvents, initialTasks, initialStats, initialMaterias }: any) {
   const [events, setEvents] = useState(initialEvents)
   const [materias, setMaterias] = useState(initialMaterias)
@@ -38,7 +59,7 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
 
   // Helpers de Data para o Calendário
   const today = new Date()
-  today.setHours(today.getHours() - 3) // BRT adjustment fallback
+  today.setHours(today.getHours() - 3)
   const dateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
   const todaysEvents = events
@@ -104,7 +125,7 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
     if(result.success) setTasks(tasks.map((t: any) => t.id === id ? { ...t, is_done: !currentStatus } : t))
   }
 
-const renderTaskTag = (task: any) => {
+  const renderTaskTag = (task: any) => {
     const TAGS_PADRAO: Record<string, { name: string; colorClass: string }> = {
       simulado: { name: 'Simulado', colorClass: 'text-purple-600 bg-purple-100' },
       questoes: { name: 'Questões', colorClass: 'text-orange-600 bg-orange-100' },
@@ -236,16 +257,18 @@ const renderTaskTag = (task: any) => {
               <span className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block">Precisão</span>
               <span className="text-2xl font-extrabold text-slate-900">{periodData.accuracy !== null ? `${periodData.accuracy}%` : '—'}</span>
             </div>
-            <div className="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm">
+            <div className="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
               <span className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block">Evolução</span>
               <div className="flex items-center gap-2">
-                <span className={`text-2xl font-extrabold ${periodData.evolutionLabel === 'Novo' || periodData.evolutionLabel === '—' ? 'text-slate-400 text-xl' : 'text-slate-900'}`}>
+                <span className={`font-extrabold ${periodData.evolutionLabel.includes('Dados') ? 'text-slate-400 text-sm leading-tight' : 'text-slate-900 text-2xl'}`}>
                   {periodData.evolutionLabel}
                 </span>
                 {periodData.evolutionLabel.includes('+') && <TrendingUp className="w-5 h-5 text-emerald-500" />}
-                {periodData.evolutionLabel.includes('-') && !periodData.evolutionLabel.includes('—') && <TrendingDown className="w-5 h-5 text-red-500" />}
+                {periodData.evolutionLabel.includes('-') && !periodData.evolutionLabel.includes('Dados') && <TrendingDown className="w-5 h-5 text-red-500" />}
               </div>
-              <span className="text-[10px] text-slate-400 mt-1 block">vs. período anterior</span>
+              {!periodData.evolutionLabel.includes('Dados') && (
+                <span className="text-[10px] text-slate-400 mt-1 block">vs. período anterior</span>
+              )}
             </div>
           </div>
 
@@ -258,7 +281,7 @@ const renderTaskTag = (task: any) => {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                     <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
-                    <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
+                    <Tooltip cursor={{ fill: '#f8fafc' }} content={<CustomTooltip />} />
                     <Bar dataKey="value" fill="#71c385" radius={[4, 4, 0, 0]} maxBarSize={40} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -313,48 +336,30 @@ const renderTaskTag = (task: any) => {
                       <h3 className="font-bold text-slate-900">{sub.name}</h3>
                       <p className="text-xs text-slate-500 font-medium mt-0.5">{sub.weeklyGoal}h semanais</p>
                     </div>
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${
-                      sub.statusId === 'no_ritmo' ? 'bg-emerald-100 text-emerald-700' :
-                      sub.statusId === 'abaixo_do_ritmo' ? 'bg-amber-100 text-amber-700' :
-                      sub.statusId === 'atrasado' ? 'bg-red-100 text-red-700' :
-                      'bg-slate-100 text-slate-600'
-                    }`}>
-                      {sub.statusId.replace(/_/g, ' ')}
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${sub.statusColor}`}>
+                      {sub.statusLabel}
                     </span>
                   </div>
                   
-                  {sub.statusId === 'nao_iniciada' ? (
-                    <div className="py-4 flex items-center justify-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                      <span className="text-xs font-medium text-slate-500">Não iniciada</span>
-                    </div>
-                  ) : sub.statusId === 'sem_dados' ? (
-                    <div className="py-4 flex items-center justify-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                      <span className="text-xs font-medium text-slate-500">Sem estudo neste período</span>
-                    </div>
-                  ) : (
-                    <div>
-                      {sub.missingHours > 0 ? (
-                        <div className="bg-slate-50 p-3 rounded-xl mb-4">
-                          <p className="text-xs text-slate-700 font-medium mb-1">
-                            Faltam <strong className="text-slate-900">{sub.missingHours.toFixed(1)}h</strong> • Restam {sub.daysRemainingWeek} dias
-                          </p>
-                          <p className="text-xs text-primary-700 font-bold">Ritmo: {sub.requiredPacePerDay.toFixed(1)}h / dia</p>
-                        </div>
-                      ) : (
-                        <div className="bg-emerald-50 p-3 rounded-xl mb-4 text-center">
-                          <p className="text-xs text-emerald-700 font-bold">Meta semanal alcançada!</p>
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center justify-between border-t border-slate-100 pt-3">
-                        <div className="text-xs text-slate-500 font-medium">Estudado: <strong className="text-slate-900">{sub.weeklyStudiedFormatted}</strong></div>
-                        <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                          <Target className="w-3.5 h-3.5 text-slate-400" />
-                          {sub.accuracy !== null ? `${sub.accuracy}% prec` : '—'}
-                        </div>
+                  <div>
+                    <div className="mb-4">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-xs font-semibold text-slate-700">Progresso semanal</span>
+                        <span className="text-xs font-bold text-primary-600">{sub.progress}%</span>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-1.5">
+                        <div className="bg-primary-600 h-1.5 rounded-full transition-all" style={{ width: `${sub.progress}%` }}></div>
                       </div>
                     </div>
-                  )}
+                    
+                    <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                      <div className="text-xs text-slate-500 font-medium">Estudado: <strong className="text-slate-900">{sub.weeklyStudiedFormatted}</strong></div>
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                        <Target className="w-3.5 h-3.5 text-slate-400" />
+                        {sub.accuracy !== null ? `${sub.accuracy}% prec` : '—'}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ))
             )}

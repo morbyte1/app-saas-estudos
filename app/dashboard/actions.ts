@@ -213,7 +213,7 @@ export async function getDashboardStats() {
     let prevWrongQuestions = 0
     let periodDuration = 0
     
-    const activityMap = new Map<string, number>() // data -> segundos
+    const activityMap = new Map<string, number>()
 
     if (days === 'all') {
       periodSessions = sessions
@@ -254,19 +254,15 @@ export async function getDashboardStats() {
       })
     }
 
-    // Calcula Precisão
+    // Calcula Precisão (questions_total - questions_wrong)
     const accuracy = periodTotalQuestions > 0 ? Math.round(((periodTotalQuestions - periodWrongQuestions) / periodTotalQuestions) * 100) : null
     const prevAccuracy = prevTotalQuestions > 0 ? Math.round(((prevTotalQuestions - prevWrongQuestions) / prevTotalQuestions) * 100) : null
 
     // Lógica Estrita de Evolução
-    let evolutionLabel = "—"
+    let evolutionLabel = "— Dados insuficientes para comparar"
     if (accuracy !== null && prevAccuracy !== null) {
       const diff = accuracy - prevAccuracy
       evolutionLabel = diff === 0 ? '0 p.p.' : `${diff > 0 ? '+' : ''}${diff} p.p.`
-    } else if (accuracy !== null && prevAccuracy === null) {
-      // Tem dados no periodo atual, mas nao no anterior. Usuário novo ou retomando?
-      const olderSessions = sessions.filter(s => s.questions_total && s.questions_total > 0 && s.session_date < (days === 'all' ? '0' : getYYYYMMDD(new Date(now.getTime() - days * 24*60*60*1000))))
-      evolutionLabel = olderSessions.length > 0 ? "—" : "Novo"
     }
 
     // Formatação de Tempo
@@ -281,19 +277,36 @@ export async function getDashboardStats() {
       activityChart = sortedMonths.map(m => {
         const [yy, mm] = m.split('-')
         const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-        return { label: `${monthNames[parseInt(mm)-1]} ${yy}`, value: Math.round(activityMap.get(m)! / 3600) } // Horas
+        const labelStr = `${monthNames[parseInt(mm)-1]} ${yy}`
+        return { 
+          dateStr: m, 
+          label: labelStr,
+          fullDate: labelStr,
+          value: activityMap.get(m) ? Number((activityMap.get(m)! / 3600).toFixed(2)) : 0,
+          rawSeconds: activityMap.get(m) || 0
+        } 
       })
     } else {
-      // Preenche os dias vazios também
+      // Preenche os dias vazios também com as datas reais correspondentes
       for (let i = days - 1; i >= 0; i--) {
         const d = new Date(now)
         d.setUTCDate(d.getUTCDate() - i)
         const dStr = getYYYYMMDD(d)
-        const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+        const dayNamesShort = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+        const dayNamesFull = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+        const [yy, mm, dd] = dStr.split('-')
+        
+        // Define o label curto: se for 7 dias, mostra dia da semana, se não mostra a data
+        let displayLabel = ''
+        if (days === 7) displayLabel = dayNamesShort[d.getUTCDay()]
+        else displayLabel = `${dd}/${mm}`
+
         activityChart.push({
           dateStr: dStr,
-          label: dayNames[d.getUTCDay()],
-          value: activityMap.get(dStr) ? Number((activityMap.get(dStr)! / 3600).toFixed(1)) : 0 // Horas
+          label: displayLabel,
+          fullDate: `${dayNamesFull[d.getUTCDay()]}, ${dd}/${mm}`,
+          value: activityMap.get(dStr) ? Number((activityMap.get(dStr)! / 3600).toFixed(2)) : 0, 
+          rawSeconds: activityMap.get(dStr) || 0
         })
       }
     }
@@ -366,17 +379,21 @@ export async function getDashboardStats() {
     const goalHours = m.goal_hours || 1
     const missingHours = goalHours - weeklyStudiedHours
     const requiredPacePerDay = missingHours > 0 ? (missingHours / daysRemainingWeek) : 0
+    const progress = Math.min(Math.round((weeklyStudiedHours / goalHours) * 100), 100)
     
     // Status Semântico de Matéria
-    let statusId: 'no_ritmo' | 'abaixo_do_ritmo' | 'atrasado' | 'sem_dados' | 'nao_iniciada' = 'no_ritmo'
-    if (mSessions.length === 0) {
-      statusId = 'nao_iniciada'
-    } else if (weeklySeconds === 0) {
-      statusId = 'sem_dados' // Tem histórico, mas não nesta semana
-    } else if (missingHours > 0) {
-       // Se o ritmo necessário for maior que 2h/dia pra uma matéria só, tá crítico
-       if (requiredPacePerDay > 1.5) statusId = 'atrasado'
-       else statusId = 'abaixo_do_ritmo'
+    let statusLabel = 'No ritmo'
+    let statusColor = 'bg-primary-100 text-primary-700'
+
+    if (weeklySeconds === 0) {
+      statusLabel = 'Não iniciada'
+      statusColor = 'bg-slate-100 text-slate-600'
+    } else if (missingHours <= 0) {
+      statusLabel = 'Meta alcançada'
+      statusColor = 'bg-emerald-100 text-emerald-700'
+    } else if (requiredPacePerDay > 1.5) {
+      statusLabel = 'Atrasado'
+      statusColor = 'bg-red-100 text-red-700'
     }
 
     const accuracy = totalQ > 0 ? Math.round(((totalQ - wrongQ) / totalQ) * 100) : null
@@ -392,10 +409,11 @@ export async function getDashboardStats() {
       name: m.name,
       weeklyGoal: goalHours,
       missingHours,
-      requiredPacePerDay,
+      progress,
+      statusLabel,
+      statusColor,
       daysRemainingWeek,
       weeklyStudiedFormatted: `${Math.floor(weeklySeconds/3600)}h ${Math.floor((weeklySeconds%3600)/60)}m`,
-      statusId,
       accuracy,
       recentAccuracy,
       lastStudiedAt,
@@ -436,7 +454,7 @@ export async function getDashboardStats() {
     }
 
     // 3. Negligência
-    if (sub.statusId === 'nao_iniciada') {
+    if (sub.statusLabel === 'Não iniciada') {
       score += 10
       reasons.push('Nenhum estudo registrado. Comece para gerar histórico.')
     } else if (sub.lastStudiedAt) {
@@ -449,10 +467,10 @@ export async function getDashboardStats() {
     }
 
     // 4. Déficit de Ritmo Volume
-    if (sub.statusId === 'atrasado' || sub.statusId === 'abaixo_do_ritmo') {
-      score += sub.statusId === 'atrasado' ? 25 : 15
+    if (sub.statusLabel === 'Atrasado' || sub.statusLabel === 'No ritmo') {
+      score += sub.statusLabel === 'Atrasado' ? 25 : 15
       reasons.push(`Faltam ${sub.missingHours.toFixed(1)}h para bater sua meta semanal.`)
-      if (!addedDiag) diagnostics.push({ type: 'volume', subject: sub.name, msg: `Ritmo abaixo do esperado para a meta da semana.` })
+      if (!addedDiag && sub.statusLabel === 'Atrasado') diagnostics.push({ type: 'volume', subject: sub.name, msg: `Ritmo abaixo do esperado para a meta da semana.` })
     }
 
     if (score > bestScore || bestScore === -1) {
@@ -460,7 +478,7 @@ export async function getDashboardStats() {
       recommendation = {
         materiaId: sub.id,
         subject: sub.name,
-        topic: sub.errors > 0 ? 'Foco na Correção' : (sub.statusId === 'nao_iniciada' ? 'Primeiro Estudo' : 'Retomar Trilha'),
+        topic: sub.errors > 0 ? 'Foco na Correção' : (sub.statusLabel === 'Não iniciada' ? 'Primeiro Estudo' : 'Retomar Trilha'),
         duration: sub.medianDurationMinutes,
         accuracy: sub.recentAccuracy,
         reason: reasons.length > 0 ? reasons.join(' ') : 'Você está com um ótimo ritmo. Continue avançando!',
