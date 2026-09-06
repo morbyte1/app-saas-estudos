@@ -17,9 +17,9 @@ interface DashboardStats {
   today: { minutes: number, goal: number, progress: number }
   overall: { totalStudyTime: string, questions: number, accuracy: number, accuracyChange: number }
   exam: { id: string, name: string, targetDate: string, daysRemaining: number } | null
-  subjects: { id: string, name: string, weeklyGoal: number, weeklyStudied: number, goalProgress: number, expectedProgress: number, questions: number, accuracy: number, paceStatus: string, lastStudiedAt: string | null }[]
+  subjects: { id: string, name: string, weeklyGoal: number, weeklyStudied: number, goalProgress: number, expectedProgress: number, questions: number, accuracy: number | null, recentAccuracy: number | null, paceStatus: string, lastStudiedAt: string | null, sessionCount: number, medianDurationMinutes: number }[]
   diagnostics: { type: string, subjectName: string, message: string }[]
-  recommendation: { subject: string, topic: string, duration: number, questions: number, accuracy: number, reason: string, action: string, actionUrl: string } | null
+  recommendation: { materiaId?: string | null, subject: string, topic: string, duration: number, questions: number, accuracy: number | null, reason: string, action: string, actionUrl: string } | null
 }
 
 interface DashboardClientProps {
@@ -258,7 +258,7 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
               
               <div>
                 <p className="text-primary-200 font-bold uppercase tracking-widest text-xs mb-5">Seu Próximo Estudo</p>
-                {stats.recommendation ? (
+                {stats.recommendation && stats.recommendation.materiaId ? (
                   <>
                     <h2 className="text-3xl sm:text-4xl font-extrabold mb-1">{stats.recommendation.subject}</h2>
                     <h3 className="text-lg text-primary-100 font-medium mb-6">{stats.recommendation.topic}</h3>
@@ -266,16 +266,20 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
                     <div className="flex flex-wrap gap-3 mb-6">
                       <div className="flex items-center gap-2 bg-primary-800/60 px-3 py-1.5 rounded-lg border border-primary-700/50">
                         <Clock className="w-4 h-4 text-primary-300" />
-                        <span className="text-sm font-semibold text-primary-50">{stats.recommendation.duration} min</span>
+                        <span className="text-sm font-semibold text-primary-50">{stats.recommendation.duration} min (sugerido)</span>
                       </div>
-                      <div className="flex items-center gap-2 bg-primary-800/60 px-3 py-1.5 rounded-lg border border-primary-700/50">
-                        <CheckCircle className="w-4 h-4 text-primary-300" />
-                        <span className="text-sm font-semibold text-primary-50">{stats.recommendation.questions} questões</span>
-                      </div>
-                      <div className="flex items-center gap-2 bg-primary-800/60 px-3 py-1.5 rounded-lg border border-primary-700/50">
-                        <Target className="w-4 h-4 text-primary-300" />
-                        <span className="text-sm font-semibold text-primary-50">{stats.recommendation.accuracy}% de precisão atual</span>
-                      </div>
+                      {stats.recommendation.questions > 0 && (
+                        <div className="flex items-center gap-2 bg-primary-800/60 px-3 py-1.5 rounded-lg border border-primary-700/50">
+                          <Target className="w-4 h-4 text-primary-300" />
+                          <span className="text-sm font-semibold text-primary-50">Meta: {stats.recommendation.questions} questões</span>
+                        </div>
+                      )}
+                      {stats.recommendation.accuracy !== null && stats.recommendation.accuracy > 0 && (
+                        <div className="flex items-center gap-2 bg-primary-800/60 px-3 py-1.5 rounded-lg border border-primary-700/50">
+                          <CheckCircle className="w-4 h-4 text-primary-300" />
+                          <span className="text-sm font-semibold text-primary-50">{stats.recommendation.accuracy}% de precisão atual</span>
+                        </div>
+                      )}
                     </div>
                     <p className="text-primary-100/90 text-sm max-w-xl leading-relaxed mb-6">
                       {stats.recommendation.reason}
@@ -283,21 +287,22 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
                   </>
                 ) : (
                   <div className="py-6">
-                    <p className="text-primary-100 text-lg">Os dados ainda não são suficientes para gerar uma recomendação baseada em desempenho ou ritmo atual.</p>
+                    <h2 className="text-3xl sm:text-4xl font-extrabold mb-1">{stats.recommendation?.subject || 'Nenhuma matéria'}</h2>
+                    <p className="text-primary-100 text-lg mt-4">{stats.recommendation?.reason || 'Adicione suas matérias no painel para receber recomendações personalizadas.'}</p>
                   </div>
                 )}
               </div>
 
               <div>
-                {stats.recommendation ? (
+                {stats.recommendation && stats.recommendation.materiaId ? (
                   <Link href={stats.recommendation.actionUrl} className="inline-flex items-center gap-2 bg-white text-primary-900 px-6 py-3.5 rounded-xl font-bold hover:bg-primary-50 transition-colors shadow-sm">
                     <Play className="w-4 h-4 fill-current" />
                     {stats.recommendation.action}
                   </Link>
                 ) : (
-                  <Link href="/dashboard/timer" className="inline-flex items-center gap-2 bg-white text-primary-900 px-6 py-3.5 rounded-xl font-bold hover:bg-primary-50 transition-colors shadow-sm">
+                  <Link href={stats.recommendation?.actionUrl || '/dashboard/materias'} className="inline-flex items-center gap-2 bg-white text-primary-900 px-6 py-3.5 rounded-xl font-bold hover:bg-primary-50 transition-colors shadow-sm">
                     <Play className="w-4 h-4 fill-current" />
-                    Ir para o Timer
+                    {stats.recommendation?.action || 'Ir para Matérias'}
                   </Link>
                 )}
               </div>
@@ -481,7 +486,7 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
                           </div>
                           <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
                             <Target className="w-3.5 h-3.5 text-slate-400" />
-                            {sub.accuracy}% prec
+                            {sub.accuracy || 0}% prec
                           </div>
                         </div>
                       </div>

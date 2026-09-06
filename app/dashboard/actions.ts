@@ -165,12 +165,10 @@ export async function getDashboardStats() {
 
   const userName = user.user_metadata?.full_name || 'Estudante'
   
-  // Datas base
   const today = new Date()
   const currentYearStart = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0]
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   
-  // Definição consistente de semana: Segunda = 1, Domingo = 7
   const dayOfWeekJS = today.getDay()
   const currentDayOfWeek = dayOfWeekJS === 0 ? 7 : dayOfWeekJS 
   const expectedProgress = Math.min(Math.round((currentDayOfWeek / 7) * 100), 100)
@@ -188,108 +186,120 @@ export async function getDashboardStats() {
     { data: materias },
     { data: examGoals },
     { data: userSettings },
-    { data: erros },
-    { data: topicos }
+    { data: erros }
   ] = await Promise.all([
-    supabase.from('study_sessions').select('session_date, duration_seconds, materia_id, questions_done, questions_wrong').eq('user_id', user.id).gte('session_date', currentYearStart),
+    supabase.from('study_sessions').select('id, session_date, duration_seconds, materia_id, assunto_id, questions_total, questions_wrong').eq('user_id', user.id).gte('session_date', currentYearStart),
     supabase.from('materias').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
     supabase.from('exam_goals').select('*').eq('user_id', user.id).gte('target_date', new Date().toISOString()).order('target_date', { ascending: true }).limit(1),
     supabase.from('user_settings').select('daily_goal_hours').eq('user_id', user.id).maybeSingle(),
-    supabase.from('caderno_erros').select('materia_id, assunto_id, erros_recorrentes_count, status').eq('user_id', user.id),
-    supabase.from('topicos').select('id, name').eq('user_id', user.id)
+    supabase.from('caderno_erros').select('materia_id, assunto_id, erros_recorrentes_count, status').eq('user_id', user.id)
   ])
 
   const examGoal = examGoals && examGoals.length > 0 ? examGoals[0] : null
   const dailyGoalHours = userSettings?.daily_goal_hours || 3
 
-  // Variáveis Globais
   let totalSeconds = 0
   let todaySeconds = 0
-  let totalQuestionsDone = 0
+  let totalQuestions = 0
   let totalQuestionsWrong = 0
   
-  let recentQuestionsDone = 0
+  let recentQuestions = 0
   let recentQuestionsWrong = 0
-  let oldQuestionsDone = 0
+  let oldQuestions = 0
   let oldQuestionsWrong = 0
 
   const subjectDataMap: Record<string, {
     weeklySeconds: number,
+    sessionCount: number,
     totalQuestions: number,
-    totalDone: number,
     totalWrong: number,
-    lastStudiedAt: string | null
+    recentQuestions: number,
+    recentWrong: number,
+    lastStudiedAt: string | null,
+    durations: number[]
   }> = {}
 
   if (materias) {
     materias.forEach(m => {
-      subjectDataMap[m.id] = { weeklySeconds: 0, totalQuestions: 0, totalDone: 0, totalWrong: 0, lastStudiedAt: null }
+      subjectDataMap[m.id] = { weeklySeconds: 0, sessionCount: 0, totalQuestions: 0, totalWrong: 0, recentQuestions: 0, recentWrong: 0, lastStudiedAt: null, durations: [] }
     })
   }
 
-  // Processamento das Sessões
+  // Analytics Engine: Fonte de Verdade
   if (sessions) {
     sessions.forEach(s => {
       const dur = s.duration_seconds || 0
-      const qDone = s.questions_done || 0
+      const qTotal = s.questions_total || 0
       const qWrong = s.questions_wrong || 0
-      const qTotal = qDone + qWrong
       
       totalSeconds += dur
-      totalQuestionsDone += qDone
-      totalQuestionsWrong += qWrong
+      
+      if (qTotal > 0) {
+        totalQuestions += qTotal
+        totalQuestionsWrong += qWrong
+      }
 
       if (s.session_date) {
         if (s.session_date === todayStr) todaySeconds += dur
         
-        // Variação de precisão (Últimos 7 dias vs 7 dias anteriores)
-        if (s.session_date >= startOfWeekStr) {
-          recentQuestionsDone += qDone
+        if (s.session_date >= startOfWeekStr && qTotal > 0) {
+          recentQuestions += qTotal
           recentQuestionsWrong += qWrong
-        } else if (s.session_date >= lastWeekStartStr && s.session_date < startOfWeekStr) {
-          oldQuestionsDone += qDone
+        } else if (s.session_date >= lastWeekStartStr && s.session_date < startOfWeekStr && qTotal > 0) {
+          oldQuestions += qTotal
           oldQuestionsWrong += qWrong
         }
 
-        // Dados por Matéria
         if (s.materia_id && subjectDataMap[s.materia_id]) {
-          if (s.session_date >= startOfWeekStr) {
-            subjectDataMap[s.materia_id].weeklySeconds += dur
-          }
-          subjectDataMap[s.materia_id].totalDone += qDone
-          subjectDataMap[s.materia_id].totalWrong += qWrong
-          subjectDataMap[s.materia_id].totalQuestions += qTotal
+          const sData = subjectDataMap[s.materia_id]
+          sData.sessionCount += 1
+          sData.durations.push(dur)
 
-          const currentLastStr = subjectDataMap[s.materia_id].lastStudiedAt
-          if (!currentLastStr || s.session_date > currentLastStr) {
-            subjectDataMap[s.materia_id].lastStudiedAt = s.session_date
+          if (s.session_date >= startOfWeekStr) {
+            sData.weeklySeconds += dur
+          }
+
+          if (qTotal > 0) {
+            sData.totalQuestions += qTotal
+            sData.totalWrong += qWrong
+            
+            // Recência de precisão (últimos 14 dias para ter volume)
+            const fortnightAgo = new Date(today);
+            fortnightAgo.setDate(today.getDate() - 14);
+            const fortnightStr = `${fortnightAgo.getFullYear()}-${String(fortnightAgo.getMonth() + 1).padStart(2, '0')}-${String(fortnightAgo.getDate()).padStart(2, '0')}`;
+            
+            if (s.session_date >= fortnightStr) {
+              sData.recentQuestions += qTotal
+              sData.recentWrong += qWrong
+            }
+          }
+
+          if (!sData.lastStudiedAt || s.session_date > sData.lastStudiedAt) {
+            sData.lastStudiedAt = s.session_date
           }
         }
       }
     })
   }
 
-  // Precisão Global
-  const totalQuestions = totalQuestionsDone + totalQuestionsWrong
-  const globalAccuracy = totalQuestions > 0 ? Math.round((totalQuestionsDone / totalQuestions) * 100) : 0
-
-  const recentTotal = recentQuestionsDone + recentQuestionsWrong
-  const recentAcc = recentTotal > 0 ? (recentQuestionsDone / recentTotal) * 100 : globalAccuracy
-  const oldTotal = oldQuestionsDone + oldQuestionsWrong
-  const oldAcc = oldTotal > 0 ? (oldQuestionsDone / oldTotal) * 100 : globalAccuracy
+  // Precisão Global Baseada Apenas em Sessões com Questões
+  const globalAccuracy = totalQuestions > 0 ? Math.round(((totalQuestions - totalQuestionsWrong) / totalQuestions) * 100) : 0
+  const recentAcc = recentQuestions > 0 ? ((recentQuestions - recentQuestionsWrong) / recentQuestions) * 100 : globalAccuracy
+  const oldAcc = oldQuestions > 0 ? ((oldQuestions - oldQuestionsWrong) / oldQuestions) * 100 : globalAccuracy
   const accuracyChange = Math.round(recentAcc - oldAcc)
 
   const totalHours = Math.floor(totalSeconds / 3600)
   const totalMinutesRemaining = Math.floor((totalSeconds % 3600) / 60)
   const totalDurationFormatted = totalHours > 0 ? `${totalHours}h ${totalMinutesRemaining}min` : `${totalMinutesRemaining}min`
 
-  // Construção dos Objetos de Matérias
   const processedSubjects = (materias || []).map(m => {
     const sData = subjectDataMap[m.id]
     const weeklyStudiedHours = sData.weeklySeconds / 3600
     const goalHours = m.goal_hours || 1
     const goalProgress = Math.min(Math.round((weeklyStudiedHours / goalHours) * 100), 100)
-    const accuracy = sData.totalQuestions > 0 ? Math.round((sData.totalDone / sData.totalQuestions) * 100) : 0
+    
+    const accuracy = sData.totalQuestions > 0 ? Math.round(((sData.totalQuestions - sData.totalWrong) / sData.totalQuestions) * 100) : null
+    const recentAccuracy = sData.recentQuestions > 0 ? Math.round(((sData.recentQuestions - sData.recentWrong) / sData.recentQuestions) * 100) : accuracy
 
     let paceStatus: 'acima_do_ritmo' | 'no_ritmo' | 'abaixo_do_ritmo' | 'atrasado' | 'sem_dados' = 'no_ritmo'
     const paceDifference = goalProgress - expectedProgress
@@ -297,23 +307,21 @@ export async function getDashboardStats() {
     if (!sData.lastStudiedAt) {
       paceStatus = 'sem_dados'
     } else if (sData.weeklySeconds === 0) {
-      // Se possui histórico mas ainda não estudou na semana
-      if (expectedProgress < 45) {
-        // Até quarta-feira (43%), ausência de estudo ainda é tolerada como neutra
-        paceStatus = 'no_ritmo'
-      } else if (expectedProgress < 75) {
-        // A partir de quinta, começa a atrasar levemente
-        paceStatus = 'abaixo_do_ritmo'
-      } else {
-        // Chegou ao final da semana sem fazer nada, definitivamente atrasado
-        paceStatus = 'atrasado'
-      }
+      if (expectedProgress < 45) paceStatus = 'no_ritmo'
+      else if (expectedProgress < 75) paceStatus = 'abaixo_do_ritmo'
+      else paceStatus = 'atrasado'
     } else {
       if (paceDifference >= 10) paceStatus = 'acima_do_ritmo'
       else if (paceDifference >= -15) paceStatus = 'no_ritmo'
       else if (paceDifference >= -35) paceStatus = 'abaixo_do_ritmo'
       else paceStatus = 'atrasado'
     }
+
+    // Calcula mediana de duração das sessões
+    const sortedDurations = [...sData.durations].sort((a, b) => a - b)
+    const medianDurationSeconds = sortedDurations.length > 0 
+      ? sortedDurations[Math.floor(sortedDurations.length / 2)] 
+      : (30 * 60) // Fallback para novo usuário = 30 min
 
     return {
       id: m.id,
@@ -324,153 +332,116 @@ export async function getDashboardStats() {
       expectedProgress,
       questions: sData.totalQuestions,
       accuracy,
+      recentAccuracy,
       lastStudiedAt: sData.lastStudiedAt,
-      paceStatus
+      paceStatus,
+      sessionCount: sData.sessionCount,
+      medianDurationMinutes: Math.round(medianDurationSeconds / 60)
     }
   })
 
-  // Diagnósticos
-  const diagnostics: any[] = []
-
-  processedSubjects.forEach(sub => {
-    if (sub.paceStatus === 'atrasado') {
-      diagnostics.push({ type: 'meta', subjectId: sub.id, subjectName: sub.name, message: `Você está consideravelmente atrasado na meta semanal desta matéria.` })
-    }
-    if (sub.questions > 10 && sub.accuracy < 60) {
-      diagnostics.push({ type: 'precisao', subjectId: sub.id, subjectName: sub.name, message: `Precisão geral de ${sub.accuracy}%. Sugerimos uma revisão de base.` })
-    }
-  })
-
-  let totalRecurrentErrors = 0
+  // Agregação de Erros
   const errorsBySubject: Record<string, number> = {}
-  
   if (erros) {
     erros.forEach(e => {
-      if (e.erros_recorrentes_count > 0) {
-        totalRecurrentErrors += e.erros_recorrentes_count
-        if (e.materia_id) {
-          errorsBySubject[e.materia_id] = (errorsBySubject[e.materia_id] || 0) + e.erros_recorrentes_count
-        }
+      if (e.erros_recorrentes_count > 0 && e.materia_id) {
+        errorsBySubject[e.materia_id] = (errorsBySubject[e.materia_id] || 0) + e.erros_recorrentes_count
       }
     })
   }
 
-  Object.entries(errorsBySubject).forEach(([mId, count]) => {
-    if (count >= 3) {
-      const matName = materias?.find(m => m.id === mId)?.name || 'Matéria'
-      diagnostics.push({ type: 'erros', subjectId: mId, subjectName: matName, message: `Você acumulou ${count} erros recorrentes. Atenção aos pontos cegos.` })
-    }
-  })
-
-  // Ordenar diagnósticos por gravidade
-  diagnostics.sort((a, b) => {
-    const order = { 'erros': 1, 'meta': 2, 'precisao': 3 }
-    return (order[a.type as keyof typeof order] || 4) - (order[b.type as keyof typeof order] || 4)
-  })
-
-  // Recomendação Central Determinística
+  // ----------------------------------------------------
+  // DETERMINISTIC RECOMMENDATION ENGINE
+  // ----------------------------------------------------
+  let bestPriorityScore = -1
   let recommendation = null
+  let diagnostics: any[] = []
 
-  if (!recommendation && Object.keys(errorsBySubject).length > 0) {
-    const worstSubjId = Object.keys(errorsBySubject).sort((a,b) => errorsBySubject[b] - errorsBySubject[a])[0]
-    const matName = materias?.find(m => m.id === worstSubjId)?.name || 'Revisão'
-    const acc = processedSubjects.find(s => s.id === worstSubjId)?.accuracy || 0
-    const errorCount = errorsBySubject[worstSubjId]
-    recommendation = {
-      type: 'revisao',
-      subject: matName,
-      topic: 'Caderno de Erros',
-      duration: 30,
-      questions: errorCount,
-      accuracy: acc,
-      reason: `Você possui ${errorCount} erros recorrentes acumulados. É fundamental entender essas falhas antes de avançar no conteúdo novo.`,
-      action: 'Revisar agora',
-      actionUrl: '/dashboard/caderno'
+  processedSubjects.forEach(sub => {
+    let score = 0
+    let reasons: string[] = []
+    let diagnosticAdded = false
+
+    // 1. Erros Recorrentes (Forte indício de lacuna)
+    const errCount = errorsBySubject[sub.id] || 0
+    if (errCount >= 3) {
+      score += 40 + errCount
+      reasons.push(`Você tem ${errCount} erros recorrentes para corrigir.`)
+      diagnostics.push({ type: 'erros', subjectName: sub.name, message: `Revisão urgente: ${errCount} erros acumulados.` })
+      diagnosticAdded = true
     }
-  }
 
-  if (!recommendation) {
-    const delayed = processedSubjects.filter(s => s.paceStatus === 'atrasado' || s.paceStatus === 'abaixo_do_ritmo').sort((a,b) => (a.goalProgress - expectedProgress) - (b.goalProgress - expectedProgress))[0]
-    if (delayed) {
-      recommendation = {
-        type: 'meta',
-        subject: delayed.name,
-        topic: 'Recuperar o ritmo',
-        duration: 60,
-        questions: 20, 
-        accuracy: delayed.accuracy,
-        reason: `Você está ${delayed.paceStatus === 'atrasado' ? 'atrasado' : 'abaixo do ritmo'} na meta desta matéria. Focar nela agora ajudará a não acumular o déficit da semana.`,
-        action: 'Começar estudo',
-        actionUrl: '/dashboard/timer'
+    // 2. Precisão Significativamente Baixa (apenas se houver volume)
+    if (sub.questions > 15 && sub.recentAccuracy !== null && sub.recentAccuracy < 65) {
+      score += 30
+      reasons.push(`Seu aproveitamento recente em ${sub.name} está abaixo do esperado (${sub.recentAccuracy}%).`)
+      if (!diagnosticAdded) diagnostics.push({ type: 'precisao', subjectName: sub.name, message: `Aproveitamento recente em ${sub.recentAccuracy}%. Foco em correção.` })
+    }
+
+    // 3. Matéria Abaixo do Ritmo
+    if (sub.paceStatus === 'atrasado') {
+      score += 25
+      reasons.push(`Você está consideravelmente atrasado na sua meta de ${sub.weeklyGoal}h semanais.`)
+      if (!diagnosticAdded) diagnostics.push({ type: 'meta', subjectName: sub.name, message: `Déficit crítico no ritmo planejado da semana.` })
+    } else if (sub.paceStatus === 'abaixo_do_ritmo') {
+      score += 15
+      reasons.push(`Aumentar o tempo agora ajuda a não acumular déficit na semana.`)
+    }
+
+    // 4. Continuidade / Negligência
+    if (sub.lastStudiedAt) {
+      const diffDays = Math.floor((today.getTime() - new Date(sub.lastStudiedAt).getTime()) / (1000 * 60 * 60 * 24))
+      if (diffDays >= 7) {
+        score += 20
+        reasons.push(`Faz ${diffDays} dias que você não revisita esta matéria.`)
+      } else if (diffDays === 0) {
+        // Acabou de estudar, bônus leve de continuidade
+        score += 5
       }
-    }
-  }
-
-  if (!recommendation) {
-    const lowAcc = [...processedSubjects].filter(s => s.questions > 15 && s.accuracy < 65).sort((a,b) => a.accuracy - b.accuracy)[0]
-    if (lowAcc) {
-      recommendation = {
-        type: 'precisao',
-        subject: lowAcc.name,
-        topic: 'Prática e Correção',
-        duration: 45,
-        questions: 15,
-        accuracy: lowAcc.accuracy,
-        reason: `Sua precisão nesta matéria está em ${lowAcc.accuracy}%. Aconselhamos focar em exercícios de fixação e correção ativa.`,
-        action: 'Praticar agora',
-        actionUrl: '/dashboard/timer'
-      }
-    }
-  }
-
-  if (!recommendation && processedSubjects.length > 0) {
-    const candidate = [...processedSubjects].sort((a, b) => {
-      if (!a.lastStudiedAt) return -1
-      if (!b.lastStudiedAt) return 1
-      return new Date(a.lastStudiedAt).getTime() - new Date(b.lastStudiedAt).getTime()
-    })[0]
-
-    let reason = ''
-    let duration = 45
-    let questions = 15
-    let topic = 'Avançar na trilha'
-    let action = 'Começar estudo'
-
-    if (!candidate.lastStudiedAt) {
-      reason = 'Você ainda não registrou um estudo nesta matéria. Faça seu primeiro estudo para começarmos a acompanhar sua evolução.'
-      duration = 40
-      questions = 10
-      topic = 'Primeiro Estudo'
-      action = 'Começar agora'
     } else {
-      const lastDate = new Date(candidate.lastStudiedAt).getTime()
-      const now = today.getTime()
-      const diffDays = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24))
+      // Usuário novo ou matéria nova
+      score += 10
+      reasons.push('Faça seu primeiro estudo para o Revyza começar a entender seu ritmo.')
+    }
 
-      if (diffDays > 2) {
-        reason = `Você não estuda essa matéria há ${diffDays} dias. Retome o contato com o material para manter o conteúdo fresco.`
-        duration = 50
-        questions = 15
-        topic = 'Retomar Estudo'
-      } else {
-        reason = 'Você está no ritmo. Continue avançando na sua trilha de estudos focando na disciplina de maior prioridade atual.'
-        duration = 45
-        questions = 15
+    // Decisão
+    if (score > bestPriorityScore || bestPriorityScore === -1) {
+      bestPriorityScore = score
+      
+      const isNew = sub.sessionCount === 0
+      const recommendedDuration = isNew ? 30 : sub.medianDurationMinutes
+      
+      recommendation = {
+        materiaId: sub.id,
+        subject: sub.name,
+        topic: errCount > 0 ? 'Foco em Correção' : (isNew ? 'Primeiro Estudo' : 'Avançar na Trilha'),
+        duration: recommendedDuration,
+        questions: isNew ? 0 : 15,
+        accuracy: sub.recentAccuracy || 0,
+        reason: reasons.length > 0 ? reasons.join(' ') : 'Você está com um ritmo consistente. Continue avançando no conteúdo.',
+        action: errCount > 0 ? 'Revisar agora' : 'Começar estudo',
+        actionUrl: `/dashboard/timer?materiaId=${sub.id}`
       }
     }
+  })
 
+  // Fallback caso não haja matérias
+  if (!recommendation && processedSubjects.length === 0) {
     recommendation = {
-      type: 'geral',
-      subject: candidate.name,
-      topic,
-      duration,
-      questions,
-      accuracy: candidate.accuracy,
-      reason,
-      action,
-      actionUrl: '/dashboard/timer'
+      materiaId: null,
+      subject: 'Nenhuma matéria',
+      topic: 'Configuração',
+      duration: 0,
+      questions: 0,
+      accuracy: 0,
+      reason: 'Adicione suas matérias no painel para receber recomendações personalizadas.',
+      action: 'Adicionar Matérias',
+      actionUrl: '/dashboard/materias'
     }
   }
+
+  // Ordena os diagnósticos gerados pelo motor
+  diagnostics = diagnostics.slice(0, 3)
 
   let daysRemaining = 0
   if (examGoal && examGoal.target_date) {
@@ -503,7 +474,7 @@ export async function getDashboardStats() {
         daysRemaining
       } : null,
       subjects: processedSubjects,
-      diagnostics: diagnostics.slice(0, 3), 
+      diagnostics, 
       recommendation
     }
   }

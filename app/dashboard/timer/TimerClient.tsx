@@ -46,8 +46,11 @@ interface StudySession {
 interface TimerClientProps {
   initialMaterias: Materia[]
   initialHistory: StudySession[]
+  initialContext?: {
+    materiaId: string
+    assuntoId: string
+  }
 }
-
 // --- MOCK DATA E TUTORIAL ---
 const MOCK_MATERIAS: Materia[] = [
   { id: 'mock1', name: 'Matemática', goalHours: 5, studiedHours: 0, studiedMinutes: 0, progress: 0 },
@@ -174,7 +177,7 @@ const parseStrictIntInput = (val: string): number => {
   return parseInt(trimmed, 10)
 }
 
-export default function TimerClient({ initialMaterias, initialHistory }: TimerClientProps) {
+export default function TimerClient({ initialMaterias, initialHistory, initialContext }: TimerClientProps) {
   const [isTutorialActive, setIsTutorialActive] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
 
@@ -192,6 +195,7 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
   const router = useRouter()
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
   const [pendingPath, setPendingPath] = useState<string | null>(null)
+
   
   const [pomodoroCycles, setPomodoroCycles] = useState(0)
   const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null)
@@ -218,11 +222,11 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
   const [expandedDates, setExpandedDates] = useState<string[]>([])
   const [isSettingsConfirmOpen, setIsSettingsConfirmOpen] = useState(false)
 
-  const [materias, setMaterias] = useState<Materia[]>(initialMaterias)
-  const [selectedMateriaId, setSelectedMateriaId] = useState<string>('')
+const [materias, setMaterias] = useState<Materia[]>(initialMaterias)
+  const [selectedMateriaId, setSelectedMateriaId] = useState<string>(initialContext?.materiaId || '')
   const [topicos, setTopicos] = useState<Topico[]>([])
   const [assuntos, setAssuntos] = useState<Assunto[]>([])
-  const [selectedAssuntoId, setSelectedAssuntoId] = useState<string>('')
+  const [selectedAssuntoId, setSelectedAssuntoId] = useState<string>(initialContext?.assuntoId || '')
 
   const [isFinishModalOpen, setIsFinishModalOpen] = useState(false)
   const [questionsTotal, setQuestionsTotal] = useState<string>('')
