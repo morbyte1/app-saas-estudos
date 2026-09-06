@@ -20,8 +20,8 @@ export default async function DashboardPage() {
     <DashboardClient 
       initialEvents={events} 
       initialTasks={tasks} 
-      initialStats={stats as any} 
-      initialMaterias={materias as any}
+      initialStats={stats} 
+      initialMaterias={materias}
     />
   )
 }

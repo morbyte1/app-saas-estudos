@@ -10,7 +10,6 @@ export async function saveStudySession(duration_seconds: number) {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
 
   if (userError || !user) {
-    console.error('Error getting user:', userError?.message)
     return { error: 'User not authenticated' }
   }
 
@@ -20,11 +19,7 @@ export async function saveStudySession(duration_seconds: number) {
     created_at: new Date().toISOString(),
   })
 
-  if (error) {
-    console.error('Error saving study session:', error.message)
-    return { error: error.message }
-  }
-
+  if (error) return { error: error.message }
   revalidatePath('/dashboard')
   return { success: true }
 }
@@ -42,13 +37,9 @@ export async function signout() {
 
 export async function getTasks() {
   const supabase = await createClient()
-
   const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-  if (userError || !user) {
-    console.error('Error getting user:', userError?.message)
-    return { error: 'User not authenticated', tasks: [] }
-  }
+  if (userError || !user) return { error: 'User not authenticated', tasks: [] }
 
   const { data: tasks, error } = await supabase
     .from('tasks')
@@ -56,11 +47,7 @@ export async function getTasks() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
-  if (error) {
-    console.error('Error fetching tasks:', error.message)
-    return { error: error.message, tasks: [] }
-  }
-
+  if (error) return { error: error.message, tasks: [] }
   return { tasks: tasks || [] }
 }
 
@@ -85,7 +72,6 @@ export async function createTask(data: {
   }).select().single()
 
   if (error) return { error: error.message }
-
   revalidatePath('/dashboard')
   return { success: true, task: newTask }
 }
@@ -98,7 +84,6 @@ export async function updateTask(id: string, data: {
 }) {
   const supabase = await createClient()
   const { data: { user }, error: userError } = await supabase.auth.getUser()
-
   if (userError || !user) return { error: 'User not authenticated' }
 
   const { data: updatedTask, error } = await supabase
@@ -110,7 +95,6 @@ export async function updateTask(id: string, data: {
     .single()
 
   if (error) return { error: error.message }
-
   revalidatePath('/dashboard')
   return { success: true, task: updatedTask }
 }
@@ -118,17 +102,10 @@ export async function updateTask(id: string, data: {
 export async function deleteTask(id: string) {
   const supabase = await createClient()
   const { data: { user }, error: userError } = await supabase.auth.getUser()
-
   if (userError || !user) return { error: 'User not authenticated' }
 
-  const { error } = await supabase
-    .from('tasks')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', user.id)
-
+  const { error } = await supabase.from('tasks').delete().eq('id', id).eq('user_id', user.id)
   if (error) return { error: error.message }
-
   revalidatePath('/dashboard')
   return { success: true }
 }
@@ -136,17 +113,10 @@ export async function deleteTask(id: string) {
 export async function toggleTaskStatus(id: string, is_done: boolean) {
   const supabase = await createClient()
   const { data: { user }, error: userError } = await supabase.auth.getUser()
-
   if (userError || !user) return { error: 'User not authenticated' }
 
-  const { error } = await supabase
-    .from('tasks')
-    .update({ is_done })
-    .eq('id', id)
-    .eq('user_id', user.id)
-
+  const { error } = await supabase.from('tasks').update({ is_done }).eq('id', id).eq('user_id', user.id)
   if (error) return { error: error.message }
-
   revalidatePath('/dashboard')
   return { success: true }
 }
@@ -159,323 +129,371 @@ export async function getDashboardStats() {
   const supabase = await createClient()
 
   const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) {
-    return { success: false, error: 'Usuário não autenticado', data: null }
-  }
+  if (userError || !user) return { success: false, error: 'Usuário não autenticado', data: null }
 
   const userName = user.user_metadata?.full_name || 'Estudante'
-  
-  const today = new Date()
-  const currentYearStart = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0]
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-  
-  const dayOfWeekJS = today.getDay()
-  const currentDayOfWeek = dayOfWeekJS === 0 ? 7 : dayOfWeekJS 
-  const expectedProgress = Math.min(Math.round((currentDayOfWeek / 7) * 100), 100)
-  
-  const startOfWeek = new Date(today)
-  startOfWeek.setDate(today.getDate() - (currentDayOfWeek - 1))
-  const startOfWeekStr = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`
 
-  const lastWeekStart = new Date(startOfWeek)
-  lastWeekStart.setDate(startOfWeek.getDate() - 7)
-  const lastWeekStartStr = `${lastWeekStart.getFullYear()}-${String(lastWeekStart.getMonth() + 1).padStart(2, '0')}-${String(lastWeekStart.getDate()).padStart(2, '0')}`
+  // Ajuste de Timezone (Foca no horário de Brasília - UTC-3) para cálculo de "Hoje" e períodos
+  const now = new Date()
+  now.setUTCHours(now.getUTCHours() - 3)
+  
+  const getYYYYMMDD = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+  const todayStr = getYYYYMMDD(now)
+  
+  const currentDayOfWeek = now.getUTCDay() === 0 ? 7 : now.getUTCDay() // 1=Seg, 7=Dom
+  const daysRemainingWeek = 7 - currentDayOfWeek + 1
 
   const [
-    { data: sessions },
-    { data: materias },
-    { data: examGoals },
+    { data: sessionsData },
+    { data: materiasData },
     { data: userSettings },
-    { data: erros }
+    { data: errosData }
   ] = await Promise.all([
-    supabase.from('study_sessions').select('id, session_date, duration_seconds, materia_id, assunto_id, questions_total, questions_wrong').eq('user_id', user.id).gte('session_date', currentYearStart),
+    supabase.from('study_sessions').select('id, session_date, duration_seconds, materia_id, assunto_id, questions_total, questions_wrong').eq('user_id', user.id),
     supabase.from('materias').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-    supabase.from('exam_goals').select('*').eq('user_id', user.id).gte('target_date', new Date().toISOString()).order('target_date', { ascending: true }).limit(1),
     supabase.from('user_settings').select('daily_goal_hours').eq('user_id', user.id).maybeSingle(),
-    supabase.from('caderno_erros').select('materia_id, assunto_id, erros_recorrentes_count, status').eq('user_id', user.id)
+    supabase.from('caderno_erros').select('materia_id, erros_recorrentes_count').eq('user_id', user.id)
   ])
 
-  const examGoal = examGoals && examGoals.length > 0 ? examGoals[0] : null
+  const sessions = sessionsData || []
+  const materias = materiasData || []
   const dailyGoalHours = userSettings?.daily_goal_hours || 3
 
-  let totalSeconds = 0
-  let todaySeconds = 0
-  let totalQuestions = 0
-  let totalQuestionsWrong = 0
-  
-  let recentQuestions = 0
-  let recentQuestionsWrong = 0
-  let oldQuestions = 0
-  let oldQuestionsWrong = 0
+  // ----------------------------------------------------
+  // CALCULO DE SEQUÊNCIA (STREAK)
+  // ----------------------------------------------------
+  const uniqueDates = [...new Set(sessions.map(s => s.session_date))].sort().reverse()
+  let currentStreak = 0
+  let bestStreak = 0
 
-  const subjectDataMap: Record<string, {
-    weeklySeconds: number,
-    sessionCount: number,
-    totalQuestions: number,
-    totalWrong: number,
-    recentQuestions: number,
-    recentWrong: number,
-    lastStudiedAt: string | null,
-    durations: number[]
-  }> = {}
-
-  if (materias) {
-    materias.forEach(m => {
-      subjectDataMap[m.id] = { weeklySeconds: 0, sessionCount: 0, totalQuestions: 0, totalWrong: 0, recentQuestions: 0, recentWrong: 0, lastStudiedAt: null, durations: [] }
-    })
-  }
-
-  // Analytics Engine: Fonte de Verdade
-  if (sessions) {
-    sessions.forEach(s => {
-      const dur = s.duration_seconds || 0
-      const qTotal = s.questions_total || 0
-      const qWrong = s.questions_wrong || 0
-      
-      totalSeconds += dur
-      
-      if (qTotal > 0) {
-        totalQuestions += qTotal
-        totalQuestionsWrong += qWrong
+  if (uniqueDates.length > 0) {
+    let curr = 1
+    let max = 1
+    for (let i = 0; i < uniqueDates.length - 1; i++) {
+      const d1 = new Date(uniqueDates[i] + 'T12:00:00Z')
+      const d2 = new Date(uniqueDates[i + 1] + 'T12:00:00Z')
+      const diffDays = Math.round((d1.getTime() - d2.getTime()) / (1000 * 60 * 60 * 24))
+      if (diffDays === 1) {
+        curr++
+        max = Math.max(max, curr)
+      } else {
+        curr = 1
       }
+    }
+    bestStreak = max
 
-      if (s.session_date) {
-        if (s.session_date === todayStr) todaySeconds += dur
-        
-        if (s.session_date >= startOfWeekStr && qTotal > 0) {
-          recentQuestions += qTotal
-          recentQuestionsWrong += qWrong
-        } else if (s.session_date >= lastWeekStartStr && s.session_date < startOfWeekStr && qTotal > 0) {
-          oldQuestions += qTotal
-          oldQuestionsWrong += qWrong
-        }
-
-        if (s.materia_id && subjectDataMap[s.materia_id]) {
-          const sData = subjectDataMap[s.materia_id]
-          sData.sessionCount += 1
-          sData.durations.push(dur)
-
-          if (s.session_date >= startOfWeekStr) {
-            sData.weeklySeconds += dur
-          }
-
-          if (qTotal > 0) {
-            sData.totalQuestions += qTotal
-            sData.totalWrong += qWrong
-            
-            // Recência de precisão (últimos 14 dias para ter volume)
-            const fortnightAgo = new Date(today);
-            fortnightAgo.setDate(today.getDate() - 14);
-            const fortnightStr = `${fortnightAgo.getFullYear()}-${String(fortnightAgo.getMonth() + 1).padStart(2, '0')}-${String(fortnightAgo.getDate()).padStart(2, '0')}`;
-            
-            if (s.session_date >= fortnightStr) {
-              sData.recentQuestions += qTotal
-              sData.recentWrong += qWrong
-            }
-          }
-
-          if (!sData.lastStudiedAt || s.session_date > sData.lastStudiedAt) {
-            sData.lastStudiedAt = s.session_date
-          }
-        }
-      }
-    })
-  }
-
-  // Precisão Global Baseada Apenas em Sessões com Questões
-  const globalAccuracy = totalQuestions > 0 ? Math.round(((totalQuestions - totalQuestionsWrong) / totalQuestions) * 100) : 0
-  const recentAcc = recentQuestions > 0 ? ((recentQuestions - recentQuestionsWrong) / recentQuestions) * 100 : globalAccuracy
-  const oldAcc = oldQuestions > 0 ? ((oldQuestions - oldQuestionsWrong) / oldQuestions) * 100 : globalAccuracy
-  const accuracyChange = Math.round(recentAcc - oldAcc)
-
-  const totalHours = Math.floor(totalSeconds / 3600)
-  const totalMinutesRemaining = Math.floor((totalSeconds % 3600) / 60)
-  const totalDurationFormatted = totalHours > 0 ? `${totalHours}h ${totalMinutesRemaining}min` : `${totalMinutesRemaining}min`
-
-  const processedSubjects = (materias || []).map(m => {
-    const sData = subjectDataMap[m.id]
-    const weeklyStudiedHours = sData.weeklySeconds / 3600
-    const goalHours = m.goal_hours || 1
-    const goalProgress = Math.min(Math.round((weeklyStudiedHours / goalHours) * 100), 100)
+    const hasToday = uniqueDates.includes(todayStr)
+    const yesterday = new Date(now)
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1)
+    const yesterdayStr = getYYYYMMDD(yesterday)
     
-    const accuracy = sData.totalQuestions > 0 ? Math.round(((sData.totalQuestions - sData.totalWrong) / sData.totalQuestions) * 100) : null
-    const recentAccuracy = sData.recentQuestions > 0 ? Math.round(((sData.recentQuestions - sData.recentWrong) / sData.recentQuestions) * 100) : accuracy
-
-    let paceStatus: 'acima_do_ritmo' | 'no_ritmo' | 'abaixo_do_ritmo' | 'atrasado' | 'sem_dados' = 'no_ritmo'
-    const paceDifference = goalProgress - expectedProgress
-
-    if (!sData.lastStudiedAt) {
-      paceStatus = 'sem_dados'
-    } else if (sData.weeklySeconds === 0) {
-      if (expectedProgress < 45) paceStatus = 'no_ritmo'
-      else if (expectedProgress < 75) paceStatus = 'abaixo_do_ritmo'
-      else paceStatus = 'atrasado'
+    if (!hasToday && !uniqueDates.includes(yesterdayStr)) {
+      currentStreak = 0
     } else {
-      if (paceDifference >= 10) paceStatus = 'acima_do_ritmo'
-      else if (paceDifference >= -15) paceStatus = 'no_ritmo'
-      else if (paceDifference >= -35) paceStatus = 'abaixo_do_ritmo'
-      else paceStatus = 'atrasado'
+      let streakDate = new Date(hasToday ? now : yesterday)
+      currentStreak = 1
+      while (true) {
+        streakDate.setUTCDate(streakDate.getUTCDate() - 1)
+        const checkStr = getYYYYMMDD(streakDate)
+        if (uniqueDates.includes(checkStr)) currentStreak++
+        else break
+      }
+    }
+  }
+
+  // ----------------------------------------------------
+  // GERADOR DE PERÍODOS (7, 14, 30, All)
+  // ----------------------------------------------------
+  const calculatePeriod = (days: number | 'all') => {
+    let periodSessions = []
+    let prevPeriodSessions = []
+    let periodTotalQuestions = 0
+    let periodWrongQuestions = 0
+    let prevTotalQuestions = 0
+    let prevWrongQuestions = 0
+    let periodDuration = 0
+    
+    const activityMap = new Map<string, number>() // data -> segundos
+
+    if (days === 'all') {
+      periodSessions = sessions
+      sessions.forEach(s => {
+        periodDuration += (s.duration_seconds || 0)
+        if (s.questions_total && s.questions_total > 0) {
+          periodTotalQuestions += s.questions_total
+          periodWrongQuestions += (s.questions_wrong || 0)
+        }
+        const monthYear = s.session_date.substring(0, 7) // YYYY-MM
+        activityMap.set(monthYear, (activityMap.get(monthYear) || 0) + (s.duration_seconds || 0))
+      })
+    } else {
+      const cutOffDate = new Date(now)
+      cutOffDate.setUTCDate(cutOffDate.getUTCDate() - days + 1)
+      const cutOffStr = getYYYYMMDD(cutOffDate)
+
+      const prevCutOffDate = new Date(cutOffDate)
+      prevCutOffDate.setUTCDate(prevCutOffDate.getUTCDate() - days)
+      const prevCutOffStr = getYYYYMMDD(prevCutOffDate)
+
+      sessions.forEach(s => {
+        if (s.session_date >= cutOffStr && s.session_date <= todayStr) {
+          periodSessions.push(s)
+          periodDuration += (s.duration_seconds || 0)
+          if (s.questions_total && s.questions_total > 0) {
+            periodTotalQuestions += s.questions_total
+            periodWrongQuestions += (s.questions_wrong || 0)
+          }
+          activityMap.set(s.session_date, (activityMap.get(s.session_date) || 0) + (s.duration_seconds || 0))
+        } else if (s.session_date >= prevCutOffStr && s.session_date < cutOffStr) {
+          prevPeriodSessions.push(s)
+          if (s.questions_total && s.questions_total > 0) {
+            prevTotalQuestions += s.questions_total
+            prevWrongQuestions += (s.questions_wrong || 0)
+          }
+        }
+      })
     }
 
-    // Calcula mediana de duração das sessões
-    const sortedDurations = [...sData.durations].sort((a, b) => a - b)
-    const medianDurationSeconds = sortedDurations.length > 0 
-      ? sortedDurations[Math.floor(sortedDurations.length / 2)] 
-      : (30 * 60) // Fallback para novo usuário = 30 min
+    // Calcula Precisão
+    const accuracy = periodTotalQuestions > 0 ? Math.round(((periodTotalQuestions - periodWrongQuestions) / periodTotalQuestions) * 100) : null
+    const prevAccuracy = prevTotalQuestions > 0 ? Math.round(((prevTotalQuestions - prevWrongQuestions) / prevTotalQuestions) * 100) : null
+
+    // Lógica Estrita de Evolução
+    let evolutionLabel = "—"
+    if (accuracy !== null && prevAccuracy !== null) {
+      const diff = accuracy - prevAccuracy
+      evolutionLabel = diff === 0 ? '0 p.p.' : `${diff > 0 ? '+' : ''}${diff} p.p.`
+    } else if (accuracy !== null && prevAccuracy === null) {
+      // Tem dados no periodo atual, mas nao no anterior. Usuário novo ou retomando?
+      const olderSessions = sessions.filter(s => s.questions_total && s.questions_total > 0 && s.session_date < (days === 'all' ? '0' : getYYYYMMDD(new Date(now.getTime() - days * 24*60*60*1000))))
+      evolutionLabel = olderSessions.length > 0 ? "—" : "Novo"
+    }
+
+    // Formatação de Tempo
+    const hours = Math.floor(periodDuration / 3600)
+    const minutes = Math.floor((periodDuration % 3600) / 60)
+    const timeFormatted = hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`
+
+    // Atividade Visual (Gráfico)
+    let activityChart = []
+    if (days === 'all') {
+      const sortedMonths = Array.from(activityMap.keys()).sort()
+      activityChart = sortedMonths.map(m => {
+        const [yy, mm] = m.split('-')
+        const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+        return { label: `${monthNames[parseInt(mm)-1]} ${yy}`, value: Math.round(activityMap.get(m)! / 3600) } // Horas
+      })
+    } else {
+      // Preenche os dias vazios também
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(now)
+        d.setUTCDate(d.getUTCDate() - i)
+        const dStr = getYYYYMMDD(d)
+        const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+        activityChart.push({
+          dateStr: dStr,
+          label: dayNames[d.getUTCDay()],
+          value: activityMap.get(dStr) ? Number((activityMap.get(dStr)! / 3600).toFixed(1)) : 0 // Horas
+        })
+      }
+    }
 
     return {
-      id: m.id,
-      name: m.name,
-      weeklyGoal: goalHours,
-      weeklyStudied: sData.weeklySeconds,
-      goalProgress,
-      expectedProgress,
-      questions: sData.totalQuestions,
+      timeFormatted,
+      questions: periodTotalQuestions,
       accuracy,
-      recentAccuracy,
-      lastStudiedAt: sData.lastStudiedAt,
-      paceStatus,
-      sessionCount: sData.sessionCount,
-      medianDurationMinutes: Math.round(medianDurationSeconds / 60)
+      evolutionLabel,
+      activityChart
     }
-  })
+  }
 
-  // Agregação de Erros
+  const periods = {
+    '7': calculatePeriod(7),
+    '14': calculatePeriod(14),
+    '30': calculatePeriod(30),
+    'all': calculatePeriod('all')
+  }
+
+  // ----------------------------------------------------
+  // ANÁLISE POR MATÉRIA (Base para Recomendações)
+  // ----------------------------------------------------
+  const startOfWeek = new Date(now)
+  startOfWeek.setUTCDate(startOfWeek.getUTCDate() - currentDayOfWeek + 1)
+  const startOfWeekStr = getYYYYMMDD(startOfWeek)
+
+  let todaySeconds = 0
   const errorsBySubject: Record<string, number> = {}
-  if (erros) {
-    erros.forEach(e => {
-      if (e.erros_recorrentes_count > 0 && e.materia_id) {
+  if (errosData) {
+    errosData.forEach(e => {
+      if (e.materia_id && e.erros_recorrentes_count > 0) {
         errorsBySubject[e.materia_id] = (errorsBySubject[e.materia_id] || 0) + e.erros_recorrentes_count
       }
     })
   }
 
+  const processedSubjects = materias.map(m => {
+    let weeklySeconds = 0
+    let totalQ = 0
+    let wrongQ = 0
+    let recentQ = 0
+    let recentWrong = 0
+    let lastStudiedAt: string | null = null
+    const durations: number[] = []
+
+    const mSessions = sessions.filter(s => s.materia_id === m.id)
+    
+    mSessions.forEach(s => {
+      if (s.session_date === todayStr) todaySeconds += (s.duration_seconds || 0)
+      if (s.session_date >= startOfWeekStr) weeklySeconds += (s.duration_seconds || 0)
+      
+      if (!lastStudiedAt || s.session_date > lastStudiedAt) lastStudiedAt = s.session_date
+      durations.push(s.duration_seconds || 0)
+
+      if (s.questions_total && s.questions_total > 0) {
+        totalQ += s.questions_total
+        wrongQ += (s.questions_wrong || 0)
+        // Recência = últimos 14 dias para precisão recomendada
+        const fourteenDaysAgo = new Date(now)
+        fourteenDaysAgo.setUTCDate(fourteenDaysAgo.getUTCDate() - 14)
+        if (s.session_date >= getYYYYMMDD(fourteenDaysAgo)) {
+          recentQ += s.questions_total
+          recentWrong += (s.questions_wrong || 0)
+        }
+      }
+    })
+
+    const weeklyStudiedHours = weeklySeconds / 3600
+    const goalHours = m.goal_hours || 1
+    const missingHours = goalHours - weeklyStudiedHours
+    const requiredPacePerDay = missingHours > 0 ? (missingHours / daysRemainingWeek) : 0
+    
+    // Status Semântico de Matéria
+    let statusId: 'no_ritmo' | 'abaixo_do_ritmo' | 'atrasado' | 'sem_dados' | 'nao_iniciada' = 'no_ritmo'
+    if (mSessions.length === 0) {
+      statusId = 'nao_iniciada'
+    } else if (weeklySeconds === 0) {
+      statusId = 'sem_dados' // Tem histórico, mas não nesta semana
+    } else if (missingHours > 0) {
+       // Se o ritmo necessário for maior que 2h/dia pra uma matéria só, tá crítico
+       if (requiredPacePerDay > 1.5) statusId = 'atrasado'
+       else statusId = 'abaixo_do_ritmo'
+    }
+
+    const accuracy = totalQ > 0 ? Math.round(((totalQ - wrongQ) / totalQ) * 100) : null
+    const recentAccuracy = recentQ > 0 ? Math.round(((recentQ - recentWrong) / recentQ) * 100) : accuracy
+
+    const sortedDurations = [...durations].sort((a, b) => a - b)
+    const medianDurationMinutes = sortedDurations.length > 0 
+      ? Math.round(sortedDurations[Math.floor(sortedDurations.length / 2)] / 60)
+      : 30
+
+    return {
+      id: m.id,
+      name: m.name,
+      weeklyGoal: goalHours,
+      missingHours,
+      requiredPacePerDay,
+      daysRemainingWeek,
+      weeklyStudiedFormatted: `${Math.floor(weeklySeconds/3600)}h ${Math.floor((weeklySeconds%3600)/60)}m`,
+      statusId,
+      accuracy,
+      recentAccuracy,
+      lastStudiedAt,
+      sessionCount: mSessions.length,
+      medianDurationMinutes,
+      errors: errorsBySubject[m.id] || 0
+    }
+  })
+
   // ----------------------------------------------------
-  // DETERMINISTIC RECOMMENDATION ENGINE
+  // MOTOR DE RECOMENDAÇÃO E DIAGNÓSTICO
   // ----------------------------------------------------
-  let bestPriorityScore = -1
   let recommendation = null
-  let diagnostics: any[] = []
+  let bestScore = -1
+  const diagnostics: any[] = []
 
   processedSubjects.forEach(sub => {
     let score = 0
-    let reasons: string[] = []
-    let diagnosticAdded = false
+    const reasons: string[] = []
+    let addedDiag = false
 
-    // 1. Erros Recorrentes (Forte indício de lacuna)
-    const errCount = errorsBySubject[sub.id] || 0
-    if (errCount >= 3) {
-      score += 40 + errCount
-      reasons.push(`Você tem ${errCount} erros recorrentes para corrigir.`)
-      diagnostics.push({ type: 'erros', subjectName: sub.name, message: `Revisão urgente: ${errCount} erros acumulados.` })
-      diagnosticAdded = true
+    // 1. Erros Recorrentes (Foco em Qualidade)
+    if (sub.errors >= 3) {
+      score += 40 + sub.errors
+      reasons.push(`Você possui ${sub.errors} erros recorrentes para corrigir no caderno.`)
+      diagnostics.push({ type: 'erros', subject: sub.name, msg: `Revisão necessária: ${sub.errors} erros acumulados.` })
+      addedDiag = true
     }
 
-    // 2. Precisão Significativamente Baixa (apenas se houver volume)
-    if (sub.questions > 15 && sub.recentAccuracy !== null && sub.recentAccuracy < 65) {
+    // 2. Queda/Baixa Precisão Recente
+    if (sub.recentAccuracy !== null && sub.recentAccuracy < 65) {
       score += 30
-      reasons.push(`Seu aproveitamento recente em ${sub.name} está abaixo do esperado (${sub.recentAccuracy}%).`)
-      if (!diagnosticAdded) diagnostics.push({ type: 'precisao', subjectName: sub.name, message: `Aproveitamento recente em ${sub.recentAccuracy}%. Foco em correção.` })
-    }
-
-    // 3. Matéria Abaixo do Ritmo
-    if (sub.paceStatus === 'atrasado') {
-      score += 25
-      reasons.push(`Você está consideravelmente atrasado na sua meta de ${sub.weeklyGoal}h semanais.`)
-      if (!diagnosticAdded) diagnostics.push({ type: 'meta', subjectName: sub.name, message: `Déficit crítico no ritmo planejado da semana.` })
-    } else if (sub.paceStatus === 'abaixo_do_ritmo') {
-      score += 15
-      reasons.push(`Aumentar o tempo agora ajuda a não acumular déficit na semana.`)
-    }
-
-    // 4. Continuidade / Negligência
-    if (sub.lastStudiedAt) {
-      const diffDays = Math.floor((today.getTime() - new Date(sub.lastStudiedAt).getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDays >= 7) {
-        score += 20
-        reasons.push(`Faz ${diffDays} dias que você não revisita esta matéria.`)
-      } else if (diffDays === 0) {
-        // Acabou de estudar, bônus leve de continuidade
-        score += 5
+      reasons.push(`Sua precisão recente caiu para ${sub.recentAccuracy}%.`)
+      if (!addedDiag) {
+        diagnostics.push({ type: 'desempenho', subject: sub.name, msg: `Atenção ao desempenho recente (${sub.recentAccuracy}%).` })
+        addedDiag = true
       }
-    } else {
-      // Usuário novo ou matéria nova
-      score += 10
-      reasons.push('Faça seu primeiro estudo para o Revyza começar a entender seu ritmo.')
     }
 
-    // Decisão
-    if (score > bestPriorityScore || bestPriorityScore === -1) {
-      bestPriorityScore = score
-      
-      const isNew = sub.sessionCount === 0
-      const recommendedDuration = isNew ? 30 : sub.medianDurationMinutes
-      
+    // 3. Negligência
+    if (sub.statusId === 'nao_iniciada') {
+      score += 10
+      reasons.push('Nenhum estudo registrado. Comece para gerar histórico.')
+    } else if (sub.lastStudiedAt) {
+      const daysSince = Math.floor((now.getTime() - new Date(sub.lastStudiedAt + 'T12:00:00Z').getTime()) / (1000 * 60 * 60 * 24))
+      if (daysSince >= 5) {
+        score += 20
+        reasons.push(`Você está há ${daysSince} dias sem estudar esta matéria.`)
+        if (!addedDiag && daysSince >= 7) diagnostics.push({ type: 'consistencia', subject: sub.name, msg: `Matéria sem atividade há ${daysSince} dias.` })
+      }
+    }
+
+    // 4. Déficit de Ritmo Volume
+    if (sub.statusId === 'atrasado' || sub.statusId === 'abaixo_do_ritmo') {
+      score += sub.statusId === 'atrasado' ? 25 : 15
+      reasons.push(`Faltam ${sub.missingHours.toFixed(1)}h para bater sua meta semanal.`)
+      if (!addedDiag) diagnostics.push({ type: 'volume', subject: sub.name, msg: `Ritmo abaixo do esperado para a meta da semana.` })
+    }
+
+    if (score > bestScore || bestScore === -1) {
+      bestScore = score
       recommendation = {
         materiaId: sub.id,
         subject: sub.name,
-        topic: errCount > 0 ? 'Foco em Correção' : (isNew ? 'Primeiro Estudo' : 'Avançar na Trilha'),
-        duration: recommendedDuration,
-        questions: isNew ? 0 : 15,
-        accuracy: sub.recentAccuracy || 0,
-        reason: reasons.length > 0 ? reasons.join(' ') : 'Você está com um ritmo consistente. Continue avançando no conteúdo.',
-        action: errCount > 0 ? 'Revisar agora' : 'Começar estudo',
+        topic: sub.errors > 0 ? 'Foco na Correção' : (sub.statusId === 'nao_iniciada' ? 'Primeiro Estudo' : 'Retomar Trilha'),
+        duration: sub.medianDurationMinutes,
+        accuracy: sub.recentAccuracy,
+        reason: reasons.length > 0 ? reasons.join(' ') : 'Você está com um ótimo ritmo. Continue avançando!',
         actionUrl: `/dashboard/timer?materiaId=${sub.id}`
       }
     }
   })
 
-  // Fallback caso não haja matérias
-  if (!recommendation && processedSubjects.length === 0) {
-    recommendation = {
-      materiaId: null,
-      subject: 'Nenhuma matéria',
-      topic: 'Configuração',
-      duration: 0,
-      questions: 0,
-      accuracy: 0,
-      reason: 'Adicione suas matérias no painel para receber recomendações personalizadas.',
-      action: 'Adicionar Matérias',
-      actionUrl: '/dashboard/materias'
-    }
-  }
-
-  // Ordena os diagnósticos gerados pelo motor
-  diagnostics = diagnostics.slice(0, 3)
-
-  let daysRemaining = 0
-  if (examGoal && examGoal.target_date) {
-    const target = new Date(examGoal.target_date).getTime()
-    const now = today.getTime()
-    if (target > now) {
-      daysRemaining = Math.floor((target - now) / (1000 * 60 * 60 * 24))
-    }
+  // Calcular progresso do "Hoje"
+  let todayProgress = 0
+  if (dailyGoalHours > 0) {
+    todayProgress = Math.min(Math.round(((todaySeconds / 3600) / dailyGoalHours) * 100), 100)
   }
 
   return {
     success: true,
     data: {
       userName,
-      today: {
-        minutes: Math.floor(todaySeconds / 60),
-        goal: dailyGoalHours,
-        progress: Math.min(Math.round(((todaySeconds / 3600) / dailyGoalHours) * 100), 100)
+      current: {
+        today: {
+          timeFormatted: `${Math.floor(todaySeconds/3600)}h ${Math.floor((todaySeconds%3600)/60)}min`,
+          goal: dailyGoalHours,
+          progress: todayProgress
+        },
+        streak: {
+          current: currentStreak,
+          best: bestStreak
+        },
+        recommendation,
+        diagnostics: diagnostics.slice(0, 3)
       },
-      overall: {
-        totalStudyTime: totalDurationFormatted,
-        questions: totalQuestions,
-        accuracy: globalAccuracy,
-        accuracyChange: isNaN(accuracyChange) ? 0 : accuracyChange
-      },
-      exam: examGoal ? {
-        id: examGoal.id,
-        name: examGoal.name,
-        targetDate: examGoal.target_date,
-        daysRemaining
-      } : null,
-      subjects: processedSubjects,
-      diagnostics, 
-      recommendation
+      periods,
+      subjects: processedSubjects
     }
   }
 }
@@ -517,7 +535,6 @@ export async function deleteExamGoal(id: string) {
   if (userError || !user) return { error: 'User not authenticated' }
 
   const { error } = await supabase.from('exam_goals').delete().eq('id', id).eq('user_id', user.id)
-
   if (error) return { error: error.message }
   revalidatePath('/dashboard')
   return { success: true }
