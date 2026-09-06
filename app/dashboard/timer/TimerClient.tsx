@@ -126,7 +126,7 @@ function ClockDisplay({ isRunning, phase, timerConfig, onPhaseChange, initialSec
         if (deltaSeconds >= 1) {
           lastTickRef.current += deltaSeconds * 1000
 
-          if (timerConfig.type === 'cronometro' && phase === 'study') {
+          if (timerConfig.type === 'chronometer' && phase === 'study') {
             onPhaseChange('tick_study', deltaSeconds)
             displaySecondsRef.current += deltaSeconds
             setDisplaySeconds(displaySecondsRef.current)
