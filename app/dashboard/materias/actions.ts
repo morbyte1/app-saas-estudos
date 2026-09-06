@@ -56,41 +56,40 @@ export async function getEstatisticas() {
   const startOfWeekStr = getStartOfWeekString()
   const { data: sessions } = await supabase
     .from('study_sessions')
-    .select('materia_id, duration_seconds')
+    .select('duration_seconds')
     .eq('user_id', user.id)
     .gte('session_date', startOfWeekStr)
 
   let totalSeconds = 0
-  const progressPorMateria = new Map<string, { duration: number, goal: number }>()
+  let totalGoalHours = 0
 
-  materias.forEach(m => progressPorMateria.set(m.id, { duration: 0, goal: m.goal_hours || 0 }))
+  materias.forEach(m => {
+    totalGoalHours += (m.goal_hours || 0)
+  })
 
   if (sessions) {
     sessions.forEach(s => {
       totalSeconds += s.duration_seconds || 0
-      if (s.materia_id && progressPorMateria.has(s.materia_id)) {
-        progressPorMateria.get(s.materia_id)!.duration += s.duration_seconds || 0
-      }
     })
   }
 
-  let totalProgress = 0
-  progressPorMateria.forEach(val => {
-    if (val.goal > 0) {
-      const studiedHours = val.duration / 3600
-      totalProgress += Math.min((studiedHours / val.goal) * 100, 100)
-    }
-  })
-
   const totalHours = Math.floor(totalSeconds / 3600)
   const remainingMinutes = Math.floor((totalSeconds % 3600) / 60)
-  const averageProgress = materias.length > 0 ? (totalProgress / materias.length).toFixed(1) : 0
+  
+  const totalStudiedHoursDecimal = totalSeconds / 3600
+  let overallProgress = 0
+  
+  if (totalGoalHours > 0) {
+    overallProgress = Math.min((totalStudiedHoursDecimal / totalGoalHours) * 100, 100)
+  }
+
+  const formattedProgress = Number.isInteger(overallProgress) ? overallProgress.toString() : overallProgress.toFixed(1)
 
   return {
     success: true,
     data: {
       totalFocus: `${totalHours}h ${remainingMinutes}min`,
-      progress: `${averageProgress}%`,
+      progress: `${formattedProgress}%`,
       activeSubjects: materias.length,
       dailyGoalHours,
       examGoalName

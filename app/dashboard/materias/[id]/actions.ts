@@ -190,3 +190,19 @@ export async function toggleAssunto(assuntoId: string, isDone: boolean) {
   revalidatePath('/dashboard/materias/[id]', 'page')
   return { success: true }
 }
+
+export async function getMateriaSessions(materiaId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+
+  const { data, error } = await supabase
+    .from('study_sessions')
+    .select('id, duration_seconds, questions_answered, errors, assunto_id, created_at')
+    .eq('materia_id', materiaId)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  if (error) return { error: error.message }
+  return { sessions: data || [] }
+}

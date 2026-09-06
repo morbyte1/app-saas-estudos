@@ -155,7 +155,7 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
           <div className="mb-8 flex flex-col sm:flex-row flex-wrap items-center gap-x-4 gap-y-2 bg-white border border-slate-200 rounded-xl px-5 py-3 shadow-sm w-full md:w-max">
             <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
               <Book className="w-4 h-4 text-primary-600" />
-              {estatisticas.activeSubjects} matérias organizadas
+              {estatisticas.activeSubjects} matérias
             </span>
             <span className="hidden sm:inline text-slate-300">•</span>
             <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">

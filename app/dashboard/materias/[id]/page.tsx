@@ -1,5 +1,5 @@
-import { getMateriaById, getTopicosEAssuntos } from './actions'
-import TopicsManager from '@/components/TopicsManager'
+import { getMateriaById, getTopicosEAssuntos, getMateriaSessions } from './actions'
+import MateriaView from '@/components/MateriaView'
 import { redirect } from 'next/navigation'
 
 export default async function MateriaDetalhesPage({
@@ -19,16 +19,20 @@ export default async function MateriaDetalhesPage({
     redirect('/dashboard/materias')
   }
 
-  // Busca Tópicos e Assuntos relacionados a essa matéria
-  const { topicos, assuntos } = await getTopicosEAssuntos(materia.id)
+  // 3. Busca Tópicos, Assuntos e o histórico real da matéria
+  const [dadosConteudo, dadosSessao] = await Promise.all([
+    getTopicosEAssuntos(materia.id),
+    getMateriaSessions(materia.id)
+  ])
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
       <div className="max-w-5xl mx-auto">
-        <TopicsManager 
+        <MateriaView 
           materia={materia} 
-          initialTopicos={topicos || []} 
-          initialAssuntos={assuntos || []} 
+          initialTopicos={dadosConteudo.topicos || []} 
+          initialAssuntos={dadosConteudo.assuntos || []} 
+          sessions={dadosSessao.sessions || []}
         />
       </div>
     </div>
