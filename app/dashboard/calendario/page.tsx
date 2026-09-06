@@ -11,9 +11,10 @@ export default async function CalendarioPage() {
   const events = calendarResult.error ? [] : (calendarResult.events || [])
   const materias = calendarResult.error ? [] : (calendarResult.materias || [])
   
+  // CORREÇÃO: Buscando os dados de dentro do novo objeto "today"
   const dailyStats = statsResult?.success && statsResult.data ? {
-    goal: statsResult.data.dailyGoalHours,
-    todayMinutes: statsResult.data.todayMinutes
+    goal: statsResult.data.today.goal,
+    todayMinutes: statsResult.data.today.minutes
   } : { goal: 3, todayMinutes: 0 }
 
   return (
