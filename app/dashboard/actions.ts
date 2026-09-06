@@ -152,7 +152,7 @@ export async function toggleTaskStatus(id: string, is_done: boolean) {
 }
 
 // ==========================================
-// AÇÕES DO DASHBOARD (ESTATÍSTICAS E METAS)
+// AÇÕES DO DASHBOARD (ESTATÍSTICAS E INTELIGÊNCIA)
 // ==========================================
 
 export async function getDashboardStats() {
@@ -160,163 +160,351 @@ export async function getDashboardStats() {
 
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) {
-    return {
-      success: false,
-      error: 'Usuário não autenticado',
-      data: null
-    }
+    return { success: false, error: 'Usuário não autenticado', data: null }
   }
 
-  // ... código anterior da função getDashboardStats
   const userName = user.user_metadata?.full_name || 'Estudante'
-  const currentYearStart = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]
+  
+  // Datas base
+  const today = new Date()
+  const currentYearStart = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0]
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  
+  // Definição consistente de semana: Segunda = 1, Domingo = 7
+  const dayOfWeekJS = today.getDay()
+  const currentDayOfWeek = dayOfWeekJS === 0 ? 7 : dayOfWeekJS 
+  const expectedProgress = Math.min(Math.round((currentDayOfWeek / 7) * 100), 100)
+  
+  const startOfWeek = new Date(today)
+  startOfWeek.setDate(today.getDate() - (currentDayOfWeek - 1))
+  const startOfWeekStr = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`
+
+  const lastWeekStart = new Date(startOfWeek)
+  lastWeekStart.setDate(startOfWeek.getDate() - 7)
+  const lastWeekStartStr = `${lastWeekStart.getFullYear()}-${String(lastWeekStart.getMonth() + 1).padStart(2, '0')}-${String(lastWeekStart.getDate()).padStart(2, '0')}`
 
   const [
     { data: sessions },
     { data: materias },
     { data: examGoals },
-    { data: userSettings }
+    { data: userSettings },
+    { data: erros },
+    { data: topicos }
   ] = await Promise.all([
-    // OTIMIZAÇÃO: Filtro adicionado para histórico limitado ao ano atual
-    supabase
-      .from('study_sessions')
-      .select('session_date, duration_seconds, materia_id')
-      .eq('user_id', user.id)
-      .gte('session_date', currentYearStart),
-    supabase
-      .from('materias')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('exam_goals')
-      .select('*')
-      .eq('user_id', user.id)
-      .gte('target_date', new Date().toISOString())
-      .order('target_date', { ascending: true })
-      .limit(1),
-    supabase
-      .from('user_settings')
-      .select('daily_goal_hours')
-      .eq('user_id', user.id)
-      .maybeSingle()
+    supabase.from('study_sessions').select('session_date, duration_seconds, materia_id, questions_done, questions_wrong').eq('user_id', user.id).gte('session_date', currentYearStart),
+    supabase.from('materias').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('exam_goals').select('*').eq('user_id', user.id).gte('target_date', new Date().toISOString()).order('target_date', { ascending: true }).limit(1),
+    supabase.from('user_settings').select('daily_goal_hours').eq('user_id', user.id).maybeSingle(),
+    supabase.from('caderno_erros').select('materia_id, assunto_id, erros_recorrentes_count, status').eq('user_id', user.id),
+    supabase.from('topicos').select('id, name').eq('user_id', user.id)
   ])
 
   const examGoal = examGoals && examGoals.length > 0 ? examGoals[0] : null
   const dailyGoalHours = userSettings?.daily_goal_hours || 3
 
+  // Variáveis Globais
   let totalSeconds = 0
   let todaySeconds = 0
-  const sessionDates = new Set<string>()
-
-  const today = new Date()
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  let totalQuestionsDone = 0
+  let totalQuestionsWrong = 0
   
-  const startOfWeek = new Date(today)
-  startOfWeek.setDate(today.getDate() - today.getDay())
-  const startOfWeekStr = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`
+  let recentQuestionsDone = 0
+  let recentQuestionsWrong = 0
+  let oldQuestionsDone = 0
+  let oldQuestionsWrong = 0
 
-  const subjectWeeklyDuration: Record<string, number> = {}
+  const subjectDataMap: Record<string, {
+    weeklySeconds: number,
+    totalQuestions: number,
+    totalDone: number,
+    totalWrong: number,
+    lastStudiedAt: string | null
+  }> = {}
 
+  if (materias) {
+    materias.forEach(m => {
+      subjectDataMap[m.id] = { weeklySeconds: 0, totalQuestions: 0, totalDone: 0, totalWrong: 0, lastStudiedAt: null }
+    })
+  }
+
+  // Processamento das Sessões
   if (sessions) {
     sessions.forEach(s => {
       const dur = s.duration_seconds || 0
-      totalSeconds += dur
+      const qDone = s.questions_done || 0
+      const qWrong = s.questions_wrong || 0
+      const qTotal = qDone + qWrong
       
+      totalSeconds += dur
+      totalQuestionsDone += qDone
+      totalQuestionsWrong += qWrong
+
       if (s.session_date) {
-        sessionDates.add(s.session_date)
-        if (s.session_date === todayStr) {
-          todaySeconds += dur
+        if (s.session_date === todayStr) todaySeconds += dur
+        
+        // Variação de precisão (Últimos 7 dias vs 7 dias anteriores)
+        if (s.session_date >= startOfWeekStr) {
+          recentQuestionsDone += qDone
+          recentQuestionsWrong += qWrong
+        } else if (s.session_date >= lastWeekStartStr && s.session_date < startOfWeekStr) {
+          oldQuestionsDone += qDone
+          oldQuestionsWrong += qWrong
         }
-        if (s.session_date >= startOfWeekStr && s.materia_id) {
-          subjectWeeklyDuration[s.materia_id] = (subjectWeeklyDuration[s.materia_id] || 0) + dur
+
+        // Dados por Matéria
+        if (s.materia_id && subjectDataMap[s.materia_id]) {
+          if (s.session_date >= startOfWeekStr) {
+            subjectDataMap[s.materia_id].weeklySeconds += dur
+          }
+          subjectDataMap[s.materia_id].totalDone += qDone
+          subjectDataMap[s.materia_id].totalWrong += qWrong
+          subjectDataMap[s.materia_id].totalQuestions += qTotal
+
+          const currentLastStr = subjectDataMap[s.materia_id].lastStudiedAt
+          if (!currentLastStr || s.session_date > currentLastStr) {
+            subjectDataMap[s.materia_id].lastStudiedAt = s.session_date
+          }
         }
       }
     })
   }
 
-  // Lógica de Sequência (Streak)
-  const uniqueDates = Array.from(sessionDates).sort().reverse()
-  let currentStreak = 0
-  let maxStreak = 0
-  
-  const parseDate = (dStr: string) => {
-    const [y, m, d] = dStr.split('-')
-    return new Date(Number(y), Number(m) - 1, Number(d))
-  }
+  // Precisão Global
+  const totalQuestions = totalQuestionsDone + totalQuestionsWrong
+  const globalAccuracy = totalQuestions > 0 ? Math.round((totalQuestionsDone / totalQuestions) * 100) : 0
 
-  if (uniqueDates.length > 0) {
-    let tempStreak = 1
-    maxStreak = 1
-    for (let i = 0; i < uniqueDates.length - 1; i++) {
-      const diffDays = Math.round((parseDate(uniqueDates[i]).getTime() - parseDate(uniqueDates[i+1]).getTime()) / 86400000)
-      if (diffDays === 1) {
-        tempStreak++
-        if (tempStreak > maxStreak) maxStreak = tempStreak
-      } else {
-        tempStreak = 1
-      }
-    }
-  }
+  const recentTotal = recentQuestionsDone + recentQuestionsWrong
+  const recentAcc = recentTotal > 0 ? (recentQuestionsDone / recentTotal) * 100 : globalAccuracy
+  const oldTotal = oldQuestionsDone + oldQuestionsWrong
+  const oldAcc = oldTotal > 0 ? (oldQuestionsDone / oldTotal) * 100 : globalAccuracy
+  const accuracyChange = Math.round(recentAcc - oldAcc)
 
-  const yesterday = new Date(today)
-  yesterday.setDate(today.getDate() - 1)
-  const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`
-
-  if (uniqueDates.includes(todayStr) || uniqueDates.includes(yesterdayStr)) {
-    currentStreak = 1
-    let i = 0
-    while (i < uniqueDates.length - 1) {
-      const diffDays = Math.round((parseDate(uniqueDates[i]).getTime() - parseDate(uniqueDates[i+1]).getTime()) / 86400000)
-      if (diffDays === 1) {
-        currentStreak++
-        i++
-      } else {
-        break
-      }
-    }
-  }
-
-  let topSubjects: any[] = []
-  if (materias) {
-    topSubjects = materias.map(m => {
-      const weeklySecs = subjectWeeklyDuration[m.id] || 0
-      const studiedHours = Math.floor(weeklySecs / 3600)
-      const studiedMinutes = Math.floor((weeklySecs % 3600) / 60)
-      const goalHours = m.goal_hours || 1
-      const progress = Math.min(Math.round(((weeklySecs / 3600) / goalHours) * 100), 100)
-
-      return {
-        id: m.id,
-        name: m.name,
-        goalHours: m.goal_hours || 1,
-        studiedHours,
-        studiedMinutes,
-        progress
-      }
-    }).sort((a, b) => b.progress - a.progress).slice(0, 3)
-  }
-
-  const todayMinutes = Math.floor(todaySeconds / 60)
-  
   const totalHours = Math.floor(totalSeconds / 3600)
   const totalMinutesRemaining = Math.floor((totalSeconds % 3600) / 60)
-  const totalDurationFormatted = totalHours > 0 
-    ? `${totalHours}h ${totalMinutesRemaining}min` 
-    : `${totalMinutesRemaining}min`
+  const totalDurationFormatted = totalHours > 0 ? `${totalHours}h ${totalMinutesRemaining}min` : `${totalMinutesRemaining}min`
+
+  // Construção dos Objetos de Matérias
+  const processedSubjects = (materias || []).map(m => {
+    const sData = subjectDataMap[m.id]
+    const weeklyStudiedHours = sData.weeklySeconds / 3600
+    const goalHours = m.goal_hours || 1
+    const goalProgress = Math.min(Math.round((weeklyStudiedHours / goalHours) * 100), 100)
+    const accuracy = sData.totalQuestions > 0 ? Math.round((sData.totalDone / sData.totalQuestions) * 100) : 0
+
+    let paceStatus: 'acima_do_ritmo' | 'no_ritmo' | 'abaixo_do_ritmo' | 'atrasado' | 'sem_dados' = 'no_ritmo'
+    const paceDifference = goalProgress - expectedProgress
+
+    if (!sData.lastStudiedAt) {
+      paceStatus = 'sem_dados'
+    } else if (sData.weeklySeconds === 0) {
+      // Se possui histórico mas ainda não estudou na semana
+      if (expectedProgress < 45) {
+        // Até quarta-feira (43%), ausência de estudo ainda é tolerada como neutra
+        paceStatus = 'no_ritmo'
+      } else if (expectedProgress < 75) {
+        // A partir de quinta, começa a atrasar levemente
+        paceStatus = 'abaixo_do_ritmo'
+      } else {
+        // Chegou ao final da semana sem fazer nada, definitivamente atrasado
+        paceStatus = 'atrasado'
+      }
+    } else {
+      if (paceDifference >= 10) paceStatus = 'acima_do_ritmo'
+      else if (paceDifference >= -15) paceStatus = 'no_ritmo'
+      else if (paceDifference >= -35) paceStatus = 'abaixo_do_ritmo'
+      else paceStatus = 'atrasado'
+    }
+
+    return {
+      id: m.id,
+      name: m.name,
+      weeklyGoal: goalHours,
+      weeklyStudied: sData.weeklySeconds,
+      goalProgress,
+      expectedProgress,
+      questions: sData.totalQuestions,
+      accuracy,
+      lastStudiedAt: sData.lastStudiedAt,
+      paceStatus
+    }
+  })
+
+  // Diagnósticos
+  const diagnostics: any[] = []
+
+  processedSubjects.forEach(sub => {
+    if (sub.paceStatus === 'atrasado') {
+      diagnostics.push({ type: 'meta', subjectId: sub.id, subjectName: sub.name, message: `Você está consideravelmente atrasado na meta semanal desta matéria.` })
+    }
+    if (sub.questions > 10 && sub.accuracy < 60) {
+      diagnostics.push({ type: 'precisao', subjectId: sub.id, subjectName: sub.name, message: `Precisão geral de ${sub.accuracy}%. Sugerimos uma revisão de base.` })
+    }
+  })
+
+  let totalRecurrentErrors = 0
+  const errorsBySubject: Record<string, number> = {}
+  
+  if (erros) {
+    erros.forEach(e => {
+      if (e.erros_recorrentes_count > 0) {
+        totalRecurrentErrors += e.erros_recorrentes_count
+        if (e.materia_id) {
+          errorsBySubject[e.materia_id] = (errorsBySubject[e.materia_id] || 0) + e.erros_recorrentes_count
+        }
+      }
+    })
+  }
+
+  Object.entries(errorsBySubject).forEach(([mId, count]) => {
+    if (count >= 3) {
+      const matName = materias?.find(m => m.id === mId)?.name || 'Matéria'
+      diagnostics.push({ type: 'erros', subjectId: mId, subjectName: matName, message: `Você acumulou ${count} erros recorrentes. Atenção aos pontos cegos.` })
+    }
+  })
+
+  // Ordenar diagnósticos por gravidade
+  diagnostics.sort((a, b) => {
+    const order = { 'erros': 1, 'meta': 2, 'precisao': 3 }
+    return (order[a.type as keyof typeof order] || 4) - (order[b.type as keyof typeof order] || 4)
+  })
+
+  // Recomendação Central Determinística
+  let recommendation = null
+
+  if (!recommendation && Object.keys(errorsBySubject).length > 0) {
+    const worstSubjId = Object.keys(errorsBySubject).sort((a,b) => errorsBySubject[b] - errorsBySubject[a])[0]
+    const matName = materias?.find(m => m.id === worstSubjId)?.name || 'Revisão'
+    const acc = processedSubjects.find(s => s.id === worstSubjId)?.accuracy || 0
+    const errorCount = errorsBySubject[worstSubjId]
+    recommendation = {
+      type: 'revisao',
+      subject: matName,
+      topic: 'Caderno de Erros',
+      duration: 30,
+      questions: errorCount,
+      accuracy: acc,
+      reason: `Você possui ${errorCount} erros recorrentes acumulados. É fundamental entender essas falhas antes de avançar no conteúdo novo.`,
+      action: 'Revisar agora',
+      actionUrl: '/dashboard/caderno'
+    }
+  }
+
+  if (!recommendation) {
+    const delayed = processedSubjects.filter(s => s.paceStatus === 'atrasado' || s.paceStatus === 'abaixo_do_ritmo').sort((a,b) => (a.goalProgress - expectedProgress) - (b.goalProgress - expectedProgress))[0]
+    if (delayed) {
+      recommendation = {
+        type: 'meta',
+        subject: delayed.name,
+        topic: 'Recuperar o ritmo',
+        duration: 60,
+        questions: 20, 
+        accuracy: delayed.accuracy,
+        reason: `Você está ${delayed.paceStatus === 'atrasado' ? 'atrasado' : 'abaixo do ritmo'} na meta desta matéria. Focar nela agora ajudará a não acumular o déficit da semana.`,
+        action: 'Começar estudo',
+        actionUrl: '/dashboard/timer'
+      }
+    }
+  }
+
+  if (!recommendation) {
+    const lowAcc = [...processedSubjects].filter(s => s.questions > 15 && s.accuracy < 65).sort((a,b) => a.accuracy - b.accuracy)[0]
+    if (lowAcc) {
+      recommendation = {
+        type: 'precisao',
+        subject: lowAcc.name,
+        topic: 'Prática e Correção',
+        duration: 45,
+        questions: 15,
+        accuracy: lowAcc.accuracy,
+        reason: `Sua precisão nesta matéria está em ${lowAcc.accuracy}%. Aconselhamos focar em exercícios de fixação e correção ativa.`,
+        action: 'Praticar agora',
+        actionUrl: '/dashboard/timer'
+      }
+    }
+  }
+
+  if (!recommendation && processedSubjects.length > 0) {
+    const candidate = [...processedSubjects].sort((a, b) => {
+      if (!a.lastStudiedAt) return -1
+      if (!b.lastStudiedAt) return 1
+      return new Date(a.lastStudiedAt).getTime() - new Date(b.lastStudiedAt).getTime()
+    })[0]
+
+    let reason = ''
+    let duration = 45
+    let questions = 15
+    let topic = 'Avançar na trilha'
+    let action = 'Começar estudo'
+
+    if (!candidate.lastStudiedAt) {
+      reason = 'Você ainda não registrou um estudo nesta matéria. Faça seu primeiro estudo para começarmos a acompanhar sua evolução.'
+      duration = 40
+      questions = 10
+      topic = 'Primeiro Estudo'
+      action = 'Começar agora'
+    } else {
+      const lastDate = new Date(candidate.lastStudiedAt).getTime()
+      const now = today.getTime()
+      const diffDays = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24))
+
+      if (diffDays > 2) {
+        reason = `Você não estuda essa matéria há ${diffDays} dias. Retome o contato com o material para manter o conteúdo fresco.`
+        duration = 50
+        questions = 15
+        topic = 'Retomar Estudo'
+      } else {
+        reason = 'Você está no ritmo. Continue avançando na sua trilha de estudos focando na disciplina de maior prioridade atual.'
+        duration = 45
+        questions = 15
+      }
+    }
+
+    recommendation = {
+      type: 'geral',
+      subject: candidate.name,
+      topic,
+      duration,
+      questions,
+      accuracy: candidate.accuracy,
+      reason,
+      action,
+      actionUrl: '/dashboard/timer'
+    }
+  }
+
+  let daysRemaining = 0
+  if (examGoal && examGoal.target_date) {
+    const target = new Date(examGoal.target_date).getTime()
+    const now = today.getTime()
+    if (target > now) {
+      daysRemaining = Math.floor((target - now) / (1000 * 60 * 60 * 24))
+    }
+  }
 
   return {
     success: true,
     data: {
       userName,
-      todayMinutes,
-      totalHours,
-      totalDurationFormatted,
-      currentStreak,
-      maxStreak,
-      examGoal: examGoal || null,
-      topSubjects: topSubjects || [],
-      dailyGoalHours
+      today: {
+        minutes: Math.floor(todaySeconds / 60),
+        goal: dailyGoalHours,
+        progress: Math.min(Math.round(((todaySeconds / 3600) / dailyGoalHours) * 100), 100)
+      },
+      overall: {
+        totalStudyTime: totalDurationFormatted,
+        questions: totalQuestions,
+        accuracy: globalAccuracy,
+        accuracyChange: isNaN(accuracyChange) ? 0 : accuracyChange
+      },
+      exam: examGoal ? {
+        id: examGoal.id,
+        name: examGoal.name,
+        targetDate: examGoal.target_date,
+        daysRemaining
+      } : null,
+      subjects: processedSubjects,
+      diagnostics: diagnostics.slice(0, 3), 
+      recommendation
     }
   }
 }

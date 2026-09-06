@@ -5,7 +5,7 @@ import ConfirmModal from '@/components/ConfirmModal'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useToast } from '@/components/ToastContext'
 import { getTopicosEAssuntos } from '@/app/dashboard/materias/[id]/actions'
-import { saveTimerSession, getTimerHistory, deleteTimerSession } from './actions'
+import { saveTimerSession, getTimerHistory, deleteTimerSession, TimerMode, SessionSource } from './actions'
 import { ChevronDown, Settings, Maximize, Minimize, Plus, ChevronRight, HelpCircle, X, CheckCircle, XCircle, Clock, Book, FileText, Play, Pause, Check, Coffee, Trash2, RefreshCw, RotateCcw } from 'lucide-react'
 
 interface Materia {
@@ -33,9 +33,12 @@ interface Assunto {
 interface StudySession {
   id: string
   duration_seconds: number
+  questions_total?: number
   questions_done: number
   questions_wrong: number
   session_date: string
+  source?: SessionSource
+  timer_mode?: TimerMode
   materias?: { name: string }
   assuntos?: { name: string }
 }
@@ -55,6 +58,7 @@ const MOCK_HISTORY: StudySession[] = [
   {
     id: 'mock-session-1',
     duration_seconds: 5400,
+    questions_total: 30,
     questions_done: 25,
     questions_wrong: 5,
     session_date: new Date().toISOString().split('T')[0],
@@ -64,6 +68,7 @@ const MOCK_HISTORY: StudySession[] = [
   {
     id: 'mock-session-2',
     duration_seconds: 3600,
+    questions_total: 17,
     questions_done: 15,
     questions_wrong: 2,
     session_date: new Date().toISOString().split('T')[0],
@@ -95,7 +100,6 @@ const TUTORIAL_STEPS = [
   }
 ]
 
-// Microcomponente Isolado para o Relógio
 function ClockDisplay({ isRunning, phase, timerConfig, onPhaseChange, initialSeconds }: any) {
   const [displaySeconds, setDisplaySeconds] = useState(initialSeconds)
   const displaySecondsRef = useRef<number>(initialSeconds)
@@ -150,7 +154,6 @@ function ClockDisplay({ isRunning, phase, timerConfig, onPhaseChange, initialSec
     return `${String(minutes).padStart(2, '0')}:${String(remSeconds).padStart(2, '0')}`
   }
 
-  // Efeito para atualizar o tempo na aba do navegador
   useEffect(() => {
     document.title = `${formatTime(displaySeconds)} | Revyza`
     return () => { document.title = 'Revyza' }
@@ -163,8 +166,15 @@ function ClockDisplay({ isRunning, phase, timerConfig, onPhaseChange, initialSec
   )
 }
 
+// Helpers seguros para parse de inputs de números para barrar 'abc' no front
+const parseStrictIntInput = (val: string): number => {
+  const trimmed = val.trim()
+  if (trimmed === '') return 0
+  if (!/^\d+$/.test(trimmed)) return NaN
+  return parseInt(trimmed, 10)
+}
+
 export default function TimerClient({ initialMaterias, initialHistory }: TimerClientProps) {
-  // Estados do Tutorial
   const [isTutorialActive, setIsTutorialActive] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
 
@@ -184,17 +194,18 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
   const [pendingPath, setPendingPath] = useState<string | null>(null)
   
   const [pomodoroCycles, setPomodoroCycles] = useState(0)
+  const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null)
   const totalStudySecondsRef = useRef(totalStudySeconds)
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [timerConfig, setTimerConfig] = useState<{
-    type: 'cronometro' | 'pomodoro',
+    type: 'chronometer' | 'pomodoro',
     pomodoroStudy: number,
     pomodoroRest: number,
     cronometroRestPerc: number,
     autoStartRest: boolean
   }>({
-    type: 'cronometro',
+    type: 'chronometer',
     pomodoroStudy: 25,
     pomodoroRest: 5,
     cronometroRestPerc: 20,
@@ -208,23 +219,23 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
   const [isSettingsConfirmOpen, setIsSettingsConfirmOpen] = useState(false)
 
   const [materias, setMaterias] = useState<Materia[]>(initialMaterias)
-  const [selectedMateriaId, setSelectedMateriaId] = useState<string>('geral')
+  const [selectedMateriaId, setSelectedMateriaId] = useState<string>('')
   const [topicos, setTopicos] = useState<Topico[]>([])
   const [assuntos, setAssuntos] = useState<Assunto[]>([])
-  const [selectedAssuntoId, setSelectedAssuntoId] = useState<string>('geral')
+  const [selectedAssuntoId, setSelectedAssuntoId] = useState<string>('')
 
   const [isFinishModalOpen, setIsFinishModalOpen] = useState(false)
-  const [questionsDone, setQuestionsDone] = useState<string>('')
+  const [questionsTotal, setQuestionsTotal] = useState<string>('')
   const [questionsWrong, setQuestionsWrong] = useState<string>('')
 
   const [isManualModalOpen, setIsManualModalOpen] = useState(false)
   const [modalAssuntos, setModalAssuntos] = useState<Assunto[]>([])
   const [manualForm, setManualForm] = useState({
-    materiaId: 'geral',
-    assuntoId: 'geral',
+    materiaId: '',
+    assuntoId: '',
     durationMinutes: '',
     sessionDate: '',
-    questionsDone: '',
+    questionsTotal: '',
     questionsWrong: ''
   })
 
@@ -237,21 +248,19 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
       setCurrentStep(0)
       setShowHistory(true)
       
-      // Injeção do Timer Mock: 1h 35min 17s no modo cronômetro (Apenas para demonstração visual)
       const fakeSeconds = 5717 
       setPhase('study')
       setCurrentDisplaySeconds(fakeSeconds)
       setTotalStudySeconds(fakeSeconds)
       setIsRunning(false)
-      setTimerConfig(prev => ({ ...prev, type: 'cronometro' }))
+      setTimerConfig(prev => ({ ...prev, type: 'chronometer' }))
     } else {
-      // CORREÇÃO: Carregar configurações salvas para usuários que já passaram do tutorial
       const saved = localStorage.getItem('revyza-timer-config')
       if (saved) {
         try {
           const parsed = JSON.parse(saved)
           setTimerConfig(parsed)
-          setDraftConfig(parsed) // Sincroniza o rascunho do modal
+          setDraftConfig(parsed)
           if (parsed.type === 'pomodoro') {
             setCurrentDisplaySeconds(parsed.pomodoroStudy * 60)
           }
@@ -262,95 +271,71 @@ export default function TimerClient({ initialMaterias, initialHistory }: TimerCl
     }
   }, [])
 
-  // Listener para API de Fullscreen Nativo
   useEffect(() => {
     const handleFullscreenChange = () => {
-      if (!document.fullscreenElement) {
-        setIsMaximized(false)
-      }
+      if (!document.fullscreenElement) setIsMaximized(false)
     }
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
 
-  // Expande o Mock History durante o passo 3 (Histórico)
   useEffect(() => {
     if (isTutorialActive && currentStep === 3) {
       const todayStr = new Date().toISOString().split('T')[0]
-      if (!expandedDates.includes(todayStr)) {
-        setExpandedDates([...expandedDates, todayStr])
-      }
+      if (!expandedDates.includes(todayStr)) setExpandedDates([...expandedDates, todayStr])
     }
   }, [isTutorialActive, currentStep])
 
-  // Lógica de Scroll Automático para focar no elemento do passo atual
   useEffect(() => {
     if (isTutorialActive) {
       const stepId = TUTORIAL_STEPS[currentStep]?.id
       if (stepId) {
         setTimeout(() => {
           const el = document.getElementById(stepId)
-          if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          }
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
         }, 150)
       }
     }
   }, [isTutorialActive, currentStep])
 
-  // Controles do Tutorial
   const handleNextStep = () => {
-    if (currentStep < TUTORIAL_STEPS.length - 1) {
-      setCurrentStep(prev => prev + 1)
-    } else {
-      finishTutorial()
-    }
+    if (currentStep < TUTORIAL_STEPS.length - 1) setCurrentStep(prev => prev + 1)
+    else finishTutorial()
   }
 
   const handlePrevStep = () => {
-    if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1)
-    }
+    if (currentStep > 0) setCurrentStep(prev => prev - 1)
   }
 
-const finishTutorial = () => {
+  const finishTutorial = () => {
     setIsTutorialActive(false)
     localStorage.setItem('revyza_has_seen_timer_tutorial', 'true')
-    
-    // Reseta o Timer visual fake para o estado real
     setPhase('idle')
     setTotalStudySeconds(0)
     setPomodoroCycles(0)
     setCurrentDisplaySeconds(0)
+    setSessionStartedAt(null)
     
-    // Tenta resgatar a configuração original do usuário
     const saved = localStorage.getItem('revyza-timer-config')
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
         setTimerConfig(parsed)
-        setDraftConfig(parsed) // CORREÇÃO: Mantém o draft sincronizado após o tutorial
-        if (parsed.type === 'pomodoro') {
-          setCurrentDisplaySeconds(parsed.pomodoroStudy * 60)
-        }
+        setDraftConfig(parsed)
+        if (parsed.type === 'pomodoro') setCurrentDisplaySeconds(parsed.pomodoroStudy * 60)
       } catch(e) {
         console.error("Erro ao carregar configurações do timer", e)
       }
     }
   }
+
   const previousPhaseRef = useRef(phase)
 
-  // CORREÇÃO: Tocar alarme apenas nas transições permitidas (Pomodoro ida/volta e Cronômetro apenas volta)
   useEffect(() => {
-    const isGoingToRest = phase === 'rest' && previousPhaseRef.current === 'study';
-    const isReturningFromRest = phase === 'idle' && previousPhaseRef.current === 'rest';
+    const isGoingToRest = phase === 'rest' && previousPhaseRef.current === 'study'
+    const isReturningFromRest = phase === 'idle' && previousPhaseRef.current === 'rest'
 
-    if (isReturningFromRest) {
-      // Toca em ambos (Pomodoro e Cronômetro) na volta do descanso
-      const audio = new Audio('/sound.mp3')
-      audio.play().catch(e => console.error("Erro ao tocar alarme:", e))
-    } else if (isGoingToRest && timerConfig.type === 'pomodoro') {
-      // Toca apenas no Pomodoro na ida para o descanso
+    if (isReturningFromRest || (isGoingToRest && timerConfig.type === 'pomodoro')) {
       const audio = new Audio('/sound.mp3')
       audio.play().catch(e => console.error("Erro ao tocar alarme:", e))
     }
@@ -364,10 +349,10 @@ const finishTutorial = () => {
 
   useEffect(() => {
     const fetchAssuntosForMateria = async () => {
-      if (!selectedMateriaId || selectedMateriaId === 'geral') {
+      if (!selectedMateriaId) {
         setTopicos([])
         setAssuntos([])
-        setSelectedAssuntoId('geral')
+        setSelectedAssuntoId('')
         return
       }
       const materiaObj = materias.find(m => m.id === selectedMateriaId)
@@ -377,11 +362,7 @@ const finishTutorial = () => {
       if (!result.error) {
         setTopicos(result.topicos || [])
         setAssuntos(result.assuntos || [])
-        if (result.assuntos && result.assuntos.length > 0) {
-          setSelectedAssuntoId(result.assuntos[0].id)
-        } else {
-          setSelectedAssuntoId('geral')
-        }
+        setSelectedAssuntoId('')
       }
     }
     fetchAssuntosForMateria()
@@ -389,9 +370,9 @@ const finishTutorial = () => {
 
   useEffect(() => {
     const fetchModalAssuntos = async () => {
-      if (!manualForm.materiaId || manualForm.materiaId === 'geral') {
+      if (!manualForm.materiaId) {
         setModalAssuntos([])
-        setManualForm(prev => ({ ...prev, assuntoId: 'geral' }))
+        setManualForm(prev => ({ ...prev, assuntoId: '' }))
         return
       }
       const materiaObj = materias.find(m => m.id === manualForm.materiaId)
@@ -400,8 +381,8 @@ const finishTutorial = () => {
       const result = await getTopicosEAssuntos(materiaObj.id)
       if (!result.error) {
         setModalAssuntos(result.assuntos || [])
-        if (!result.assuntos?.find((a: Assunto) => a.id === manualForm.assuntoId)) {
-          setManualForm(prev => ({ ...prev, assuntoId: result.assuntos?.[0]?.id || 'geral' }))
+        if (manualForm.assuntoId && !result.assuntos?.find((a: Assunto) => a.id === manualForm.assuntoId)) {
+          setManualForm(prev => ({ ...prev, assuntoId: '' }))
         }
       }
     }
@@ -410,7 +391,6 @@ const finishTutorial = () => {
     }
   }, [manualForm.materiaId, isManualModalOpen, materias])
 
-  // Efeito para interceptar navegação e fechamento de aba
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isRunning) {
@@ -421,17 +401,14 @@ const finishTutorial = () => {
 
     const handleLinkClick = (e: MouseEvent) => {
       if (!isRunning) return
-      
       const target = e.target as HTMLElement
       const anchor = target.closest('a')
       
       if (anchor && anchor.href) {
         const url = new URL(anchor.href)
-        
         if (url.origin === window.location.origin && url.pathname !== '/dashboard/timer') {
           e.preventDefault()
           e.stopPropagation() 
-          
           setPendingPath(url.pathname)
           setIsLeaveModalOpen(true)
         }
@@ -460,17 +437,14 @@ const finishTutorial = () => {
           setIsRunning(false)
         }
       } else {
-        // Quando o descanso termina (volta para a fase idle)
         setIsRunning(false)
         setPhase('idle')
         
         if (timerConfig.type === 'pomodoro') {
           setPomodoroCycles(c => c + 1)
           setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
-        } else if (timerConfig.type === 'cronometro') {
-          // CORREÇÃO: Devolve o tempo total acumulado para a tela
+        } else if (timerConfig.type === 'chronometer') {
           setCurrentDisplaySeconds(totalStudySecondsRef.current)
-          // Força o relógio a re-renderizar com o tempo correto imediatamente
           setResetKey(prev => prev + 1) 
         }
       }
@@ -482,9 +456,7 @@ const finishTutorial = () => {
     const minutes = Math.floor((totalSeconds % 3600) / 60)
     const remSeconds = totalSeconds % 60
     
-    if (hours > 0) {
-      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(remSeconds).padStart(2, '0')}`
-    }
+    if (hours > 0) return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(remSeconds).padStart(2, '0')}`
     return `${String(minutes).padStart(2, '0')}:${String(remSeconds).padStart(2, '0')}`
   }
 
@@ -509,19 +481,23 @@ const finishTutorial = () => {
   }, {} as Record<string, StudySession[]>)
 
   const toggleDate = (dateStr: string) => {
-    if (expandedDates.includes(dateStr)) {
-      setExpandedDates(expandedDates.filter(d => d !== dateStr))
-    } else {
-      setExpandedDates([...expandedDates, dateStr])
-    }
+    if (expandedDates.includes(dateStr)) setExpandedDates(expandedDates.filter(d => d !== dateStr))
+    else setExpandedDates([...expandedDates, dateStr])
   }
 
   const handleStart = () => {
+    if (!selectedMateriaId) {
+      toast("Selecione uma matéria antes de iniciar o timer.", "error")
+      return
+    }
+
     if (phase === 'idle') {
       setPhase('study')
+      if (!sessionStartedAt) setSessionStartedAt(new Date().toISOString())
+      
       if (timerConfig.type === 'pomodoro' && currentDisplaySeconds === 0) {
         setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
-      } else if (timerConfig.type === 'cronometro' && currentDisplaySeconds === 0) {
+      } else if (timerConfig.type === 'chronometer' && currentDisplaySeconds === 0) {
         setCurrentDisplaySeconds(totalStudySeconds)
       }
     }
@@ -530,32 +506,26 @@ const finishTutorial = () => {
 
   const handlePause = () => setIsRunning(false)
   
-  // CORREÇÃO: "Descansar Agora" no Cronômetro forçando a reinicialização da key para que o ClockDisplay assimile o novo tempo imediatamente
   const handleRestNow = () => {
-    if (timerConfig.type !== 'cronometro' || phase !== 'study') return
+    if (timerConfig.type !== 'chronometer' || phase !== 'study') return
     const restSecs = Math.floor(totalStudySeconds * (timerConfig.cronometroRestPerc / 100))
     setPhase('rest')
     setCurrentDisplaySeconds(restSecs)
-    setResetKey(prev => prev + 1) // Força o remount do ClockDisplay
+    setResetKey(prev => prev + 1)
     setIsRunning(true)
   }
 
-  // CORREÇÃO: Alternar modo tela cheia integrando API de Fullscreen e uso do Portal
   const toggleMaximize = () => {
     if (!isMaximized) {
       setIsMaximized(true)
       const elem = document.documentElement
       if (elem.requestFullscreen) {
-        elem.requestFullscreen().catch((err) => {
-          console.error("Erro ao entrar em tela cheia:", err)
-        })
+        elem.requestFullscreen().catch((err) => console.error("Erro ao entrar em tela cheia:", err))
       }
     } else {
       setIsMaximized(false)
       if (document.exitFullscreen && document.fullscreenElement) {
-        document.exitFullscreen().catch((err) => {
-          console.error("Erro ao sair da tela cheia:", err)
-        })
+        document.exitFullscreen().catch((err) => console.error("Erro ao sair da tela cheia:", err))
       }
     }
   }
@@ -564,12 +534,10 @@ const finishTutorial = () => {
     setIsRunning(false)
     setTotalStudySeconds(0)
     setPomodoroCycles(0)
+    setSessionStartedAt(null)
     setPhase('idle')
-    if (timerConfig.type === 'pomodoro') {
-      setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
-    } else {
-      setCurrentDisplaySeconds(0)
-    }
+    if (timerConfig.type === 'pomodoro') setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
+    else setCurrentDisplaySeconds(0)
     setResetKey(prev => prev + 1)
     setIsResetTimerConfirmOpen(false)
   }
@@ -577,22 +545,22 @@ const finishTutorial = () => {
   const executeLeavePage = () => {
     setIsRunning(false) 
     setIsLeaveModalOpen(false)
-    if (pendingPath) {
-      router.push(pendingPath) 
-    }
+    if (pendingPath) router.push(pendingPath) 
   }
 
-  const handleResetTimer = () => {
-    setIsResetTimerConfirmOpen(true)
-  }
+  const handleResetTimer = () => setIsResetTimerConfirmOpen(true)
 
   const handleFinishRequest = () => {
-    if (!selectedMateriaId || !selectedAssuntoId) {
-      toast("Selecione uma matéria e um assunto antes de finalizar.", "error")
+    if (!selectedMateriaId) {
+      toast("A matéria é obrigatória. Selecione uma antes de finalizar.", "error")
       return
     }
 
-    // Saída automática do modo tela cheia para evitar conflito com o modal
+    if (totalStudySeconds <= 0) {
+      toast("Você precisa estudar por algum tempo antes de salvar.", "error")
+      return
+    }
+
     if (isMaximized) {
       setIsMaximized(false)
       if (document.exitFullscreen && document.fullscreenElement) {
@@ -601,37 +569,51 @@ const finishTutorial = () => {
     }
 
     setIsRunning(false)
-    setQuestionsDone('')
+    setQuestionsTotal('')
     setQuestionsWrong('')
     setIsFinishModalOpen(true)
   }
 
   const handleConfirmFinish = async () => {
-    setIsLoading(true)
+    const qTotal = parseStrictIntInput(questionsTotal)
+    const qWrong = parseStrictIntInput(questionsWrong)
 
-    const qDone = parseInt(questionsDone) || 0
-    const qWrong = parseInt(questionsWrong) || 0
+    if (Number.isNaN(qTotal) || Number.isNaN(qWrong) || qTotal < 0 || qWrong < 0) {
+      toast("A quantidade de questões deve ser um número inteiro válido.", "error")
+      return
+    }
+
+    if (qWrong > qTotal) {
+      toast("O número de questões erradas não pode ser maior que o total.", "error")
+      return
+    }
+
+    setIsLoading(true)
 
     const today = new Date()
     const session_date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
-    const result = await saveTimerSession({
-      materia_id: selectedMateriaId === 'geral' ? null : selectedMateriaId,
-      assunto_id: selectedAssuntoId === 'geral' ? null : selectedAssuntoId,
+const result = await saveTimerSession({
+      materia_id: selectedMateriaId,
+      assunto_id: selectedAssuntoId || null,
       duration_seconds: totalStudySeconds,
-      questions_done: qDone,
+      questions_total: qTotal,
       questions_wrong: qWrong,
-      session_date
+      session_date,
+      source: 'timer',
+      // Converte o estado local para o tipo esperado pelo backend
+      timer_mode: timerConfig.type,
+      pomodoro_cycles: pomodoroCycles,
+      started_at: sessionStartedAt,
+      ended_at: new Date().toISOString()
     })
 
     if (result.success) {
       setTotalStudySeconds(0)
-      if (timerConfig.type === 'pomodoro') {
-        setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
-      } else {
-        setCurrentDisplaySeconds(0)
-      }
+      if (timerConfig.type === 'pomodoro') setCurrentDisplaySeconds(timerConfig.pomodoroStudy * 60)
+      else setCurrentDisplaySeconds(0)
       setPomodoroCycles(0)
+      setSessionStartedAt(null)
       setPhase('idle')
       setResetKey(prev => prev + 1)
       setIsFinishModalOpen(false)
@@ -647,8 +629,9 @@ const finishTutorial = () => {
         
         setHistorySessions(formattedHistory)
       }
-    } else {
-      toast('Erro ao salvar sessão: ' + result.error, "error")
+} else {
+      // Adiciona um fallback em string para satisfazer o TypeScript
+      toast(result.error || "Ocorreu um erro desconhecido ao salvar.", "error")
     }
 
     setIsLoading(false)
@@ -669,9 +652,7 @@ const finishTutorial = () => {
     setSessionToDelete(null)
   }
 
-  const handleDeleteSession = (id: string) => {
-    setSessionToDelete(id)
-  }
+  const handleDeleteSession = (id: string) => setSessionToDelete(id)
 
   const executeSaveSettings = () => {
     setTimerConfig(draftConfig)
@@ -681,11 +662,9 @@ const finishTutorial = () => {
     setPhase('idle')
     setTotalStudySeconds(0)
     setPomodoroCycles(0)
-    if (draftConfig.type === 'pomodoro') {
-      setCurrentDisplaySeconds(draftConfig.pomodoroStudy * 60)
-    } else {
-      setCurrentDisplaySeconds(0)
-    }
+    setSessionStartedAt(null)
+    if (draftConfig.type === 'pomodoro') setCurrentDisplaySeconds(draftConfig.pomodoroStudy * 60)
+    else setCurrentDisplaySeconds(0)
     setResetKey(prev => prev + 1)
     setIsSettingsConfirmOpen(false)
   }
@@ -712,30 +691,52 @@ const finishTutorial = () => {
       assuntoId: selectedAssuntoId,
       durationMinutes: '',
       sessionDate: session_date,
-      questionsDone: '',
+      questionsTotal: '',
       questionsWrong: ''
     })
     setIsManualModalOpen(true)
   }
 
   const handleConfirmManual = async () => {
-    if (!manualForm.materiaId || !manualForm.assuntoId || !manualForm.durationMinutes || !manualForm.sessionDate) {
-      toast("Preencha matéria, assunto, data e tempo em minutos.", "error")
+    if (!manualForm.materiaId || !manualForm.durationMinutes.trim() || !manualForm.sessionDate) {
+      toast("Preencha matéria, data e tempo em minutos.", "error")
+      return
+    }
+
+    if (!/^\d+$/.test(manualForm.durationMinutes.trim())) {
+      toast("O tempo em minutos deve ser um número inteiro válido.", "error")
+      return
+    }
+
+    const durationSeconds = parseInt(manualForm.durationMinutes.trim(), 10) * 60
+    if (durationSeconds <= 0) {
+      toast("O tempo deve ser maior que zero.", "error")
+      return
+    }
+
+    const qTotal = parseStrictIntInput(manualForm.questionsTotal)
+    const qWrong = parseStrictIntInput(manualForm.questionsWrong)
+    
+    if (Number.isNaN(qTotal) || Number.isNaN(qWrong) || qTotal < 0 || qWrong < 0) {
+      toast("A quantidade de questões deve ser um número inteiro válido.", "error")
+      return
+    }
+
+    if (qWrong > qTotal) {
+      toast("O número de questões erradas não pode ser maior que o total.", "error")
       return
     }
 
     setIsLoading(true)
-    const qDone = parseInt(manualForm.questionsDone) || 0
-    const qWrong = parseInt(manualForm.questionsWrong) || 0
-    const durationSeconds = (parseInt(manualForm.durationMinutes) || 0) * 60
 
     const result = await saveTimerSession({
-      materia_id: manualForm.materiaId === 'geral' ? null : manualForm.materiaId,
-      assunto_id: manualForm.assuntoId === 'geral' ? null : manualForm.assuntoId,
+      materia_id: manualForm.materiaId,
+      assunto_id: manualForm.assuntoId || null,
       duration_seconds: durationSeconds,
-      questions_done: qDone,
+      questions_total: qTotal,
       questions_wrong: qWrong,
-      session_date: manualForm.sessionDate
+      session_date: manualForm.sessionDate,
+      source: 'manual'
     })
 
     if (result.success) {
@@ -751,16 +752,27 @@ const finishTutorial = () => {
         })) as StudySession[]
         setHistorySessions(formattedHistory)
       }
-    } else {
-      toast('Erro ao salvar sessão: ' + result.error, "error")
+} else {
+      // Adiciona um fallback em string para satisfazer o TypeScript
+      toast(result.error || "Ocorreu um erro desconhecido ao salvar.", "error")
     }
     setIsLoading(false)
   }
 
-  const selectedMateriaName = selectedMateriaId === 'geral' ? 'Geral' : (materias.find(m => m.id === selectedMateriaId)?.name || 'Geral')
-  const selectedAssuntoName = selectedAssuntoId === 'geral' ? 'Geral' : (assuntos.find(a => a.id === selectedAssuntoId)?.name || 'Geral')
+  const selectedMateriaName = selectedMateriaId ? (materias.find(m => m.id === selectedMateriaId)?.name || 'Desconhecido') : 'Nenhuma'
+  const selectedAssuntoName = selectedAssuntoId ? (assuntos.find(a => a.id === selectedAssuntoId)?.name || 'Desconhecido') : 'Sem Assunto'
 
-  // Componente Tooltip do Tutorial
+  // Dinâmica UI de Acertos (Usando Helper Seguro)
+  const currentQTotal = Number.isNaN(parseStrictIntInput(questionsTotal)) ? 0 : parseStrictIntInput(questionsTotal)
+  const currentQWrong = Number.isNaN(parseStrictIntInput(questionsWrong)) ? 0 : parseStrictIntInput(questionsWrong)
+  const currentQCorretas = Math.max(0, currentQTotal - currentQWrong)
+  const currentAproveitamento = currentQTotal > 0 ? ((currentQCorretas / currentQTotal) * 100).toFixed(1) : '0.0'
+
+  const manualQTotal = Number.isNaN(parseStrictIntInput(manualForm.questionsTotal)) ? 0 : parseStrictIntInput(manualForm.questionsTotal)
+  const manualQWrong = Number.isNaN(parseStrictIntInput(manualForm.questionsWrong)) ? 0 : parseStrictIntInput(manualForm.questionsWrong)
+  const manualQCorretas = Math.max(0, manualQTotal - manualQWrong)
+  const manualAproveitamento = manualQTotal > 0 ? ((manualQCorretas / manualQTotal) * 100).toFixed(1) : '0.0'
+
   const TutorialTooltip = ({ stepIndex, className }: { stepIndex: number, className: string }) => {
     if (!isTutorialActive || currentStep !== stepIndex) return null
     const step = TUTORIAL_STEPS[stepIndex]
@@ -836,7 +848,7 @@ const finishTutorial = () => {
         {phase === 'idle' && currentDisplaySeconds === 0 ? (
           <button
             onClick={handleStart}
-            disabled={isLoading}
+            disabled={isLoading || !selectedMateriaId}
             className="px-6 py-3 md:px-8 md:py-3.5 bg-primary-600 text-white font-bold rounded-full hover:bg-primary-700 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
           >
             <Play className="w-4 h-4 fill-current" /> Iniciar
@@ -854,7 +866,7 @@ const finishTutorial = () => {
             ) : (
               <button
                 onClick={handleStart}
-                disabled={isLoading}
+                disabled={isLoading || !selectedMateriaId}
                 className="px-6 py-3 md:px-8 md:py-3.5 bg-primary-600 text-white font-bold rounded-full hover:bg-primary-700 focus:outline-none transition disabled:opacity-50 text-sm uppercase shadow-md flex items-center gap-2"
               >
                 <Play className="w-4 h-4 fill-current" /> Retomar
@@ -869,7 +881,7 @@ const finishTutorial = () => {
               <Check className="w-4 h-4 stroke-[3]" /> Finalizar
             </button>
 
-            {timerConfig.type === 'cronometro' && phase === 'study' && totalStudySeconds > 300 && (
+            {timerConfig.type === 'chronometer' && phase === 'study' && totalStudySeconds > 300 && (
               <button
                 onClick={handleRestNow}
                 disabled={totalStudySeconds === 0}
@@ -913,23 +925,19 @@ const finishTutorial = () => {
   return (
     <div className="w-full h-full min-h-full bg-slate-50 text-slate-900 overflow-x-hidden p-4 md:p-8 flex flex-col items-center">
       
-      {/* Overlay Escuro do Tutorial */}
       {isTutorialActive && (
         <div className="fixed inset-0 bg-black/80 z-50 transition-opacity" />
       )}
 
       <div className="max-w-7xl w-full flex-1 flex flex-col justify-between relative">
         
-        {/* HEADER */}
         <div className="mb-8 relative z-40">
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Timer</h1>
           <p className="text-sm text-slate-500 mt-2 font-medium">Gerencie seu tempo de estudo e foco</p>
         </div>
 
-        {/* CONTROLES SUPERIORES */}
         <div className="flex flex-col sm:flex-row justify-between items-start w-full gap-4">
           
-          {/* STEP 0: SELECTS */}
           <div id="step-selects" className={`flex flex-col w-full sm:w-auto gap-3 ${isTutorialActive && currentStep === 0 ? 'relative z-[60] bg-white p-4 -m-4 rounded-2xl shadow-2xl ring-4 ring-primary-500' : 'relative z-40'}`}>
             {isTutorialActive && currentStep === 0 && <div className="absolute inset-0 z-[65] rounded-2xl" onClick={(e) => e.stopPropagation()} />}
             
@@ -939,10 +947,10 @@ const finishTutorial = () => {
                 onChange={(e) => setSelectedMateriaId(e.target.value)}
                 className="w-full sm:w-64 appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none shadow-sm"
               >
-                <option value="geral" className="text-slate-900 bg-white">Matéria: Geral</option>
+                <option value="" className="text-slate-500 bg-white">Selecione a Matéria</option>
                 {displayMaterias.map(m => (
                   <option key={m.id} value={m.id} className="text-slate-900 bg-white">
-                    Matéria: {m.name}
+                    {m.name}
                   </option>
                 ))}
               </select>
@@ -953,18 +961,19 @@ const finishTutorial = () => {
               <select
                 value={selectedAssuntoId}
                 onChange={(e) => setSelectedAssuntoId(e.target.value)}
-                className="w-full sm:w-64 appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none shadow-sm"
+                disabled={!selectedMateriaId}
+                className="w-full sm:w-64 appearance-none flex items-center justify-between gap-4 px-5 py-2.5 rounded-full border border-slate-200 text-xs font-bold uppercase bg-white text-slate-700 hover:bg-primary-600 hover:text-white transition-colors hover:border-primary-600 cursor-pointer pr-10 focus:outline-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value="geral" className="text-slate-900 bg-white">Assunto: Geral</option>
+                <option value="" className="text-slate-500 bg-white">Assunto (Opcional)</option>
                 {isTutorialActive ? (
                   <>
-                    <option value="mock-1" className="text-slate-900 bg-white">Assunto: Geometria Plana</option>
-                    <option value="mock-2" className="text-slate-900 bg-white">Assunto: Cinemática</option>
+                    <option value="mock-1" className="text-slate-900 bg-white">Geometria Plana</option>
+                    <option value="mock-2" className="text-slate-900 bg-white">Cinemática</option>
                   </>
                 ) : (
                   assuntos.map(a => (
                     <option key={a.id} value={a.id} className="text-slate-900 bg-white">
-                      Assunto: {a.name}
+                      {a.name}
                     </option>
                   ))
                 )}
@@ -975,7 +984,6 @@ const finishTutorial = () => {
             <TutorialTooltip stepIndex={0} className="absolute top-full mt-4 left-0 z-[70] slide-in-from-top-4" />
           </div>
 
-          {/* STEP 1: CONFIGURAÇÕES */}
           <div id="step-settings" className={`flex gap-3 items-center self-end sm:self-auto ${isTutorialActive && currentStep === 1 ? 'relative z-[60] bg-white p-3 -m-3 rounded-2xl shadow-2xl ring-4 ring-primary-500' : 'relative z-40'}`}>
             {isTutorialActive && currentStep === 1 && <div className="absolute inset-0 z-[65] rounded-2xl" onClick={(e) => e.stopPropagation()} />}
             
@@ -996,8 +1004,6 @@ const finishTutorial = () => {
           </div>
         </div>
 
-        {/* CENTRO (TIMER E CONTROLES) */}
-        {/* STEP 2: O TIMER EM SI */}
         <div 
           id="step-timer" 
           className={
@@ -1010,8 +1016,6 @@ const finishTutorial = () => {
           {renderTimerContent()}
         </div>
 
-        {/* RODAPÉ (HISTÓRICO) */}
-        {/* STEP 3: O HISTÓRICO */}
         <div id="step-history" className={`w-full pb-8 flex flex-col ${isTutorialActive && currentStep === 3 ? 'relative z-[60] bg-white p-6 rounded-3xl shadow-2xl ring-4 ring-primary-500' : 'relative z-40'}`}>
           {isTutorialActive && currentStep === 3 && <div className="absolute inset-0 z-[65] rounded-3xl" onClick={(e) => e.stopPropagation()} />}
           
@@ -1050,46 +1054,57 @@ const finishTutorial = () => {
                     
                     {expandedDates.includes(dateStr) && (
                       <div className="flex flex-col gap-3 px-2 pb-2">
-                        {groupedHistory[dateStr].map(session => (
-                          <div key={session.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm mx-1 sm:mx-2 group">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                              <div className="flex items-center gap-2">
-                                <Book className="w-4 h-4 flex-shrink-0 text-primary-600" />
-                                <span className="font-bold text-slate-800 text-sm truncate max-w-[120px] sm:max-w-xs">{session.materias?.name || 'Geral'}</span>
-                              </div>
-                              <div className="flex items-center gap-3">
+                        {groupedHistory[dateStr].map(session => {
+                           const historicoFeitas = session.questions_total !== undefined && session.questions_total !== null
+                              ? session.questions_total 
+                              : session.questions_done + session.questions_wrong;
+
+                           return (
+                            <div key={session.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm mx-1 sm:mx-2 group relative">
+                              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                                 <div className="flex items-center gap-2">
-                                  <Clock className="w-4 h-4 flex-shrink-0 text-slate-400" />
-                                  <span className="text-sm font-bold text-slate-700">{formatTime(session.duration_seconds)}</span>
+                                  <Book className="w-4 h-4 flex-shrink-0 text-primary-600" />
+                                  <span className="font-bold text-slate-800 text-sm truncate max-w-[120px] sm:max-w-xs">{session.materias?.name || 'Sem Matéria'}</span>
+                                  {session.source === 'manual' && (
+                                    <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-500 rounded uppercase tracking-wider border border-slate-200">
+                                      Manual
+                                    </span>
+                                  )}
                                 </div>
-                                <button 
-                                  onClick={() => handleDeleteSession(session.id)}
-                                  disabled={isLoading}
-                                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                                  title="Excluir estudo"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-2">
+                                    <Clock className="w-4 h-4 flex-shrink-0 text-slate-400" />
+                                    <span className="text-sm font-bold text-slate-700">{formatTime(session.duration_seconds)}</span>
+                                  </div>
+                                  <button 
+                                    onClick={() => handleDeleteSession(session.id)}
+                                    disabled={isLoading}
+                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                                    title="Excluir estudo"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
+                                  <FileText className="w-4 h-4 flex-shrink-0 text-slate-400" />
+                                  <span className="truncate">{session.assuntos?.name || 'Sem Assunto'}</span>
+                                </div>
+                                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                                  <div className="flex items-center gap-1.5 bg-emerald-100 text-emerald-800 px-2 py-1 rounded-md text-xs font-bold border border-emerald-200">
+                                    <CheckCircle className="w-3.5 h-3.5" />
+                                    {historicoFeitas} TOTAIS
+                                  </div>
+                                  <div className="flex items-center gap-1.5 bg-red-100 text-red-800 px-2 py-1 rounded-md text-xs font-bold border border-red-200">
+                                    <XCircle className="w-3.5 h-3.5" />
+                                    {session.questions_wrong} ERRADAS
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                              <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
-                                <FileText className="w-4 h-4 flex-shrink-0 text-slate-400" />
-                                <span className="truncate">{session.assuntos?.name || 'Geral'}</span>
-                              </div>
-                              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                                <div className="flex items-center gap-1.5 bg-emerald-100 text-emerald-800 px-2 py-1 rounded-md text-xs font-bold border border-emerald-200">
-                                  <CheckCircle className="w-3.5 h-3.5" />
-                                  {session.questions_done} FEITAS
-                                </div>
-                                <div className="flex items-center gap-1.5 bg-red-100 text-red-800 px-2 py-1 rounded-md text-xs font-bold border border-red-200">
-                                  <XCircle className="w-3.5 h-3.5" />
-                                  {session.questions_wrong} ERRADAS
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                           )
+                        })}
                       </div>
                     )}
                   </div>
@@ -1098,10 +1113,8 @@ const finishTutorial = () => {
             </div>
           )}
         </div>
-
       </div>
 
-      {/* MODAL DE CONFIGURAÇÕES */}
       {isSettingsOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[150] p-4 animate-overlay">
           <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
@@ -1115,8 +1128,8 @@ const finishTutorial = () => {
             <div className="space-y-6">
               <div className="flex bg-slate-100 p-1 rounded-xl">
                 <button
-                  onClick={() => setDraftConfig({...draftConfig, type: 'cronometro'})}
-                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${draftConfig.type === 'cronometro' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+                  onClick={() => setDraftConfig({...draftConfig, type: 'chronometer'})}
+                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${draftConfig.type === 'chronometer' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                   Cronômetro
                 </button>
@@ -1208,7 +1221,6 @@ const finishTutorial = () => {
         </div>
       )}
 
-      {/* MODAL DE FINALIZAÇÃO DA SESSÃO */}
       {isFinishModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[150] p-4 animate-overlay">
           <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
@@ -1235,33 +1247,46 @@ const finishTutorial = () => {
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Questões Feitas
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={questionsDone}
-                  onChange={(e) => setQuestionsDone(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-                  placeholder="Ex: 15"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Total de Questões
+                  </label>
+                  <input
+                    type="text"
+                    value={questionsTotal}
+                    onChange={(e) => setQuestionsTotal(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-slate-900 font-medium"
+                    placeholder="Ex: 20"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Questões Erradas
+                  </label>
+                  <input
+                    type="text"
+                    value={questionsWrong}
+                    onChange={(e) => setQuestionsWrong(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-slate-900 font-medium"
+                    placeholder="Ex: 3"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Questões Erradas
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={questionsWrong}
-                  onChange={(e) => setQuestionsWrong(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-                  placeholder="Ex: 2"
-                />
-              </div>
+              {currentQTotal > 0 && (
+                <div className="bg-primary-50 border border-primary-100 rounded-xl p-3 flex justify-between items-center animate-in fade-in">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-primary-600 uppercase">Acertos</span>
+                    <span className="text-xl font-extrabold text-primary-700">{currentQCorretas}</span>
+                  </div>
+                  <div className="flex flex-col text-right">
+                    <span className="text-xs font-bold text-primary-600 uppercase">Aproveitamento</span>
+                    <span className="text-xl font-extrabold text-primary-700">{currentAproveitamento}%</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 mt-8">
@@ -1284,7 +1309,6 @@ const finishTutorial = () => {
         </div>
       )}
 
-      {/* MODAL DE ENVIO MANUAL */}
       {isManualModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[150] p-4 animate-overlay">
           <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
@@ -1303,7 +1327,7 @@ const finishTutorial = () => {
                   onChange={(e) => setManualForm({ ...manualForm, materiaId: e.target.value })}
                   className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
                 >
-                  <option value="geral">Geral</option>
+                  <option value="">Selecione a Matéria</option>
                   {materias.map(m => (
                     <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
@@ -1311,13 +1335,14 @@ const finishTutorial = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Assunto</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Assunto (Opcional)</label>
                 <select
                   value={manualForm.assuntoId}
                   onChange={(e) => setManualForm({ ...manualForm, assuntoId: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
+                  disabled={!manualForm.materiaId}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm disabled:opacity-50"
                 >
-                  <option value="geral">Geral</option>
+                  <option value="">Sem Assunto</option>
                   {modalAssuntos.map(a => (
                     <option key={a.id} value={a.id}>{a.name}</option>
                   ))}
@@ -1337,8 +1362,7 @@ const finishTutorial = () => {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Tempo (min)</label>
                   <input
-                    type="number"
-                    min="1"
+                    type="text"
                     value={manualForm.durationMinutes}
                     onChange={(e) => setManualForm({ ...manualForm, durationMinutes: e.target.value })}
                     className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
@@ -1349,21 +1373,20 @@ const finishTutorial = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Questões Feitas</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Total de Questões</label>
                   <input
-                    type="number"
-                    min="0"
-                    value={manualForm.questionsDone}
-                    onChange={(e) => setManualForm({ ...manualForm, questionsDone: e.target.value })}
+                    type="text"
+                    value={manualForm.questionsTotal}
+                    onChange={(e) => setManualForm({ ...manualForm, questionsTotal: e.target.value })}
                     className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
-                    placeholder="Ex: 15"
+                    placeholder="Ex: 20"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Questões Erradas</label>
                   <input
-                    type="number"
-                    min="0"
+                    type="text"
+                    max={manualQTotal > 0 ? manualQTotal : undefined}
                     value={manualForm.questionsWrong}
                     onChange={(e) => setManualForm({ ...manualForm, questionsWrong: e.target.value })}
                     className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
@@ -1371,6 +1394,19 @@ const finishTutorial = () => {
                   />
                 </div>
               </div>
+
+              {manualQTotal > 0 && (
+                <div className="bg-primary-50 border border-primary-100 rounded-xl p-3 flex justify-between items-center animate-in fade-in">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-primary-600 uppercase">Acertos</span>
+                    <span className="text-xl font-extrabold text-primary-700">{manualQCorretas}</span>
+                  </div>
+                  <div className="flex flex-col text-right">
+                    <span className="text-xs font-bold text-primary-600 uppercase">Aproveitamento</span>
+                    <span className="text-xl font-extrabold text-primary-700">{manualAproveitamento}%</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 mt-8">
