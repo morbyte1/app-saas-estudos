@@ -100,29 +100,6 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* CABEÇALHO MOBILE (Visível apenas em telas menores que 'md') */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 flex items-center justify-between px-4 shadow-sm">
-        <Image src="/icon.png" width={32} height={32} alt="Logo" className="object-contain" />
-        <div className="flex items-center gap-1">
-          {/* Botão de voltar realocado para o header mobile */}
-          {isDeepLink && (
-            <button 
-              onClick={() => router.back()}
-              className="p-2 text-slate-600 hover:text-primary-600 focus:outline-none"
-              title="Voltar"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-          )}
-          <button 
-            onClick={() => setIsMobileOpen(true)} 
-            className="p-2 text-slate-600 hover:text-primary-600 focus:outline-none"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-        </div>
-      </div>
-
       {/* OVERLAY MOBILE */}
       {isMobileOpen && (
         <div 
@@ -187,19 +164,6 @@ export default function Sidebar() {
         </div>
 
         <nav className="flex-1 mt-2 flex flex-col gap-2 overflow-y-auto">
-          {/* Botão de Voltar Contextual (Oculto no mobile, aparece apenas no desktop) */}
-          {isDeepLink && (
-            <div className={`hidden md:block mb-2 mx-4 ${isMinimized ? 'md:flex md:justify-center' : ''}`}>
-              <button 
-                onClick={() => router.back()} 
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-primary-600 transition-colors font-medium text-sm w-full ${isMinimized ? 'md:justify-center md:px-0' : ''}`}
-                title="Voltar para a tela anterior"
-              >
-                <ArrowLeft className="w-5 h-5 flex-shrink-0" />
-                {(!isMinimized || isMobileOpen) && <span>Voltar</span>}
-              </button>
-            </div>
-          )}
 
           <ul className="space-y-1">
             {navigation.map((item) => {
