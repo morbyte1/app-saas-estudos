@@ -47,7 +47,7 @@ const navigation = [
     subItems: [
       { id: 'meu-plano', name: 'Meu plano', href: '#' },
       { id: 'calendario', name: 'Calendário', href: '/dashboard/calendario' },
-      { id: 'objetivo', name: 'Objetivo', href: '#' }
+      { id: 'objetivo', name: 'Objetivo', href: '/dashboard/objetivo' }
     ]
   },
   { 
