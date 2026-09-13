@@ -81,6 +81,9 @@ const calcularGapsPorArea = (
   const nomeNivel: Record<string, string> = { iniciante: 'iniciante', intermediario: 'intermediário', avancado: 'avançado' }
 
   for (const [area, mats] of Object.entries(areaGroups)) {
+    const peso = pesos[area as keyof typeof pesos] || 1
+    if (peso < 2) continue
+
     let sum = 0
     const niveisUnicos = new Set<string>()
     
@@ -91,7 +94,6 @@ const calcularGapsPorArea = (
     })
     
     const nivelMedio = sum / mats.length
-    const peso = pesos[area as keyof typeof pesos] || 1
     const gap = peso * (3 - nivelMedio)
     
     let faixa: 'alto' | 'moderado' | 'baixo' = 'baixo'
@@ -300,7 +302,7 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
     const gaps = calcularGapsPorArea(selectedCourse.pesos, niveis, initialData.materias)
     const texto = gerarFraseAnaliseFoco(gaps, selectedCourse.nome)
     
-    return texto ? `Análise de Foco: ${texto}` : null
+    return texto ? `Análise feito pelo Revyza: ${texto}` : null
   }
 
   if (step === 1) {
