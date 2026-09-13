@@ -1,18 +1,33 @@
 'use client'
 
 import ConfirmModal from '@/components/ConfirmModal'
-import { useState } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { useToast } from '@/components/ToastContext'
-import { ChevronLeft, ChevronRight, Plus, MoreVertical, Check, X, Copy, Edit2, Target } from 'lucide-react'
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Plus, 
+  MoreVertical, 
+  Check, 
+  X, 
+  Copy, 
+  Target, 
+  Sparkles, 
+  Clock, 
+  BookOpen, 
+  CheckCircle2 
+} from 'lucide-react'
 import {
   getCalendarData,
   createEvent,
   updateEvent,
   deleteEvent as deleteEventAction,
   toggleEventStatus,
-  duplicateEvents
+  duplicateEvents,
+  getDayContext,
+  DayContext
 } from './actions'
-import { updateDailyGoal } from '../actions'
+import { gerarSugestaoDoDia, SugestaoDia } from '@/lib/calendarioSugestao'
 
 interface Event {
   id: string
@@ -27,29 +42,27 @@ interface Event {
 interface Materia {
   id: string
   name: string
-}
-
-interface DailyStats {
-  goal: number
-  todayMinutes: number
+  goal_hours?: number
 }
 
 interface CalendarioClientProps {
   initialEvents: Event[]
   initialMaterias: Materia[]
-  initialDailyStats: DailyStats
+  initialDayContext: DayContext | null
 }
 
 export default function CalendarioClient({
   initialEvents,
   initialMaterias,
-  initialDailyStats
+  initialDayContext
 }: CalendarioClientProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [events, setEvents] = useState<Event[]>(initialEvents)
   const [materias, setMaterias] = useState<Materia[]>(initialMaterias)
-  const [dailyStats, setDailyStats] = useState(initialDailyStats)
+  const [dayContext, setDayContext] = useState<DayContext | null>(initialDayContext)
+  const [dismissedSuggestionDate, setDismissedSuggestionDate] = useState<string | null>(null)
+  const [isPendingContext, startTransition] = useTransition()
   const { toast } = useToast()
   
   // Modal de Evento
@@ -70,15 +83,34 @@ export default function CalendarioClient({
   const [repeatFuture, setRepeatFuture] = useState(false)
   const [isDuplicating, setIsDuplicating] = useState(false)
 
-  // Modal de Meta Diária
-  const [isDailyGoalModalOpen, setIsDailyGoalModalOpen] = useState(false)
-  const [newDailyGoal, setNewDailyGoal] = useState('')
-
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null)
   const [editingEventId, setEditingEventId] = useState<string | null>(null)
 
   const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
   const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+
+  const formatDateStr = (d: Date) => {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const selectedDateStr = formatDateStr(selectedDate)
+
+  const refreshDayContext = (dateStr: string) => {
+    startTransition(async () => {
+      const res = await getDayContext(dateStr)
+      if (res.success && res.data) {
+        setDayContext(res.data)
+      }
+    })
+  }
+
+  const selectDate = (date: Date) => {
+    setSelectedDate(date)
+    refreshDayContext(formatDateStr(date))
+  }
 
   const goToPreviousMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))
@@ -86,10 +118,6 @@ export default function CalendarioClient({
 
   const goToNextMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))
-  }
-
-  const selectDate = (date: Date) => {
-    setSelectedDate(date)
   }
 
   const getDaysInMonth = (date: Date) => {
@@ -124,11 +152,7 @@ export default function CalendarioClient({
   }
 
   const getEventsForDate = (date: Date) => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const dateString = `${year}-${month}-${day}`
-    
+    const dateString = formatDateStr(date)
     return events.filter(event => event.event_date && event.event_date.startsWith(dateString))
   }
 
@@ -144,6 +168,7 @@ export default function CalendarioClient({
         setEvents(events.map(e =>
           e.id === eventId ? { ...e, is_done: !e.is_done } : e
         ))
+        refreshDayContext(selectedDateStr)
       }
     }
   }
@@ -166,11 +191,7 @@ export default function CalendarioClient({
   }
 
   const saveEvent = async () => {
-    const year = selectedDate.getFullYear()
-    const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
-    const day = String(selectedDate.getDate()).padStart(2, '0')
-    const eventDate = `${year}-${month}-${day}`
-    
+    const eventDate = selectedDateStr
     const finalSubjectId = modalData.subjectId
 
     if (!modalData.title.trim() || !modalData.time || !modalData.duration) {
@@ -208,6 +229,7 @@ export default function CalendarioClient({
           }
         }
         closeModal()
+        refreshDayContext(selectedDateStr)
         toast("Estudo atualizado com sucesso!", "success")
       } else {
         toast("Erro ao atualizar o estudo: " + result.error, "error")
@@ -231,6 +253,7 @@ export default function CalendarioClient({
           }
         }
         closeModal()
+        refreshDayContext(selectedDateStr)
         toast("Estudo adicionado ao calendário!", "success")
       } else {
         toast("Erro ao criar o estudo: " + result.error, "error")
@@ -260,6 +283,7 @@ export default function CalendarioClient({
     if (result.success) {
       setEvents(events.filter(event => event.id !== eventToDelete))
       setOpenDropdownId(null)
+      refreshDayContext(selectedDateStr)
       toast("Estudo excluído com sucesso!", "success")
     } else {
       toast("Erro ao excluir estudo.", "error")
@@ -285,11 +309,7 @@ export default function CalendarioClient({
     if (selectedEventsToDuplicate.length === 0) return
     setIsDuplicating(true)
     
-    const year = selectedDate.getFullYear()
-    const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
-    const day = String(selectedDate.getDate()).padStart(2, '0')
-    const dateStr = `${year}-${month}-${day}`
-    
+    const dateStr = selectedDateStr
     const result = await duplicateEvents(selectedEventsToDuplicate, dateStr, repeatFuture)
     
     if (result.success) {
@@ -298,6 +318,7 @@ export default function CalendarioClient({
         setEvents(dataResult.events || [])
       }
       closeDuplicateModal()
+      refreshDayContext(selectedDateStr)
       toast("Cronograma sincronizado com sucesso!", "success")
     } else {
       toast("Erro ao duplicar cronograma: " + result.error, "error")
@@ -306,20 +327,20 @@ export default function CalendarioClient({
     setIsDuplicating(false)
   }
 
-  const handleSaveDailyGoal = async () => {
-    const num = parseFloat(newDailyGoal)
-    if (isNaN(num) || num <= 0) {
-      toast("Informe um número de horas válido.", "error")
-      return
-    }
-    const result = await updateDailyGoal(num)
-    if (result.success) {
-      setDailyStats(prev => ({ ...prev, goal: num }))
-      setIsDailyGoalModalOpen(false)
-      toast("Meta diária atualizada!", "success")
-    } else {
-      toast("Erro ao salvar meta.", "error")
-    }
+  const handleApplySuggestion = (sugestao: SugestaoDia) => {
+    const durationMinutes = Math.round(sugestao.duracaoSugerida * 60)
+    setModalData({
+      title: `Estudo ${sugestao.materiaNome}`,
+      time: '09:00',
+      duration: durationMinutes.toString(),
+      subjectId: sugestao.materiaId
+    })
+    setEditingEventId(null)
+    setIsModalOpen(true)
+  }
+
+  const handleDismissSuggestion = () => {
+    setDismissedSuggestionDate(selectedDateStr)
   }
 
   const formatDuration = (minutes: number) => {
@@ -337,43 +358,85 @@ export default function CalendarioClient({
     return date
   })
 
-  const formatDecimal = (mins: number) => (mins / 60).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-  const studiedDec = formatDecimal(dailyStats.todayMinutes)
+  const sugestaoCalculada = gerarSugestaoDoDia(dayContext)
+  const isSuggestionDismissed = dismissedSuggestionDate === selectedDateStr
+  const sugestaoVisivel = sugestaoCalculada && !isSuggestionDismissed
 
   return (
     <div className="p-8 min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto">
+        
+        {/* Cabeçalho */}
         <div className="flex flex-col md:flex-row md:items-start justify-between mb-6 gap-4">
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900">Planejamento</h1>
-            <p className="text-slate-500 mt-2">Organize seu cronograma de estudos</p>
+            <p className="text-slate-500 mt-2">Organize seu cronograma de estudos com inteligência</p>
           </div>
           <div className="flex w-full md:w-auto">
-            <div className="bg-white rounded-full px-5 py-2.5 border border-slate-200 shadow-sm flex items-center justify-between md:justify-start gap-4 w-full md:w-auto">
-              <div className="flex items-center gap-3 border-r border-slate-100 pr-4">
-                <div className="bg-primary-100 p-1.5 rounded-full">
-                  <Target className="w-4 h-4 text-primary-600" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none mb-0.5">Minha meta do dia</span>
-                  <span className="text-sm font-bold text-slate-700 leading-none">{studiedDec}h / {dailyStats.goal}h</span>
-                </div>
+            <div className="bg-white rounded-2xl px-5 py-3 border border-slate-200 shadow-sm flex items-center gap-4 w-full md:w-auto">
+              <div className="bg-primary-100 p-2 rounded-xl text-primary-700">
+                <Target className="w-5 h-5" />
               </div>
-              <button 
-                onClick={() => {
-                  setNewDailyGoal(dailyStats.goal.toString())
-                  setIsDailyGoalModalOpen(true)
-                }} 
-                className="text-slate-400 hover:text-primary-600 bg-slate-50 hover:bg-primary-50 p-1.5 rounded-full transition flex-shrink-0"
-                title="Editar meta diária"
-              >
-                <Edit2 className="w-3.5 h-3.5"/>
-              </button>
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Disponibilidade de Hoje</span>
+                <span className="text-sm font-extrabold text-slate-800">
+                  {dayContext ? `${dayContext.disponibilidadeDia}h no seu plano` : '—'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-6">
+        {/* Resumo de Metas Semanais por Matéria */}
+        {dayContext && dayContext.materiasSemanaStatus.length > 0 && (
+          <div className="mb-6 bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-primary-600" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Meta Semanal das Matérias
+                </h3>
+              </div>
+              <span className="text-xs font-medium text-slate-400">
+                Semana da data selecionada
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {dayContext.materiasSemanaStatus.map((m) => {
+                const progresso = m.goalHours > 0 
+                  ? Math.min(Math.round((m.weeklyStudiedHours / m.goalHours) * 100), 100) 
+                  : 0
+                const metaBatida = m.weeklyStudiedHours >= m.goalHours
+
+                return (
+                  <div key={m.materiaId} className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col justify-between">
+                    <div>
+                      <span className="font-bold text-slate-800 text-xs truncate block mb-1">
+                        {m.materiaNome}
+                      </span>
+                      <div className="flex items-baseline justify-between text-[11px] mb-1.5 font-medium">
+                        <span className={metaBatida ? 'text-emerald-700 font-bold' : 'text-slate-600'}>
+                          {m.weeklyStudiedHours}h
+                        </span>
+                        <span className="text-slate-400">de {m.goalHours}h</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                      <div 
+                        className={`h-1.5 rounded-full transition-all duration-300 ${metaBatida ? 'bg-emerald-500' : 'bg-primary-500'}`} 
+                        style={{ width: `${progresso}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Grade do Calendário e Coluna Direita */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 w-full max-w-sm">
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-4">
@@ -389,8 +452,9 @@ export default function CalendarioClient({
               </div>
               <button
                 onClick={() => {
-                  setCurrentDate(new Date())
-                  setSelectedDate(new Date())
+                  const now = new Date()
+                  setCurrentDate(now)
+                  selectDate(now)
                 }}
                 className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-1.5 rounded-lg text-sm font-bold transition-colors"
               >
@@ -437,6 +501,64 @@ export default function CalendarioClient({
           </div>
 
           <div className="lg:col-span-2">
+            
+            {/* Contexto Resumido do Dia Selecionado */}
+            {dayContext && (
+              <div className="bg-white border border-slate-200 p-4 rounded-2xl mb-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <Clock className="w-4 h-4 text-primary-600 shrink-0" />
+                  <p className="text-sm font-medium text-slate-700">
+                    Você tem <strong className="text-slate-900">{dayContext.disponibilidadeDia}h</strong> disponíveis hoje.{' '}
+                    <strong className="text-slate-900">{dayContext.jaEstudadoDia}h</strong> já estudadas,{' '}
+                    <strong className="text-slate-900">{dayContext.jaAgendadoDia}h</strong> agendadas.
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-primary-700 bg-primary-50 px-3 py-1 rounded-lg shrink-0">
+                  {dayContext.espacoLivre}h livres
+                </span>
+              </div>
+            )}
+
+            {/* Cartão de Sugestão Inteligente (Meu Plano) */}
+            {sugestaoVisivel && (
+              <div className="mb-6 p-5 border-2 border-dashed border-primary-300 bg-primary-50/50 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex items-start gap-3">
+                  <div className="bg-primary-100 p-2.5 rounded-2xl text-primary-700 shrink-0 mt-0.5">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="text-xs font-bold uppercase tracking-wider text-primary-700">Sugestão do Meu Plano</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-white text-primary-700 border border-primary-200 px-2 py-0.5 rounded-md">
+                        {sugestaoCalculada.motivoTexto}
+                      </span>
+                    </div>
+                    <h4 className="text-base font-extrabold text-slate-900">
+                      {sugestaoCalculada.materiaNome} ({sugestaoCalculada.duracaoSugerida}h sugeridas)
+                    </h4>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                      Encaixe ideal para bater a meta semanal com base no espaço livre de hoje.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+                  <button
+                    onClick={handleDismissSuggestion}
+                    className="px-3 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-white/60 rounded-xl transition"
+                  >
+                    Dispensar
+                  </button>
+                  <button
+                    onClick={() => handleApplySuggestion(sugestaoCalculada)}
+                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-xl transition shadow-sm"
+                  >
+                    Adicionar ao calendário
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h2 className="text-xl font-bold text-slate-900">Minha semana</h2>
@@ -474,7 +596,7 @@ export default function CalendarioClient({
                     onClick={() => selectDate(date)}
                     className={`flex-1 py-3 rounded-2xl text-center font-medium transition-all ${
                       isCurrentDay
-                        ? 'bg-primary-600 text-white'
+                        ? 'bg-primary-600 text-white shadow-sm'
                         : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
                     }`}
                   >
@@ -488,7 +610,7 @@ export default function CalendarioClient({
             <div className="space-y-3">
               {getEventsForSelectedDate().length === 0 ? (
                 <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center">
-                  <p className="text-slate-500">Nada marcado por aqui ainda</p>
+                  <p className="text-slate-500 font-medium">Nada marcado por aqui ainda</p>
                 </div>
               ) : (
                 getEventsForSelectedDate().map(event => {
@@ -496,7 +618,7 @@ export default function CalendarioClient({
                   return (
                     <div
                       key={event.id}
-                      className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4 relative"
+                      className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4 relative shadow-sm"
                     >
                       <div className="flex flex-col items-center min-w-[60px]">
                         <span className="text-slate-900 font-bold">{event.time}</span>
@@ -559,7 +681,7 @@ export default function CalendarioClient({
           </div>
         </div>
 
-        {/* Modal de Evento */}
+        {/* Modal de Criação / Edição de Evento */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 animate-overlay">
             <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
@@ -722,51 +844,6 @@ export default function CalendarioClient({
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
                 >
                   {isDuplicating ? 'Sincronizando...' : 'Sincronizar'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Modal de Meta Diária */}
-        {isDailyGoalModalOpen && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
-            <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl animate-modal">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-slate-900">Configurar Meta Diária</h3>
-                <button onClick={() => setIsDailyGoalModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg">
-                  <X className="w-5 h-5 text-slate-600" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Horas por dia</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0.5"
-                    value={newDailyGoal}
-                    onChange={(e) => setNewDailyGoal(e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="Ex: 3"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 mt-8">
-                <button
-                  onClick={() => setIsDailyGoalModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleSaveDailyGoal}
-                  disabled={!newDailyGoal}
-                  className="flex-1 px-4 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
-                >
-                  Salvar Meta
                 </button>
               </div>
             </div>
