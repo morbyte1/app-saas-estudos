@@ -1,0 +1,22 @@
+[
+  { "id": "medicina", "nome": "Medicina", "pesos": { "matematica": 2, "natureza": 3, "linguagens": 2, "humanas": 1, "redacao": 3 } },
+  { "id": "direito", "nome": "Direito", "pesos": { "matematica": 1, "natureza": 1, "linguagens": 3, "humanas": 3, "redacao": 3 } },
+  { "id": "engenharia-civil", "nome": "Engenharia Civil", "pesos": { "matematica": 3, "natureza": 3, "linguagens": 1, "humanas": 1, "redacao": 2 } },
+  { "id": "engenharia-mecanica", "nome": "Engenharia Mecânica", "pesos": { "matematica": 3, "natureza": 3, "linguagens": 1, "humanas": 1, "redacao": 2 } },
+  { "id": "engenharia-computacao", "nome": "Engenharia da Computação", "pesos": { "matematica": 3, "natureza": 3, "linguagens": 1, "humanas": 1, "redacao": 2 } },
+  { "id": "ciencia-computacao", "nome": "Ciência da Computação", "pesos": { "matematica": 3, "natureza": 2, "linguagens": 2, "humanas": 1, "redacao": 2 } },
+  { "id": "administracao", "nome": "Administração", "pesos": { "matematica": 3, "natureza": 1, "linguagens": 2, "humanas": 2, "redacao": 3 } },
+  { "id": "psicologia", "nome": "Psicologia", "pesos": { "matematica": 1, "natureza": 2, "linguagens": 3, "humanas": 3, "redacao": 3 } },
+  { "id": "arquitetura", "nome": "Arquitetura e Urbanismo", "pesos": { "matematica": 3, "natureza": 2, "linguagens": 2, "humanas": 3, "redacao": 2 } },
+  { "id": "odontologia", "nome": "Odontologia", "pesos": { "matematica": 2, "natureza": 3, "linguagens": 2, "humanas": 1, "redacao": 3 } },
+  { "id": "enfermagem", "nome": "Enfermagem", "pesos": { "matematica": 1, "natureza": 3, "linguagens": 2, "humanas": 2, "redacao": 2 } },
+  { "id": "farmacia", "nome": "Farmácia", "pesos": { "matematica": 2, "natureza": 3, "linguagens": 2, "humanas": 1, "redacao": 2 } },
+  { "id": "veterinaria", "nome": "Veterinária", "pesos": { "matematica": 1, "natureza": 3, "linguagens": 2, "humanas": 1, "redacao": 2 } },
+  { "id": "pedagogia", "nome": "Pedagogia", "pesos": { "matematica": 1, "natureza": 1, "linguagens": 3, "humanas": 3, "redacao": 3 } },
+  { "id": "jornalismo", "nome": "Jornalismo", "pesos": { "matematica": 1, "natureza": 1, "linguagens": 3, "humanas": 3, "redacao": 3 } },
+  { "id": "design", "nome": "Design", "pesos": { "matematica": 1, "natureza": 1, "linguagens": 3, "humanas": 3, "redacao": 2 } },
+  { "id": "fisioterapia", "nome": "Fisioterapia", "pesos": { "matematica": 1, "natureza": 3, "linguagens": 2, "humanas": 2, "redacao": 2 } },
+  { "id": "nutricao", "nome": "Nutrição", "pesos": { "matematica": 1, "natureza": 3, "linguagens": 2, "humanas": 2, "redacao": 2 } },
+  { "id": "economia", "nome": "Economia", "pesos": { "matematica": 3, "natureza": 1, "linguagens": 2, "humanas": 3, "redacao": 2 } },
+  { "id": "relacoes-internacionais", "nome": "Relações Internacionais", "pesos": { "matematica": 1, "natureza": 1, "linguagens": 3, "humanas": 3, "redacao": 3 } }
+]

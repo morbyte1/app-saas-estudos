@@ -63,13 +63,24 @@ export async function saveOnboardingComplete(data: {
   return { success: true }
 }
 
-export async function updateCursoDesejado(curso: string) {
+export async function updateCursoDesejado(data: {
+  curso: string
+  curso_id: string | null
+  nota_alvo_geral: number | null
+  nota_alvo_areas: Record<string, number> | null
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Usuário não autenticado' }
 
   const { error } = await supabase.from('user_objective_context')
-    .update({ curso_desejado: curso, updated_at: new Date().toISOString() })
+    .update({ 
+      curso_desejado: data.curso, 
+      curso_id: data.curso_id,
+      nota_alvo_geral: data.nota_alvo_geral,
+      nota_alvo_areas: data.nota_alvo_areas,
+      updated_at: new Date().toISOString() 
+    })
     .eq('user_id', user.id)
 
   if (error) return { error: error.message }

@@ -1,14 +1,23 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+/* 
+  Regra Futura (Nível Automático):
+  Quando uma matéria atingir um piso mínimo de questões respondidas (a definir, sugestão inicial: 15–20), 
+  o nível dessa matéria passa a ser calculado automaticamente a partir da precisão registrada, 
+  substituindo a autoavaliação. Nesse estado, a matéria exibe a etiqueta "Com base no seu desempenho" 
+  em vez de "Autoavaliado", e o botão "Reavaliar" deixa de aparecer para ela.
+*/
+
+import { useState, useTransition, useMemo } from 'react'
 import { useToast } from '@/components/ToastContext'
-import { Target, ArrowRight, GraduationCap, Compass, CheckCircle2, ChevronRight, Edit2, Check, Clock } from 'lucide-react'
+import { Target, ArrowRight, GraduationCap, Compass, CheckCircle2, Edit2, Check, X, Search } from 'lucide-react'
 import { 
   saveOnboardingComplete, 
   updateCursoDesejado, 
   updateNivelMateria, 
   updateExamGoalTarget 
 } from './actions'
+import cursosJson from '@/data/cursos.json'
 
 interface Materia {
   id: string
@@ -18,9 +27,27 @@ interface Materia {
 interface ObjetivoClientProps {
   initialData: {
     examGoal: { name: string; target_date: string } | null
-    context: { curso_desejado: string | null; nivel_percebido: Record<string, string>; onboarding_completo: boolean } | null
+    context: { 
+      curso_desejado: string | null; 
+      curso_id?: string | null;
+      nota_alvo_geral?: number | null;
+      nota_alvo_areas?: Record<string, number> | null;
+      nivel_percebido: Record<string, string>; 
+      onboarding_completo: boolean 
+    } | null
     materias: Materia[]
   }
+}
+
+// Mapeamento local para identificar a área ENEM a partir do nome cadastrado pelo usuário
+const mapMateriaToArea = (nome: string): string => {
+  const norm = nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+  if (norm.includes('matematica')) return 'matematica'
+  if (['fisica', 'quimica', 'biologia', 'natureza'].some(a => norm.includes(a))) return 'natureza'
+  if (['historia', 'geografia', 'filosofia', 'sociologia', 'humanas'].some(a => norm.includes(a))) return 'humanas'
+  if (['portugues', 'literatura', 'ingles', 'espanhol', 'artes', 'linguagens'].some(a => norm.includes(a))) return 'linguagens'
+  if (norm.includes('redacao')) return 'redacao'
+  return 'outros'
 }
 
 export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
@@ -30,17 +57,31 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
   const isComplete = initialData.context?.onboarding_completo || false
   const [step, setStep] = useState(isComplete ? 0 : 1)
   
-  // Estados do Formulário de Onboarding
   const [examType, setExamType] = useState<'ENEM' | 'OUTRO' | null>(null)
   const [examName, setExamName] = useState('')
   const [examDate, setExamDate] = useState('')
+  
   const [curso, setCurso] = useState(initialData.context?.curso_desejado || '')
+  const [cursoId, setCursoId] = useState<string | null>(initialData.context?.curso_id || null)
+  const [notaGeral, setNotaGeral] = useState<number | ''>(initialData.context?.nota_alvo_geral || '')
+  const [notaAreas, setNotaAreas] = useState<Record<string, number>>(initialData.context?.nota_alvo_areas || {})
   const [niveis, setNiveis] = useState<Record<string, string>>(initialData.context?.nivel_percebido || {})
 
-  // Estados de Edição da Visão Padrão
   const [isEditingCourse, setIsEditingCourse] = useState(false)
   const [isEditingExam, setIsEditingExam] = useState(false)
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null)
+
+  const [cursoSearch, setCursoSearch] = useState(initialData.context?.curso_desejado || '')
+  const [showSuggestions, setShowSuggestions] = useState(false)
+
+  // Autocomplete Lógica
+  const normalizedSearch = cursoSearch.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+  const filteredCursos = useMemo(() => {
+    if (!normalizedSearch) return []
+    return cursosJson.filter(c => 
+      c.nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(normalizedSearch)
+    ).slice(0, 6)
+  }, [normalizedSearch])
 
   const handleNextStep1 = () => {
     if (examType === 'OUTRO' && (!examName.trim() || !examDate)) {
@@ -70,12 +111,19 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
     })
   }
 
-  const handleSaveCourse = () => {
+  const handleSaveCourseData = () => {
     startTransition(async () => {
-      const result = await updateCursoDesejado(curso)
+      const payload = {
+        curso: cursoSearch,
+        curso_id: cursoId,
+        nota_alvo_geral: notaGeral === '' ? null : notaGeral,
+        nota_alvo_areas: Object.keys(notaAreas).length > 0 ? notaAreas : null
+      }
+      const result = await updateCursoDesejado(payload)
       if (result.success) {
+        setCurso(cursoSearch)
         setIsEditingCourse(false)
-        toast('Curso atualizado.', 'success')
+        toast('Curso e metas atualizados.', 'success')
       }
     })
   }
@@ -116,6 +164,43 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
     return diff > 0 ? diff : 0
   }
 
+  // Ordenação de matérias baseada no curso selecionado
+  const sortedMaterias = useMemo(() => {
+    const arr = [...initialData.materias]
+    if (!cursoId) return arr
+
+    const selectedCourse = cursosJson.find(c => c.id === cursoId)
+    if (!selectedCourse) return arr
+
+    return arr.sort((a, b) => {
+      const weightA = selectedCourse.pesos[mapMateriaToArea(a.name) as keyof typeof selectedCourse.pesos] || 1
+      const weightB = selectedCourse.pesos[mapMateriaToArea(b.name) as keyof typeof selectedCourse.pesos] || 1
+      return weightB - weightA
+    })
+  }, [initialData.materias, cursoId])
+
+  // Geração da Frase de Interpretação
+  const getInterpretationPhrase = () => {
+    if (!cursoId) return null
+    const selectedCourse = cursosJson.find(c => c.id === cursoId)
+    if (!selectedCourse) return null
+
+    const highWeightAreas = Object.entries(selectedCourse.pesos)
+      .filter(([_, weight]) => weight === 3)
+      .map(([area]) => area)
+
+    const userSubjectsInHighWeight = initialData.materias.filter(m => highWeightAreas.includes(mapMateriaToArea(m.name)))
+    const inicianteSubjects = userSubjectsInHighWeight.filter(m => niveis[m.id] === 'iniciante')
+
+    if (inicianteSubjects.length > 0) {
+      const names = inicianteSubjects.slice(0, 2).map(m => m.name).join(' e ')
+      return `Análise de Foco: Para o curso de ${selectedCourse.nome}, as disciplinas de ${names} possuem peso máximo. Como seu nível atual nelas é iniciante, priorizar o nivelamento nessas áreas trará o maior impacto na sua nota final.`
+    } else if (userSubjectsInHighWeight.length > 0) {
+      return `Análise de Foco: Suas áreas de peso máximo para ${selectedCourse.nome} já estão com um bom embasamento. Mantenha a consistência nos estudos e foque na resolução prática de questões para blindar seus acertos.`
+    }
+    return null
+  }
+
   if (step === 1) {
     return (
       <div className="min-h-screen bg-slate-50 p-8 flex flex-col items-center justify-center">
@@ -125,7 +210,6 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Qual é o seu alvo principal?</h1>
             <p className="text-slate-500 mt-2 font-medium">Precisamos dessa informação para guiar seu ritmo diário e saber se você está no tempo certo.</p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
             <button
               onClick={() => setExamType('ENEM')}
@@ -152,7 +236,6 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
               <p className="text-sm font-medium text-slate-500">Concursos militares, vestibulares regionais ou carreiras específicas.</p>
             </button>
           </div>
-
           {examType === 'OUTRO' && (
             <div className="bg-white p-6 rounded-3xl border border-slate-200 mb-8 animate-in slide-in-from-top-4 flex flex-col md:flex-row gap-4">
               <div className="flex-1">
@@ -165,7 +248,6 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
               </div>
             </div>
           )}
-
           <div className="flex justify-end">
             <button onClick={handleNextStep1} disabled={!examType} className="flex items-center gap-2 px-8 py-3.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition shadow-sm disabled:opacity-50">
               Continuar <ArrowRight className="w-5 h-5" />
@@ -185,24 +267,34 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Que curso você quer fazer?</h1>
             <p className="text-slate-500 mt-2 font-medium">Pode ser específico ou uma área geral. É só pra não perdermos o horizonte.</p>
           </div>
-
-          <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm mb-8">
+          <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm mb-8 relative">
             <input 
               type="text" 
-              value={curso} 
-              onChange={e => setCurso(e.target.value)} 
-              placeholder="Ex: Medicina na USP, Engenharia, Direito..." 
+              value={cursoSearch} 
+              onChange={e => { setCursoSearch(e.target.value); setCursoId(null); setShowSuggestions(true) }} 
+              placeholder="Ex: Medicina, Engenharia, Direito..." 
               className="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-xl text-lg font-medium focus:ring-2 focus:ring-primary-500 text-center" 
               autoFocus
-              onKeyDown={e => e.key === 'Enter' && setStep(3)}
             />
+            {showSuggestions && filteredCursos.length > 0 && (
+              <div className="absolute top-full left-0 w-full mt-2 bg-white border border-slate-100 rounded-xl shadow-lg z-10 overflow-hidden p-2">
+                {filteredCursos.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => { setCursoSearch(c.nome); setCursoId(c.id); setCurso(c.nome); setShowSuggestions(false) }}
+                    className="w-full text-left px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-lg transition-colors"
+                  >
+                    {c.nome}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-
           <div className="flex flex-col-reverse md:flex-row justify-between gap-4">
-            <button onClick={() => setStep(3)} className="px-6 py-3.5 text-slate-500 font-bold rounded-xl hover:bg-slate-100 transition">
+            <button onClick={() => { setCurso(cursoSearch); setStep(3) }} className="px-6 py-3.5 text-slate-500 font-bold rounded-xl hover:bg-slate-100 transition">
               Pular esta etapa
             </button>
-            <button onClick={() => setStep(3)} className="flex items-center justify-center gap-2 px-8 py-3.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition shadow-sm">
+            <button onClick={() => { setCurso(cursoSearch); setStep(3) }} className="flex items-center justify-center gap-2 px-8 py-3.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition shadow-sm">
               Continuar <ArrowRight className="w-5 h-5" />
             </button>
           </div>
@@ -220,7 +312,6 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Onde você está hoje?</h1>
             <p className="text-slate-500 mt-2 font-medium">Seja honesto consigo mesmo. Identificar sua base agora ajuda na distribuição de tempo no futuro.</p>
           </div>
-
           {initialData.materias.length === 0 ? (
             <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm text-center mb-8">
               <p className="text-slate-600 font-medium mb-2">Você ainda não possui matérias cadastradas.</p>
@@ -236,11 +327,7 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
                       <button
                         key={nivel}
                         onClick={() => setNiveis(prev => ({ ...prev, [m.id]: nivel }))}
-                        className={`flex-1 md:w-28 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-colors ${
-                          niveis[m.id] === nivel 
-                            ? 'bg-white text-primary-700 shadow-sm' 
-                            : 'text-slate-500 hover:text-slate-700'
-                        }`}
+                        className={`flex-1 md:w-28 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-colors ${niveis[m.id] === nivel ? 'bg-white text-primary-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                       >
                         {nivel === 'intermediario' ? 'Interm.' : nivel}
                       </button>
@@ -250,13 +337,8 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
               ))}
             </div>
           )}
-
           <div className="flex justify-end">
-            <button 
-              onClick={handleCompleteOnboarding} 
-              disabled={isPending}
-              className="flex items-center gap-2 px-8 py-3.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition shadow-sm disabled:opacity-50"
-            >
+            <button onClick={handleCompleteOnboarding} disabled={isPending} className="flex items-center gap-2 px-8 py-3.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition shadow-sm disabled:opacity-50">
               {isPending ? 'Salvando...' : 'Finalizar Configuração'} <CheckCircle2 className="w-5 h-5" />
             </button>
           </div>
@@ -269,12 +351,11 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
   const currentExamName = initialData.examGoal?.name || 'Não definido'
   const currentExamDate = initialData.examGoal?.target_date || null
   const daysRemaining = calculateDaysRemaining(currentExamDate)
+  const interpretationPhrase = getInterpretationPhrase()
 
   return (
     <div className="min-h-screen bg-slate-50 p-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        
-        {/* CABEÇALHO */}
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Seu Objetivo</h1>
           <p className="text-sm text-slate-500 mt-2 font-medium">O contexto que norteia a urgência dos seus estudos diários.</p>
@@ -332,50 +413,103 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
           </div>
         </div>
 
+        {/* Parágrafo Analítico de Foco */}
+        {interpretationPhrase && (
+          <p className="text-slate-600 text-sm leading-relaxed px-2">
+            {interpretationPhrase}
+          </p>
+        )}
+
         {/* GRID INFERIOR */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* CURSO */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col items-start justify-center min-h-[160px]">
-            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center gap-2 mb-3"><GraduationCap className="w-4 h-4" /> Curso Desejado</span>
-            {isEditingCourse ? (
-              <div className="w-full flex items-center gap-2">
-                <input 
-                  type="text" 
-                  value={curso} 
-                  onChange={e => setCurso(e.target.value)} 
-                  className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary-500" 
-                  autoFocus 
-                  onKeyDown={e => e.key === 'Enter' && handleSaveCourse()}
-                />
-                <button onClick={handleSaveCourse} disabled={isPending} className="p-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition">
-                  <Check className="w-5 h-5" />
-                </button>
-              </div>
-            ) : (
-              <div className="w-full flex items-center justify-between group">
-                <h3 className="text-2xl font-extrabold text-slate-900 break-words">{curso || <span className="text-slate-300 italic font-medium text-lg">Ainda não definido</span>}</h3>
-                <button onClick={() => setIsEditingCourse(true)} className="p-2 text-slate-400 hover:text-primary-600 bg-slate-50 hover:bg-primary-50 rounded-xl transition opacity-0 group-hover:opacity-100">
+          {/* CURSO E METAS */}
+          <div className={`bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col justify-center transition-all ${isEditingCourse ? 'lg:col-span-3' : 'lg:col-span-1'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center gap-2"><GraduationCap className="w-4 h-4" /> Curso Desejado</span>
+              {!isEditingCourse && (
+                <button onClick={() => setIsEditingCourse(true)} className="p-2 text-slate-400 hover:text-primary-600 bg-slate-50 hover:bg-primary-50 rounded-xl transition">
                   <Edit2 className="w-4 h-4" />
                 </button>
+              )}
+            </div>
+
+            {isEditingCourse ? (
+              <div className="space-y-6">
+                <div className="relative">
+                  <label className="text-xs font-bold text-slate-700 uppercase mb-2 block">Nome do Curso</label>
+                  <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 overflow-hidden">
+                    <div className="pl-4 text-slate-400"><Search className="w-4 h-4"/></div>
+                    <input 
+                      type="text" 
+                      value={cursoSearch} 
+                      onChange={e => { setCursoSearch(e.target.value); setCursoId(null); setShowSuggestions(true) }} 
+                      className="w-full px-3 py-3 bg-transparent text-sm font-medium focus:outline-none"
+                      placeholder="Busque ou digite seu curso..."
+                    />
+                  </div>
+                  {showSuggestions && filteredCursos.length > 0 && (
+                    <div className="absolute top-full left-0 w-full md:w-1/2 mt-1 bg-white border border-slate-100 rounded-xl shadow-lg z-20 overflow-hidden p-2">
+                      {filteredCursos.map(c => (
+                        <button key={c.id} onClick={() => { setCursoSearch(c.nome); setCursoId(c.id); setShowSuggestions(false) }} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100">
+                          {c.nome}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                  <div className="md:col-span-1">
+                    <label className="text-[10px] font-bold text-slate-700 uppercase mb-2 block flex items-center gap-1">Nota Geral <span className="text-[9px] text-slate-400 normal-case font-normal">(Referência)</span></label>
+                    <input type="number" placeholder="Ex: 750" value={notaGeral} onChange={e => setNotaGeral(e.target.value ? Number(e.target.value) : '')} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                  {['matematica', 'natureza', 'linguagens', 'humanas', 'redacao'].map(area => (
+                    <div key={area} className="md:col-span-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block truncate">{area}</label>
+                      <input type="number" placeholder="—" value={notaAreas[area] || ''} onChange={e => setNotaAreas({...notaAreas, [area]: Number(e.target.value)})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-3 justify-end pt-2">
+                  <button onClick={() => setIsEditingCourse(false)} className="px-6 py-2.5 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition">Cancelar</button>
+                  <button onClick={handleSaveCourseData} disabled={isPending} className="px-8 py-2.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition">Salvar Metas</button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <h3 className="text-2xl font-extrabold text-slate-900 break-words mb-4">{curso || <span className="text-slate-300 italic font-medium text-lg">Ainda não definido</span>}</h3>
+                {notaGeral && (
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-sm font-bold text-primary-700 bg-primary-50 px-3 py-1 rounded-lg">Meta: {notaGeral} pts</span>
+                  </div>
+                )}
+                {Object.keys(notaAreas).length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(notaAreas).map(([area, val]) => (
+                      <span key={area} className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200 uppercase tracking-wider">{area}: {val}</span>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
 
           {/* MATÉRIAS E NÍVEIS */}
-          <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+          <div className={`bg-white rounded-3xl p-6 border border-slate-100 shadow-sm ${isEditingCourse ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
             <div className="flex items-center gap-2 mb-6">
               <Compass className="w-5 h-5 text-primary-600" />
               <h3 className="text-lg font-bold text-slate-900">Meu perfil por disciplina</h3>
             </div>
 
-            {initialData.materias.length === 0 ? (
+            {sortedMaterias.length === 0 ? (
               <div className="text-center py-8 border-2 border-dashed border-slate-100 rounded-2xl">
                 <p className="text-slate-500 text-sm font-medium">Nenhuma matéria para avaliar.</p>
               </div>
             ) : (
               <div className="space-y-2">
-                {initialData.materias.map(m => {
+                {sortedMaterias.map(m => {
                   const nivelAtual = niveis[m.id]
                   const isEditing = editingSubjectId === m.id
 
@@ -390,11 +524,7 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
                               key={nivel}
                               onClick={() => handleUpdateLevelInline(m.id, nivel)}
                               disabled={isPending}
-                              className={`flex-1 md:w-24 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors ${
-                                niveis[m.id] === nivel 
-                                  ? 'bg-white text-primary-700 shadow-sm' 
-                                  : 'text-slate-500 hover:text-slate-700'
-                              }`}
+                              className={`flex-1 md:w-24 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors ${niveis[m.id] === nivel ? 'bg-white text-primary-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                             >
                               {nivel === 'intermediario' ? 'Interm.' : nivel}
                             </button>
@@ -403,11 +533,7 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
                       ) : (
                         <div className="flex items-center justify-between md:justify-end w-full md:w-auto gap-4">
                           {nivelAtual ? (
-                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md ${
-                              nivelAtual === 'iniciante' ? 'bg-orange-100 text-orange-700' :
-                              nivelAtual === 'intermediario' ? 'bg-blue-100 text-blue-700' :
-                              'bg-emerald-100 text-emerald-700'
-                            }`}>
+                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md ${nivelAtual === 'iniciante' ? 'bg-orange-100 text-orange-700' : nivelAtual === 'intermediario' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
                               {nivelAtual === 'intermediario' ? 'Intermediário' : nivelAtual}
                             </span>
                           ) : (
