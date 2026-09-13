@@ -5,8 +5,8 @@ import ConfirmModal from '@/components/ConfirmModal'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useToast } from '@/components/ToastContext'
 import { getTopicosEAssuntos } from '@/app/dashboard/materias/[id]/actions'
-import { saveTimerSession, getTimerHistory, deleteTimerSession, TimerMode, SessionSource } from './actions'
-import { ChevronDown, Settings, Maximize, Minimize, Plus, ChevronRight, HelpCircle, X, CheckCircle, XCircle, Clock, Book, FileText, Play, Pause, Check, Coffee, Trash2, RefreshCw, RotateCcw } from 'lucide-react'
+import { saveTimerSession, TimerMode, SessionSource } from './actions'
+import { ChevronDown, Settings, Maximize, Minimize, Plus, CheckCircle, XCircle, Clock, Book, FileText, Play, Pause, Check, Coffee, RefreshCw, RotateCcw, HelpCircle, X } from 'lucide-react'
 
 interface Materia {
   id: string
@@ -30,54 +30,17 @@ interface Assunto {
   is_done: boolean
 }
 
-interface StudySession {
-  id: string
-  duration_seconds: number
-  questions_total?: number
-  questions_done: number
-  questions_wrong: number
-  session_date: string
-  source?: SessionSource
-  timer_mode?: TimerMode
-  materias?: { name: string }
-  assuntos?: { name: string }
-}
-
 interface TimerClientProps {
   initialMaterias: Materia[]
-  initialHistory: StudySession[]
   initialContext?: {
     materiaId: string
     assuntoId: string
   }
 }
-// --- MOCK DATA E TUTORIAL ---
+
 const MOCK_MATERIAS: Materia[] = [
   { id: 'mock1', name: 'Matemática', goalHours: 5, studiedHours: 0, studiedMinutes: 0, progress: 0 },
   { id: 'mock2', name: 'Física', goalHours: 4, studiedHours: 0, studiedMinutes: 0, progress: 0 }
-]
-
-const MOCK_HISTORY: StudySession[] = [
-  {
-    id: 'mock-session-1',
-    duration_seconds: 5400,
-    questions_total: 30,
-    questions_done: 25,
-    questions_wrong: 5,
-    session_date: new Date().toISOString().split('T')[0],
-    materias: { name: 'Matemática' },
-    assuntos: { name: 'Geometria Plana' }
-  },
-  {
-    id: 'mock-session-2',
-    duration_seconds: 3600,
-    questions_total: 17,
-    questions_done: 15,
-    questions_wrong: 2,
-    session_date: new Date().toISOString().split('T')[0],
-    materias: { name: 'Física' },
-    assuntos: { name: 'Cinemática' }
-  }
 ]
 
 const TUTORIAL_STEPS = [
@@ -95,11 +58,6 @@ const TUTORIAL_STEPS = [
     id: 'step-timer',
     title: "Só você e o relógio.",
     text: "Inicie o timer e esqueça o mundo ao redor. Foque apenas no que importa com um design minimalista."
-  },
-  {
-    id: 'step-history',
-    title: "Organização é essencial!",
-    text: "Quando finalizar, tudo fica salvo assim! Fácil para procurar depois de alguns dias e revisar."
   }
 ]
 
@@ -169,7 +127,6 @@ function ClockDisplay({ isRunning, phase, timerConfig, onPhaseChange, initialSec
   )
 }
 
-// Helpers seguros para parse de inputs de números para barrar 'abc' no front
 const parseStrictIntInput = (val: string): number => {
   const trimmed = val.trim()
   if (trimmed === '') return 0
@@ -177,7 +134,7 @@ const parseStrictIntInput = (val: string): number => {
   return parseInt(trimmed, 10)
 }
 
-export default function TimerClient({ initialMaterias, initialHistory, initialContext }: TimerClientProps) {
+export default function TimerClient({ initialMaterias, initialContext }: TimerClientProps) {
   const [isTutorialActive, setIsTutorialActive] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
 
@@ -187,16 +144,14 @@ export default function TimerClient({ initialMaterias, initialHistory, initialCo
   const [isRunning, setIsRunning] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
-  const [isMounted, setIsMounted] = useState(false)
   const [resetKey, setResetKey] = useState(0)
   const { toast } = useToast()
-  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
+  
   const [isResetTimerConfirmOpen, setIsResetTimerConfirmOpen] = useState(false)
   const router = useRouter()
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
   const [pendingPath, setPendingPath] = useState<string | null>(null)
 
-  
   const [pomodoroCycles, setPomodoroCycles] = useState(0)
   const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null)
   const totalStudySecondsRef = useRef(totalStudySeconds)
@@ -216,13 +171,9 @@ export default function TimerClient({ initialMaterias, initialHistory, initialCo
     autoStartRest: false
   })
   const [draftConfig, setDraftConfig] = useState(timerConfig)
-
-  const [showHistory, setShowHistory] = useState(false)
-  const [historySessions, setHistorySessions] = useState<StudySession[]>(initialHistory)
-  const [expandedDates, setExpandedDates] = useState<string[]>([])
   const [isSettingsConfirmOpen, setIsSettingsConfirmOpen] = useState(false)
 
-const [materias, setMaterias] = useState<Materia[]>(initialMaterias)
+  const [materias, setMaterias] = useState<Materia[]>(initialMaterias)
   const [selectedMateriaId, setSelectedMateriaId] = useState<string>(initialContext?.materiaId || '')
   const [topicos, setTopicos] = useState<Topico[]>([])
   const [assuntos, setAssuntos] = useState<Assunto[]>([])
@@ -244,13 +195,11 @@ const [materias, setMaterias] = useState<Materia[]>(initialMaterias)
   })
 
   useEffect(() => {
-    setIsMounted(true)
     const hasSeenTutorial = localStorage.getItem('revyza_has_seen_timer_tutorial')
     
     if (!hasSeenTutorial) {
       setIsTutorialActive(true)
       setCurrentStep(0)
-      setShowHistory(true)
       
       const fakeSeconds = 5717 
       setPhase('study')
@@ -282,13 +231,6 @@ const [materias, setMaterias] = useState<Materia[]>(initialMaterias)
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
-
-  useEffect(() => {
-    if (isTutorialActive && currentStep === 3) {
-      const todayStr = new Date().toISOString().split('T')[0]
-      if (!expandedDates.includes(todayStr)) setExpandedDates([...expandedDates, todayStr])
-    }
-  }, [isTutorialActive, currentStep])
 
   useEffect(() => {
     if (isTutorialActive) {
@@ -464,30 +406,7 @@ const [materias, setMaterias] = useState<Materia[]>(initialMaterias)
     return `${String(minutes).padStart(2, '0')}:${String(remSeconds).padStart(2, '0')}`
   }
 
-  const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1)
-
-  const formatDateToPortuguese = (dateStr: string) => {
-    const [year, month, day] = dateStr.split('-')
-    const date = new Date(Number(year), Number(month) - 1, Number(day))
-    
-    const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
-    let formatted = date.toLocaleDateString('pt-BR', options)
-    return capitalize(formatted).replace('-feira', '-feira')
-  }
-
   const displayMaterias = isTutorialActive ? MOCK_MATERIAS : materias
-  const displayHistory = isTutorialActive ? MOCK_HISTORY : historySessions
-
-  const groupedHistory = displayHistory.reduce((acc, session) => {
-    if (!acc[session.session_date]) acc[session.session_date] = []
-    acc[session.session_date].push(session)
-    return acc
-  }, {} as Record<string, StudySession[]>)
-
-  const toggleDate = (dateStr: string) => {
-    if (expandedDates.includes(dateStr)) setExpandedDates(expandedDates.filter(d => d !== dateStr))
-    else setExpandedDates([...expandedDates, dateStr])
-  }
 
   const handleStart = () => {
     if (!selectedMateriaId) {
@@ -597,7 +516,7 @@ const [materias, setMaterias] = useState<Materia[]>(initialMaterias)
     const today = new Date()
     const session_date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
-const result = await saveTimerSession({
+    const result = await saveTimerSession({
       materia_id: selectedMateriaId,
       assunto_id: selectedAssuntoId || null,
       duration_seconds: totalStudySeconds,
@@ -605,7 +524,6 @@ const result = await saveTimerSession({
       questions_wrong: qWrong,
       session_date,
       source: 'timer',
-      // Converte o estado local para o tipo esperado pelo backend
       timer_mode: timerConfig.type,
       pomodoro_cycles: pomodoroCycles,
       started_at: sessionStartedAt,
@@ -622,41 +540,12 @@ const result = await saveTimerSession({
       setResetKey(prev => prev + 1)
       setIsFinishModalOpen(false)
       toast("Sessão salva com sucesso!", "success")
-      
-      const historyResult = await getTimerHistory()
-      if (historyResult.success && historyResult.data) {
-        const formattedHistory = historyResult.data.map((session: any) => ({
-          ...session,
-          materias: Array.isArray(session.materias) ? session.materias[0] : session.materias,
-          assuntos: Array.isArray(session.assuntos) ? session.assuntos[0] : session.assuntos,
-        })) as StudySession[]
-        
-        setHistorySessions(formattedHistory)
-      }
-} else {
-      // Adiciona um fallback em string para satisfazer o TypeScript
+    } else {
       toast(result.error || "Ocorreu um erro desconhecido ao salvar.", "error")
     }
 
     setIsLoading(false)
   }
-
-  const executeDeleteSession = async () => {
-    if (!sessionToDelete) return
-    setIsLoading(true)
-    const result = await deleteTimerSession(sessionToDelete)
-    
-    if (result.success) {
-      setHistorySessions(prev => prev.filter(session => session.id !== sessionToDelete))
-      toast("Registro excluído.", "success")
-    } else {
-      toast('Erro ao excluir registro: ' + result.error, "error")
-    }
-    setIsLoading(false)
-    setSessionToDelete(null)
-  }
-
-  const handleDeleteSession = (id: string) => setSessionToDelete(id)
 
   const executeSaveSettings = () => {
     setTimerConfig(draftConfig)
@@ -746,18 +635,7 @@ const result = await saveTimerSession({
     if (result.success) {
       setIsManualModalOpen(false)
       toast("Sessão manual salva com sucesso!", "success")
-      
-      const historyResult = await getTimerHistory()
-      if (historyResult.success && historyResult.data) {
-        const formattedHistory = historyResult.data.map((session: any) => ({
-          ...session,
-          materias: Array.isArray(session.materias) ? session.materias[0] : session.materias,
-          assuntos: Array.isArray(session.assuntos) ? session.assuntos[0] : session.assuntos,
-        })) as StudySession[]
-        setHistorySessions(formattedHistory)
-      }
-} else {
-      // Adiciona um fallback em string para satisfazer o TypeScript
+    } else {
       toast(result.error || "Ocorreu um erro desconhecido ao salvar.", "error")
     }
     setIsLoading(false)
@@ -766,7 +644,6 @@ const result = await saveTimerSession({
   const selectedMateriaName = selectedMateriaId ? (materias.find(m => m.id === selectedMateriaId)?.name || 'Desconhecido') : 'Nenhuma'
   const selectedAssuntoName = selectedAssuntoId ? (assuntos.find(a => a.id === selectedAssuntoId)?.name || 'Desconhecido') : 'Sem Assunto'
 
-  // Dinâmica UI de Acertos (Usando Helper Seguro)
   const currentQTotal = Number.isNaN(parseStrictIntInput(questionsTotal)) ? 0 : parseStrictIntInput(questionsTotal)
   const currentQWrong = Number.isNaN(parseStrictIntInput(questionsWrong)) ? 0 : parseStrictIntInput(questionsWrong)
   const currentQCorretas = Math.max(0, currentQTotal - currentQWrong)
@@ -933,7 +810,7 @@ const result = await saveTimerSession({
         <div className="fixed inset-0 bg-black/80 z-50 transition-opacity" />
       )}
 
-      <div className="max-w-7xl w-full flex-1 flex flex-col justify-between relative">
+      <div className="max-w-7xl w-full flex-1 flex flex-col relative">
         
         <div className="mb-8 relative z-40">
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Timer</h1>
@@ -1020,103 +897,6 @@ const result = await saveTimerSession({
           {renderTimerContent()}
         </div>
 
-        <div id="step-history" className={`w-full pb-8 flex flex-col ${isTutorialActive && currentStep === 3 ? 'relative z-[60] bg-white p-6 rounded-3xl shadow-2xl ring-4 ring-primary-500' : 'relative z-40'}`}>
-          {isTutorialActive && currentStep === 3 && <div className="absolute inset-0 z-[65] rounded-3xl" onClick={(e) => e.stopPropagation()} />}
-          
-          <button 
-            onClick={() => setShowHistory(!showHistory)}
-            className="flex items-center justify-center w-full md:w-auto gap-2 mb-4 hover:opacity-80 transition-opacity relative z-50"
-          >
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">HISTÓRICO</h3>
-            <Plus className={`w-4 h-4 text-slate-900 transition-transform duration-300 ${showHistory ? 'rotate-45' : ''}`} />
-          </button>
-
-          <TutorialTooltip stepIndex={3} className="relative z-[70] mx-auto mb-6 slide-in-from-bottom-4" />
-          
-          {showHistory && (
-            <div className="w-full flex flex-col gap-3 animate-in slide-in-from-bottom-2 fade-in duration-200 relative z-50">
-              {Object.keys(groupedHistory).length === 0 ? (
-                <div className="text-sm text-slate-500 bg-white p-6 rounded-2xl text-center border border-slate-200 flex flex-col items-center gap-2 shadow-sm">
-                  <Clock className="w-8 h-8 text-slate-300 mb-1" />
-                  <p className="text-slate-600">Até agora você ainda não tem nada por aqui.</p>
-                  <p className="font-medium text-slate-700">Clique em <strong className="text-primary-600">Iniciar</strong> acima ou envie um estudo manual para começar!</p>
-                </div>
-              ) : (
-                Object.keys(groupedHistory)
-                  .sort((a, b) => b.localeCompare(a))
-                  .map(dateStr => (
-                  <div key={dateStr} className="flex flex-col gap-2">
-                    <button
-                      onClick={() => toggleDate(dateStr)}
-                      className="w-full flex items-center justify-between px-6 py-4 rounded-full border border-slate-200 hover:border-primary-600 transition-colors group bg-white shadow-sm hover:shadow"
-                    >
-                      <span className="text-sm font-bold text-slate-700 uppercase truncate pr-4">
-                        {formatDateToPortuguese(dateStr)}
-                      </span>
-                      <ChevronRight className={`w-5 h-5 flex-shrink-0 text-slate-400 group-hover:text-primary-600 transition-transform ${expandedDates.includes(dateStr) ? 'rotate-90' : ''}`} />
-                    </button>
-                    
-                    {expandedDates.includes(dateStr) && (
-                      <div className="flex flex-col gap-3 px-2 pb-2">
-                        {groupedHistory[dateStr].map(session => {
-                           const historicoFeitas = session.questions_total !== undefined && session.questions_total !== null
-                              ? session.questions_total 
-                              : session.questions_done + session.questions_wrong;
-
-                           return (
-                            <div key={session.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm mx-1 sm:mx-2 group relative">
-                              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                                <div className="flex items-center gap-2">
-                                  <Book className="w-4 h-4 flex-shrink-0 text-primary-600" />
-                                  <span className="font-bold text-slate-800 text-sm truncate max-w-[120px] sm:max-w-xs">{session.materias?.name || 'Sem Matéria'}</span>
-                                  {session.source === 'manual' && (
-                                    <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-500 rounded uppercase tracking-wider border border-slate-200">
-                                      Manual
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <div className="flex items-center gap-2">
-                                    <Clock className="w-4 h-4 flex-shrink-0 text-slate-400" />
-                                    <span className="text-sm font-bold text-slate-700">{formatTime(session.duration_seconds)}</span>
-                                  </div>
-                                  <button 
-                                    onClick={() => handleDeleteSession(session.id)}
-                                    disabled={isLoading}
-                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                                    title="Excluir estudo"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              </div>
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
-                                  <FileText className="w-4 h-4 flex-shrink-0 text-slate-400" />
-                                  <span className="truncate">{session.assuntos?.name || 'Sem Assunto'}</span>
-                                </div>
-                                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                                  <div className="flex items-center gap-1.5 bg-emerald-100 text-emerald-800 px-2 py-1 rounded-md text-xs font-bold border border-emerald-200">
-                                    <CheckCircle className="w-3.5 h-3.5" />
-                                    {historicoFeitas} TOTAIS
-                                  </div>
-                                  <div className="flex items-center gap-1.5 bg-red-100 text-red-800 px-2 py-1 rounded-md text-xs font-bold border border-red-200">
-                                    <XCircle className="w-3.5 h-3.5" />
-                                    {session.questions_wrong} ERRADAS
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                           )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
       </div>
 
       {isSettingsOpen && (
@@ -1432,15 +1212,6 @@ const result = await saveTimerSession({
           </div>
         </div>
       )}
-    <ConfirmModal
-      isOpen={!!sessionToDelete}
-      title="Excluir Registro"
-      message="Tem certeza que deseja excluir este registro de estudo do seu histórico?"
-      confirmText="Sim, excluir"
-      onConfirm={executeDeleteSession}
-      onCancel={() => setSessionToDelete(null)}
-      isLoading={isLoading}
-    />
 
     <ConfirmModal
       isOpen={isResetTimerConfirmOpen}

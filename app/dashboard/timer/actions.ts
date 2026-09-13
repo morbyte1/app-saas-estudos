@@ -6,7 +6,6 @@ import { revalidatePath } from 'next/cache'
 export type TimerMode = 'chronometer' | 'pomodoro'
 export type SessionSource = 'timer' | 'manual'
 
-// Helpers de validação numérica estrita
 const isStrictPositiveInt = (v: any) => typeof v === 'number' && Number.isFinite(v) && Number.isInteger(v) && v > 0;
 const isStrictNonNegativeInt = (v: any) => typeof v === 'number' && Number.isFinite(v) && Number.isInteger(v) && v >= 0;
 
@@ -23,7 +22,6 @@ export async function saveTimerSession(data: {
   started_at?: string | null
   ended_at?: string | null
 }) {
-  // 1. Validação estrita de Tipos e Valores no Servidor
   if (!data.materia_id) {
     return { error: 'Matéria é obrigatória.' }
   }
@@ -44,7 +42,6 @@ export async function saveTimerSession(data: {
     return { error: 'Os ciclos Pomodoro devem ser um número inteiro não negativo.' }
   }
 
-  // Validação em runtime de enums
   if (data.source !== 'timer' && data.source !== 'manual') {
     return { error: 'Origem da sessão inválida.' }
   }
@@ -53,13 +50,11 @@ export async function saveTimerSession(data: {
     return { error: 'Modo do timer inválido.' }
   }
 
-  // Validação de Data (Formato YYYY-MM-DD e validade real)
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
   if (!data.session_date || !dateRegex.test(data.session_date) || Number.isNaN(Date.parse(data.session_date))) {
     return { error: 'Data da sessão inválida.' }
   }
 
-  // Validação de Timestamps
   if (data.started_at) {
     const startNum = Date.parse(data.started_at);
     if (Number.isNaN(startNum)) return { error: 'Data de início inválida.' }
@@ -78,20 +73,17 @@ export async function saveTimerSession(data: {
     return { error: 'Usuário não autenticado' }
   }
 
-  // 2. Validação de Existência e Posse: Matéria
   const { data: materiaCheck, error: materiaError } = await supabase
     .from('materias')
     .select('id')
     .eq('id', data.materia_id)
-    // O RLS garante que ele só vai achar a matéria se for do usuário
     .single()
 
   if (materiaError || !materiaCheck) {
     console.error('Tentativa de salvar com matéria inválida ou inacessível:', materiaError?.message)
-    return { error: 'Matéria inválida ou inexistente.' } // FAIL CLOSED
+    return { error: 'Matéria inválida ou inexistente.' }
   }
 
-  // 3. Verificação de consistência: Assunto existe e pertence à Matéria?
   if (data.assunto_id) {
     const { data: assuntoCheck, error: assuntoError } = await supabase
       .from('assuntos')
@@ -106,16 +98,15 @@ export async function saveTimerSession(data: {
 
     if (assuntoError || !assuntoCheck) {
       console.error('Tentativa de salvar com assunto inválido:', assuntoError?.message)
-      return { error: 'Assunto inválido ou inexistente.' } // FAIL CLOSED
+      return { error: 'Assunto inválido ou inexistente.' }
     }
     
     if ((assuntoCheck.topicos as any)?.materia_id !== data.materia_id) {
       console.error(`Assunto ${data.assunto_id} não pertence à matéria ${data.materia_id}.`)
-      return { error: 'Inconsistência: Este assunto não pertence à matéria selecionada.' } // FAIL CLOSED
+      return { error: 'Inconsistência: Este assunto não pertence à matéria selecionada.' }
     }
   }
 
-  // 4. Semântica de Retrocompatibilidade (Preservando legados)
   const correctQuestions = data.questions_total - data.questions_wrong
 
   const { error } = await supabase.from('study_sessions').insert({
@@ -141,6 +132,7 @@ export async function saveTimerSession(data: {
   }
 
   revalidatePath('/dashboard/timer')
+  revalidatePath('/dashboard/historico')
   return { success: true }
 }
 
@@ -200,5 +192,6 @@ export async function deleteTimerSession(id: string) {
   }
 
   revalidatePath('/dashboard/timer')
+  revalidatePath('/dashboard/historico')
   return { success: true }
 }

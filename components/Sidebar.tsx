@@ -37,7 +37,7 @@ const navigation = [
     subItems: [
       { id: 'timer', name: 'Timer', href: '/dashboard/timer' },
       { id: 'materias', name: 'Minhas matérias', href: '/dashboard/materias' },
-      { id: 'historico', name: 'Histórico', href: '#' }
+      { id: 'historico', name: 'Histórico', href: '/dashboard/historico' }
     ]
   },
   { 
