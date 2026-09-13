@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useToast } from '@/components/ToastContext'
-import { getTopicosEAssuntos } from '@/app/dashboard/materias/[id]/actions'
+import { getTopicosEAssuntos } from '@/app/painel/materias/[id]/actions'
 import { saveTimerSession, TimerMode, SessionSource } from './actions'
 import { ChevronDown, Settings, Maximize, Minimize, Plus, CheckCircle, XCircle, Clock, Book, FileText, Play, Pause, Check, Coffee, RefreshCw, RotateCcw, HelpCircle, X } from 'lucide-react'
 
