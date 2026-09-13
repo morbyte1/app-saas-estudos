@@ -45,7 +45,7 @@ const navigation = [
     name: 'Planejamento', 
     icon: Calendar,
     subItems: [
-      { id: 'meu-plano', name: 'Meu plano', href: '#' },
+      { id: 'meu-plano', name: 'Meu plano', href: '/dashboard/meu-plano' },
       { id: 'calendario', name: 'Calendário', href: '/dashboard/calendario' },
       { id: 'objetivo', name: 'Objetivo', href: '/dashboard/objetivo' }
     ]

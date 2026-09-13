@@ -23,13 +23,11 @@ export type EnemTopico = { name: string; assuntos: EnemAssunto[] };
 export type EnemMateria = { name: string; default_goal_ratio: number; topicos: EnemTopico[] };
 export type EnemData = { vestibular: string; exam_target: { name: string; target_date: string }; materias: EnemMateria[] };
 
-// Função centralizada para calcular a semana garantindo o fuso horário de Brasília (UTC-3)
-// Essa é a mesma regra usada no painel (Dashboard)
 const getWeekDetailsBRT = () => {
   const now = new Date()
   now.setUTCHours(now.getUTCHours() - 3)
   
-  const currentDayOfWeek = now.getUTCDay() === 0 ? 7 : now.getUTCDay() // 1=Segunda, 7=Domingo
+  const currentDayOfWeek = now.getUTCDay() === 0 ? 7 : now.getUTCDay()
   const daysRemainingWeek = 7 - currentDayOfWeek + 1
   
   const startOfWeek = new Date(now)
@@ -139,16 +137,13 @@ export async function getMaterias() {
     let lastStudiedDate: string | null = null
 
     mSessions.forEach(s => {
-      // Duração da semana
       if (s.session_date >= startOfWeekStr) {
         weeklySeconds += (s.duration_seconds || 0)
       }
-      // Questões (Todo o período para precisão histórica)
       if (s.questions_total && s.questions_total > 0) {
         totalQ += s.questions_total
         wrongQ += (s.questions_wrong || 0)
       }
-      // Último dia de estudo
       if (!lastStudiedDate || s.session_date > lastStudiedDate) {
         lastStudiedDate = s.session_date
       }
@@ -158,7 +153,6 @@ export async function getMaterias() {
     const studiedMinutes = Math.floor((weeklySeconds % 3600) / 60)
     const goalHours = m.goal_hours || 1
     
-    // Matemática exata do Dashboard:
     const weeklyStudiedHoursDecimal = weeklySeconds / 3600
     const missingHours = goalHours - weeklyStudiedHoursDecimal
     const requiredPacePerDay = missingHours > 0 ? (missingHours / daysRemainingWeek) : 0
@@ -166,7 +160,6 @@ export async function getMaterias() {
     
     const accuracy = totalQ > 0 ? Math.round(((totalQ - wrongQ) / totalQ) * 100) : null
 
-    // Cálculo de Status ESPELHADO do Dashboard
     let status: Materia['status'] = 'No ritmo'
     
     if (mSessions.length === 0) {
@@ -224,7 +217,7 @@ export async function importEnemDataAction(dailyHours: number) {
   }
 }
 
-export async function createMateria(data: { name: string, goalHours: number }) {
+export async function createMateria(data: { name: string, goalHours?: number }) {
   const supabase = await createClient()
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) return { error: 'Usuário não autenticado' }
@@ -232,7 +225,7 @@ export async function createMateria(data: { name: string, goalHours: number }) {
   const { error } = await supabase.from('materias').insert({
     user_id: user.id,
     name: data.name,
-    goal_hours: data.goalHours,
+    goal_hours: data.goalHours ?? 1,
     studied_hours: 0,
     studied_minutes: 0,
     progress: 0

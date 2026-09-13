@@ -1,13 +1,5 @@
 'use client'
 
-/* 
-  Regra Futura (Nível Automático):
-  Quando uma matéria atingir um piso mínimo de questões respondidas (a definir, sugestão inicial: 15–20), 
-  o nível dessa matéria passa a ser calculado automaticamente a partir da precisão registrada, 
-  substituindo a autoavaliação. Nesse estado, a matéria exibe a etiqueta "Com base no seu desempenho" 
-  em vez de "Autoavaliado", e o botão "Reavaliar" deixa de aparecer para ela.
-*/
-
 import { useState, useTransition, useMemo } from 'react'
 import { useToast } from '@/components/ToastContext'
 import { Target, ArrowRight, GraduationCap, Compass, CheckCircle2, Edit2, Check, X, Search, AlertTriangle } from 'lucide-react'
@@ -19,6 +11,7 @@ import {
   updateExamGoalTarget 
 } from './actions'
 import cursosJson from '@/data/cursos.json'
+import { mapMateriaToArea } from '@/lib/materiaUtils'
 
 interface Materia {
   id: string
@@ -46,16 +39,6 @@ interface GapInfo {
   faixa: 'alto' | 'moderado' | 'baixo'
   materias: Materia[]
   nivelRealStr: string
-}
-
-const mapMateriaToArea = (nome: string): string => {
-  const norm = nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
-  if (norm.includes('matematica')) return 'matematica'
-  if (['fisica', 'quimica', 'biologia', 'natureza'].some(a => norm.includes(a))) return 'natureza'
-  if (['historia', 'geografia', 'filosofia', 'sociologia', 'humanas'].some(a => norm.includes(a))) return 'humanas'
-  if (['portugues', 'literatura', 'ingles', 'espanhol', 'artes', 'linguagens'].some(a => norm.includes(a))) return 'linguagens'
-  if (norm.includes('redacao')) return 'redacao'
-  return 'outros'
 }
 
 const calcularGapsPorArea = (

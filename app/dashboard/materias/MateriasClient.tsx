@@ -4,6 +4,7 @@ import ConfirmModal from '@/components/ConfirmModal'
 import { useState } from 'react'
 import { Plus, Clock, BookOpen, Target, X, Trash2, Rocket, MoreVertical, AlertTriangle, Book, Percent } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useToast } from '@/components/ToastContext'
 import { createMateria, updateMateria, deleteMateria, importEnemDataAction, Materia } from './actions'
 
@@ -20,11 +21,10 @@ interface MateriasClientProps {
   initialEstatisticas: Estatisticas
 }
 
-// Helper para exibição amigável da data (Sincronizado com BRT)
 function getRelativeTime(dateStr: string | null) {
   if (!dateStr) return null
   const today = new Date()
-  today.setUTCHours(today.getUTCHours() - 3) // BRT
+  today.setUTCHours(today.getUTCHours() - 3) 
   
   const getYYYYMMDD = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
   const todayStr = getYYYYMMDD(today)
@@ -66,17 +66,17 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
   const [isSaving, setIsSaving] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [modalData, setModalData] = useState({ name: '', goalHours: '' })
+  const [modalData, setModalData] = useState({ name: '', goalHours: 1 })
 
   const openCreateModal = () => {
     setEditingId(null)
-    setModalData({ name: '', goalHours: '' })
+    setModalData({ name: '', goalHours: 1 })
     setIsModalOpen(true)
   }
 
   const openEditModal = (materia: Materia) => {
     setEditingId(materia.id)
-    setModalData({ name: materia.name, goalHours: materia.goalHours.toString() })
+    setModalData({ name: materia.name, goalHours: materia.goalHours })
     setIsModalOpen(true)
     setOpenDropdownId(null)
   }
@@ -87,18 +87,17 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
   }
 
   const handleSave = async () => {
-    if (!modalData.name.trim() || !modalData.goalHours) return toast('Preencha todos os campos.', 'error')
+    if (!modalData.name.trim()) return toast('Preencha o nome da matéria.', 'error')
     setIsSaving(true)
-    const goalNum = parseInt(modalData.goalHours)
 
     if (editingId) {
-      const res = await updateMateria(editingId, { name: modalData.name, goalHours: goalNum })
+      const res = await updateMateria(editingId, { name: modalData.name, goalHours: modalData.goalHours })
       if (res.success) {
         toast('Matéria atualizada!', 'success')
         window.location.reload()
       } else toast('Erro ao atualizar.', 'error')
     } else {
-      const res = await createMateria({ name: modalData.name, goalHours: goalNum })
+      const res = await createMateria({ name: modalData.name })
       if (res.success) {
         toast('Matéria criada!', 'success')
         window.location.reload()
@@ -135,7 +134,6 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
   return (
     <div className="min-h-screen bg-slate-50 p-8" onClick={() => setOpenDropdownId(null)}>
       <div className="max-w-7xl mx-auto">
-        {/* Cabeçalho */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Minhas Matérias</h1>
@@ -152,7 +150,6 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
           </button>
         </div>
 
-        {/* Resumo Compacto */}
         {materias.length > 0 && (
           <div className="mb-8 flex flex-col sm:flex-row flex-wrap items-center gap-x-4 gap-y-2 bg-white border border-slate-200 rounded-xl px-5 py-3 shadow-sm w-full md:w-max">
             <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
@@ -216,7 +213,6 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
                 onClick={() => router.push(`/dashboard/materias/${materia.id}`)}
                 className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm hover:shadow-md hover:border-primary-200 transition-all cursor-pointer group flex flex-col relative"
               >
-                {/* Nome e Status */}
                 <div className="flex justify-between items-start mb-5">
                   <div className="pr-6">
                     <h3 className="text-lg font-bold text-slate-900 group-hover:text-primary-600 transition-colors">{materia.name}</h3>
@@ -238,7 +234,6 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
                   </div>
                 </div>
 
-                {/* Progresso Semanal */}
                 <div className="mb-4">
                   <div className="flex justify-between items-center mb-1.5">
                     <span className="text-xs font-semibold text-slate-500">Progresso semanal</span>
@@ -249,9 +244,9 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
                   <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                     <div className="bg-primary-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${materia.progress}%` }}></div>
                   </div>
+                  <p className="text-[10px] text-slate-400 font-medium mt-1">Definido em <Link href="/dashboard/meu-plano" onClick={(e) => e.stopPropagation()} className="text-primary-600 hover:underline">Meu Plano</Link></p>
                 </div>
 
-                {/* Contexto e Histórico */}
                 <div className="mt-auto pt-3 border-t border-slate-100 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-medium text-slate-500">
                   <span className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-slate-400" />
@@ -283,7 +278,6 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
         )}
       </div>
 
-      {/* Modal Criar/Editar */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay" onClick={closeModal}>
           <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal" onClick={e => e.stopPropagation()}>
@@ -296,10 +290,6 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
                 <label className="block text-sm font-medium text-slate-700 mb-2">Nome da matéria</label>
                 <input type="text" value={modalData.name} onChange={e => setModalData({ ...modalData, name: e.target.value })} className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 bg-white" placeholder="Ex: Matemática" />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Meta semanal (Horas)</label>
-                <input type="number" min="1" value={modalData.goalHours} onChange={e => setModalData({ ...modalData, goalHours: e.target.value })} className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 bg-white" placeholder="Ex: 5" />
-              </div>
             </div>
             <div className="flex gap-3">
               <button onClick={closeModal} className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition">Cancelar</button>
@@ -309,7 +299,6 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
         </div>
       )}
 
-      {/* Confirmar Exclusão */}
       <ConfirmModal
         isOpen={!!materiaToDelete}
         title="Excluir Matéria"
