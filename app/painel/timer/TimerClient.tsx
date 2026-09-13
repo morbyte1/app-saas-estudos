@@ -352,7 +352,7 @@ export default function TimerClient({ initialMaterias, initialContext }: TimerCl
       
       if (anchor && anchor.href) {
         const url = new URL(anchor.href)
-        if (url.origin === window.location.origin && url.pathname !== '/dashboard/timer') {
+        if (url.origin === window.location.origin && url.pathname !== '/painel/timer') {
           e.preventDefault()
           e.stopPropagation() 
           setPendingPath(url.pathname)

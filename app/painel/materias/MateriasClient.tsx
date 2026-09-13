@@ -210,7 +210,7 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
             {materias.map(materia => (
               <div
                 key={materia.id}
-                onClick={() => router.push(`/dashboard/materias/${materia.id}`)}
+                onClick={() => router.push(`/painel/materias/${materia.id}`)}
                 className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm hover:shadow-md hover:border-primary-200 transition-all cursor-pointer group flex flex-col relative"
               >
                 <div className="flex justify-between items-start mb-5">
@@ -244,7 +244,7 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
                   <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                     <div className="bg-primary-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${materia.progress}%` }}></div>
                   </div>
-                  <p className="text-[10px] text-slate-400 font-medium mt-1">Definido em <Link href="/dashboard/meu-plano" onClick={(e) => e.stopPropagation()} className="text-primary-600 hover:underline">Meu Plano</Link></p>
+                  <p className="text-[10px] text-slate-400 font-medium mt-1">Definido em <Link href="/painel/meu-plano" onClick={(e) => e.stopPropagation()} className="text-primary-600 hover:underline">Meu Plano</Link></p>
                 </div>
 
                 <div className="mt-auto pt-3 border-t border-slate-100 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-medium text-slate-500">

@@ -75,7 +75,7 @@ export async function createQuestaoErro(data: {
   })
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/caderno')
+  revalidatePath('/painel/caderno')
   return { success: true }
 }
 
@@ -105,7 +105,7 @@ export async function editQuestaoErro(id: string, data: {
     .eq('user_id', user.id)
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/caderno')
+  revalidatePath('/painel/caderno')
   return { success: true }
 }
 
@@ -121,7 +121,7 @@ export async function deleteQuestaoErro(id: string) {
     .eq('user_id', user.id)
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/caderno')
+  revalidatePath('/painel/caderno')
   return { success: true }
 }
 
@@ -177,6 +177,6 @@ export async function handleRevisaoQuestao(
     }).eq('id', id)
   }
 
-  revalidatePath('/dashboard/caderno')
+  revalidatePath('/painel/caderno')
   return { success: true }
 }

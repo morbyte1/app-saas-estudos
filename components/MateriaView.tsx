@@ -172,7 +172,7 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
       {/* Cabeçalho */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-200">
         <div>
-          <Link href="/dashboard/materias" className="flex items-center text-sm font-semibold text-primary-600 hover:text-primary-700 w-fit transition-colors mb-4">
+          <Link href="/painel/materias" className="flex items-center text-sm font-semibold text-primary-600 hover:text-primary-700 w-fit transition-colors mb-4">
             <ChevronLeft className="w-4 h-4 mr-1" /> Voltar para Minhas Matérias
           </Link>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{materia.name}</h1>
@@ -189,7 +189,7 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
         </div>
         <div className="flex w-full md:w-auto">
           <Link 
-            href={`/dashboard/timer?materiaId=${materia.id}`} 
+            href={`/painel/timer?materiaId=${materia.id}`} 
             className="flex-1 md:flex-none justify-center flex items-center gap-2 px-6 py-3.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition shadow-sm"
           >
             <PlayCircle className="w-5 h-5" /> Estudar Agora
@@ -359,7 +359,7 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
             )}
             
             {sessions.length > 5 && (
-              <Link href="/dashboard/estatisticas" className="flex items-center justify-center w-full mt-6 py-2.5 text-sm text-primary-700 font-bold bg-primary-50 hover:bg-primary-100 rounded-xl transition-colors">
+              <Link href="/painel/estatisticas" className="flex items-center justify-center w-full mt-6 py-2.5 text-sm text-primary-700 font-bold bg-primary-50 hover:bg-primary-100 rounded-xl transition-colors">
                 Ver estatísticas completas
               </Link>
             )}

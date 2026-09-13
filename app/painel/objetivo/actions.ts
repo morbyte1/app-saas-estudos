@@ -61,7 +61,7 @@ export async function saveOnboardingComplete(data: {
     await supabase.from('user_objective_context').insert(payload)
   }
 
-  revalidatePath('/dashboard/objetivo')
+  revalidatePath('/painel/objetivo')
   return { success: true }
 }
 
@@ -86,7 +86,7 @@ export async function updateCursoDesejado(data: {
     .eq('user_id', user.id)
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/objetivo')
+  revalidatePath('/painel/objetivo')
   return { success: true }
 }
 
@@ -106,7 +106,7 @@ export async function updateNivelMateria(materiaId: string, nivel: string) {
     .eq('id', context.id)
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/objetivo')
+  revalidatePath('/painel/objetivo')
   return { success: true }
 }
 
@@ -123,6 +123,6 @@ export async function updateExamGoalTarget(examName: string, examDate: string) {
     await supabase.from('exam_goals').insert({ user_id: user.id, name: examName, target_date: examDate })
   }
 
-  revalidatePath('/dashboard/objetivo')
+  revalidatePath('/painel/objetivo')
   return { success: true }
 }

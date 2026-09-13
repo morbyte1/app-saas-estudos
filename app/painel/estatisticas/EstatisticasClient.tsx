@@ -221,7 +221,7 @@ export default function EstatisticasClient({ initialStats }: EstatisticasProps) 
               Comece a registrar seus estudos no Timer para ver seu desempenho.
             </p>
             <Link 
-              href="/dashboard/timer" 
+              href="/painel/timer" 
               className="px-6 py-3 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition shadow-sm"
             >
               Ir para o Timer

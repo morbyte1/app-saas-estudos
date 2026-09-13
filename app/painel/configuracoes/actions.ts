@@ -19,7 +19,7 @@ export async function updateUserEmail(email: string) {
   const supabase = await createClient()
   const { error } = await supabase.auth.updateUser(
     { email },
-    { emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://revyza.com.br'}/auth/callback?next=/dashboard/configuracoes` }
+    { emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://revyza.com.br'}/auth/callback?next=/painel/configuracoes` }
   )
   
   if (error) return { error: error.message }

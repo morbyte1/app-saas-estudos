@@ -654,7 +654,7 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
                 </div>
                 {sortedMaterias.length > 0 && sortedMaterias.length < 3 && (
                   <p className="text-xs text-slate-400 mt-5 text-center px-4">
-                    Cadastre mais matérias em <Link href="/dashboard/materias" className="text-primary-600 hover:text-primary-700 font-semibold transition-colors">Minhas Matérias</Link> para ver seu perfil completo por disciplina.
+                    Cadastre mais matérias em <Link href="/painel/materias" className="text-primary-600 hover:text-primary-700 font-semibold transition-colors">Minhas Matérias</Link> para ver seu perfil completo por disciplina.
                   </p>
                 )}
               </>

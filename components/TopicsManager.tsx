@@ -130,7 +130,7 @@ export default function TopicsManager({ materia, initialTopicos, initialAssuntos
           <button onClick={() => setIsTopicoModalOpen(true)} className="flex-1 md:flex-none justify-center flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition shadow-sm">
             <Plus className="w-4.5 h-4.5" /> Adicionar Tópico
           </button>
-          <Link href={`/dashboard/timer?materiaId=${materia.id}`} className="flex-1 md:flex-none justify-center flex items-center gap-2 px-6 py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition shadow-sm">
+          <Link href={`/painel/timer?materiaId=${materia.id}`} className="flex-1 md:flex-none justify-center flex items-center gap-2 px-6 py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition shadow-sm">
             <PlayCircle className="w-5 h-5" /> Estudar Agora
           </Link>
         </div>

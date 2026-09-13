@@ -210,7 +210,7 @@ export async function importEnemDataAction(dailyHours: number) {
     if (rpcError) throw rpcError
 
     revalidatePath('/painel')
-    revalidatePath('/dashboard/materias')
+    revalidatePath('/painel/materias')
     return { success: true }
   } catch (error: any) {
     return { error: error.message }
@@ -232,7 +232,7 @@ export async function createMateria(data: { name: string, goalHours?: number }) 
   })
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/materias')
+  revalidatePath('/painel/materias')
   return { success: true }
 }
 
@@ -245,7 +245,7 @@ export async function updateMateria(id: string, data: { name: string, goalHours:
     .eq('id', id).eq('user_id', user.id)
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/materias')
+  revalidatePath('/painel/materias')
   return { success: true }
 }
 
@@ -257,6 +257,6 @@ export async function deleteMateria(id: string) {
   const { error } = await supabase.from('materias').delete().eq('id', id).eq('user_id', user.id)
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/materias')
+  revalidatePath('/painel/materias')
   return { success: true }
 }

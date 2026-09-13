@@ -16,7 +16,7 @@ export default async function MateriaDetalhesPage({
   // Se houver erro ou não encontrar a matéria, redireciona de volta
   if (materiaError || !materia) {
     console.error("Matéria não encontrada ou erro:", materiaError)
-    redirect('/dashboard/materias')
+    redirect('/painel/materias')
   }
 
   // 3. Busca Tópicos, Assuntos e o histórico real da matéria

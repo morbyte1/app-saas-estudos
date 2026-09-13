@@ -131,8 +131,8 @@ export async function saveTimerSession(data: {
     return { error: 'Ocorreu um erro interno ao salvar. Tente novamente.' }
   }
 
-  revalidatePath('/dashboard/timer')
-  revalidatePath('/dashboard/historico')
+  revalidatePath('/painel/timer')
+  revalidatePath('/painel/historico')
   return { success: true }
 }
 
@@ -191,7 +191,7 @@ export async function deleteTimerSession(id: string) {
     return { error: error.message }
   }
 
-  revalidatePath('/dashboard/timer')
-  revalidatePath('/dashboard/historico')
+  revalidatePath('/painel/timer')
+  revalidatePath('/painel/historico')
   return { success: true }
 }

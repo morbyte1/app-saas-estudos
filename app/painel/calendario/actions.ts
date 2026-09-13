@@ -77,7 +77,7 @@ export async function createEvent(data: {
     return { error: error.message }
   }
 
-  revalidatePath('/dashboard/calendario')
+  revalidatePath('/painel/calendario')
   return { success: true, event: newEvent }
 }
 
@@ -114,7 +114,7 @@ export async function updateEvent(id: string, data: {
     return { error: error.message }
   }
 
-  revalidatePath('/dashboard/calendario')
+  revalidatePath('/painel/calendario')
   return { success: true, event: updatedEvent }
 }
 
@@ -142,7 +142,7 @@ export async function deleteEvent(id: string) {
     return { error: error.message }
   }
 
-  revalidatePath('/dashboard/calendario')
+  revalidatePath('/painel/calendario')
   return { success: true }
 }
 
@@ -170,7 +170,7 @@ export async function toggleEventStatus(id: string, is_done: boolean) {
     return { error: error.message }
   }
 
-  revalidatePath('/dashboard/calendario')
+  revalidatePath('/painel/calendario')
   return { success: true }
 }
 
@@ -233,6 +233,6 @@ export async function duplicateEvents(
     return { error: insertError.message }
   }
 
-  revalidatePath('/dashboard/calendario')
+  revalidatePath('/painel/calendario')
   return { success: true }
 }

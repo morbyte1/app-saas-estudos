@@ -186,7 +186,7 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
               )}
             </div>
             <div>
-              <Link href={currentStats.recommendation?.actionUrl || '/dashboard/materias'} className="inline-flex items-center gap-2 bg-white text-primary-900 px-6 py-3.5 rounded-xl font-bold hover:bg-primary-50 transition-colors shadow-sm w-max">
+              <Link href={currentStats.recommendation?.actionUrl || '/painel/materias'} className="inline-flex items-center gap-2 bg-white text-primary-900 px-6 py-3.5 rounded-xl font-bold hover:bg-primary-50 transition-colors shadow-sm w-max">
                 <Play className="w-4 h-4 fill-current" />
                 {currentStats.recommendation ? 'Começar estudo' : 'Ir para Matérias'}
               </Link>
@@ -320,7 +320,7 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-bold text-slate-900">Acompanhamento por Matéria</h2>
-            <Link href="/dashboard/materias" className="text-primary-600 text-sm font-semibold hover:text-primary-700">Configurar</Link>
+            <Link href="/painel/materias" className="text-primary-600 text-sm font-semibold hover:text-primary-700">Configurar</Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {stats.subjects.length === 0 ? (
@@ -371,7 +371,7 @@ export default function DashboardClient({ initialEvents, initialTasks, initialSt
           <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-bold text-slate-900">Planejado para hoje</h2>
-              <Link href="/dashboard/calendario" className="text-sm text-primary-600 font-semibold hover:text-primary-700">Ver Agenda</Link>
+              <Link href="/painel/calendario" className="text-sm text-primary-600 font-semibold hover:text-primary-700">Ver Agenda</Link>
             </div>
             <div className="flex flex-col gap-3">
               {eventsWithStatus.length === 0 ? (

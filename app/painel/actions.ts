@@ -542,7 +542,7 @@ export async function getDashboardStats() {
       duration: topIssue.subData.medianDurationMinutes,
       accuracy: topIssue.subData.recentAccuracy ?? topIssue.subData.accuracy,
       reason: topIssue.actionReason,
-      actionUrl: `/dashboard/timer?materiaId=${topIssue.subData.id}`
+      actionUrl: `/painel/timer?materiaId=${topIssue.subData.id}`
     }
   } else if (fallbackCandidates.length > 0) {
     fallbackCandidates.sort((a, b) => b.fallbackScore - a.fallbackScore)
@@ -555,7 +555,7 @@ export async function getDashboardStats() {
       duration: bestFallback.medianDurationMinutes,
       accuracy: bestFallback.recentAccuracy ?? bestFallback.accuracy,
       reason: 'Seu desempenho e frequência estão equilibrados nesta disciplina. Siga avançando com o estudo regular para consolidar ainda mais o domínio.',
-      actionUrl: `/dashboard/timer?materiaId=${bestFallback.id}`
+      actionUrl: `/painel/timer?materiaId=${bestFallback.id}`
     }
   }
 
@@ -629,6 +629,6 @@ export async function updateDailyGoal(hours: number) {
 
   if (error) return { error: error.message }
   revalidatePath('/painel')
-  revalidatePath('/dashboard/calendario')
+  revalidatePath('/painel/calendario')
   return { success: true }
 }

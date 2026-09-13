@@ -168,7 +168,7 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
                 <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-semibold text-amber-900">Defina seu curso em Objetivo para receber uma distribuição mais precisa baseada em prioridade.</p>
-                  <Link href="/dashboard/objetivo" className="text-xs font-bold text-amber-700 hover:underline mt-1 inline-block">Ir para Objetivo →</Link>
+                  <Link href="/painel/objetivo" className="text-xs font-bold text-amber-700 hover:underline mt-1 inline-block">Ir para Objetivo →</Link>
                 </div>
               </div>
             )}
@@ -178,7 +178,7 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
                 <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-semibold text-amber-900">Algumas matérias ainda não têm nível avaliado, o que reduz a precisão da distribuição: {materiasSemNivel.map(m => m.name).join(', ')}.</p>
-                  <Link href="/dashboard/objetivo" className="text-xs font-bold text-amber-700 hover:underline mt-1 inline-block">Avaliar agora →</Link>
+                  <Link href="/painel/objetivo" className="text-xs font-bold text-amber-700 hover:underline mt-1 inline-block">Avaliar agora →</Link>
                 </div>
               </div>
             )}

@@ -106,7 +106,7 @@ export async function salvarDisponibilidade(data: { horasDiasSemana: number, hor
     await supabase.from('user_plan_settings').insert({ user_id: user.id, ...payload })
   }
 
-  revalidatePath('/dashboard/meu-plano')
+  revalidatePath('/painel/meu-plano')
   return { success: true }
 }
 
@@ -123,7 +123,7 @@ export async function salvarFrequenciaRedacao(frequencia: number) {
     await supabase.from('user_plan_settings').insert({ user_id: user.id, redacao_frequencia_semanal: frequencia })
   }
 
-  revalidatePath('/dashboard/meu-plano')
+  revalidatePath('/painel/meu-plano')
   return { success: true }
 }
 
@@ -148,7 +148,7 @@ export async function ajustarHorasManualMateria(materiaId: string, horas: number
     await supabase.from('user_plan_settings').insert({ user_id: user.id, horas_manuais_override: overrides })
   }
 
-  revalidatePath('/dashboard/meu-plano')
+  revalidatePath('/painel/meu-plano')
   return { success: true }
 }
 
@@ -163,7 +163,7 @@ export async function aplicarDistribuicaoAsMateriasGoalHours(distribuicao: Recor
 
   await supabase.from('user_plan_settings').update({ updated_at: new Date().toISOString() }).eq('user_id', user.id)
 
-  revalidatePath('/dashboard/materias')
-  revalidatePath('/dashboard/meu-plano')
+  revalidatePath('/painel/materias')
+  revalidatePath('/painel/meu-plano')
   return { success: true }
 }
