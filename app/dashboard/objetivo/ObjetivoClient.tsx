@@ -40,7 +40,14 @@ interface ObjetivoClientProps {
   }
 }
 
-// Mapeamento local para identificar a área ENEM a partir do nome cadastrado pelo usuário
+interface GapInfo {
+  area: string
+  gap: number
+  faixa: 'alto' | 'moderado' | 'baixo'
+  materias: Materia[]
+  nivelRealStr: string
+}
+
 const mapMateriaToArea = (nome: string): string => {
   const norm = nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
   if (norm.includes('matematica')) return 'matematica'
@@ -49,6 +56,99 @@ const mapMateriaToArea = (nome: string): string => {
   if (['portugues', 'literatura', 'ingles', 'espanhol', 'artes', 'linguagens'].some(a => norm.includes(a))) return 'linguagens'
   if (norm.includes('redacao')) return 'redacao'
   return 'outros'
+}
+
+const calcularGapsPorArea = (
+  pesos: Record<string, number>,
+  niveis: Record<string, string>,
+  materias: Materia[]
+): GapInfo[] => {
+  const areaGroups: Record<string, Materia[]> = {}
+  
+  materias.forEach(m => {
+    const nivelStr = niveis[m.id]
+    if (!nivelStr) return
+    
+    const area = mapMateriaToArea(m.name)
+    if (area === 'outros') return
+    
+    if (!areaGroups[area]) areaGroups[area] = []
+    areaGroups[area].push(m)
+  })
+  
+  const gaps: GapInfo[] = []
+  const valNivel: Record<string, number> = { iniciante: 1, intermediario: 2, avancado: 3 }
+  const nomeNivel: Record<string, string> = { iniciante: 'iniciante', intermediario: 'intermediário', avancado: 'avançado' }
+
+  for (const [area, mats] of Object.entries(areaGroups)) {
+    let sum = 0
+    const niveisUnicos = new Set<string>()
+    
+    mats.forEach(m => {
+      const str = niveis[m.id]
+      sum += valNivel[str] || 0
+      niveisUnicos.add(nomeNivel[str] || str)
+    })
+    
+    const nivelMedio = sum / mats.length
+    const peso = pesos[area as keyof typeof pesos] || 1
+    const gap = peso * (3 - nivelMedio)
+    
+    let faixa: 'alto' | 'moderado' | 'baixo' = 'baixo'
+    if (gap >= 5) faixa = 'alto'
+    else if (gap >= 2 && gap < 5) faixa = 'moderado'
+    
+    const nivelRealStr = Array.from(niveisUnicos).join('/')
+
+    gaps.push({ area, gap, faixa, materias: mats, nivelRealStr })
+  }
+  
+  return gaps.sort((a, b) => b.gap - a.gap)
+}
+
+const gerarFraseAnaliseFoco = (gaps: GapInfo[], nomeCurso: string): string | null => {
+  if (gaps.length === 0) return null
+  
+  const altos = gaps.filter(g => g.faixa === 'alto')
+  const moderados = gaps.filter(g => g.faixa === 'moderado')
+  
+  const formatName = (g: GapInfo) => {
+    if (g.materias.length === 1) return g.materias[0].name
+    const map: Record<string, string> = {
+      matematica: 'Matemática',
+      natureza: 'Ciências da Natureza',
+      humanas: 'Ciências Humanas',
+      linguagens: 'Linguagens',
+      redacao: 'Redação'
+    }
+    return map[g.area] || g.area
+  }
+
+  if (altos.length === 0 && moderados.length === 0) {
+    return `Suas áreas mais importantes para ${nomeCurso} já estão em bom nível. Mantenha a consistência.`
+  }
+  
+  if (altos.length === 1) {
+    const g = altos[0]
+    return `${formatName(g)} é a área mais importante para ${nomeCurso} e ainda está em nível ${g.nivelRealStr} — é onde vale concentrar esforço agora.`
+  }
+  
+  if (altos.length >= 2) {
+    const g1 = altos[0]
+    const g2 = altos[1]
+    const uniqueLevels = Array.from(new Set([g1.nivelRealStr, g2.nivelRealStr].flatMap(s => s.split('/')))).join('/')
+    return `${formatName(g1)} e ${formatName(g2)}, as áreas mais relevantes para ${nomeCurso}, ainda estão em nível ${uniqueLevels} — vale priorizar essas áreas nas próximas semanas.`
+  }
+  
+  if (altos.length === 0 && moderados.length >= 1) {
+    if (moderados.length === 1) {
+      return `Você já tem uma base em ${formatName(moderados[0])} mas ainda há espaço pra evoluir nessa área antes da prova.`
+    } else {
+      return `Você já tem uma base em ${formatName(moderados[0])} e ${formatName(moderados[1])} mas ainda há espaço pra evoluir nessas áreas antes da prova.`
+    }
+  }
+  
+  return null
 }
 
 export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
@@ -76,7 +176,6 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
   const [cursoSearch, setCursoSearch] = useState(initialData.context?.curso_desejado || '')
   const [showSuggestions, setShowSuggestions] = useState(false)
 
-  // Autocomplete Lógica
   const normalizedSearch = cursoSearch.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
   const filteredCursos = useMemo(() => {
     if (!normalizedSearch) return []
@@ -179,7 +278,6 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
     return diff > 0 ? diff : 0
   }
 
-  // Ordenação de matérias baseada no curso selecionado
   const sortedMaterias = useMemo(() => {
     const arr = [...initialData.materias]
     if (!cursoId) return arr
@@ -194,33 +292,15 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
     })
   }, [initialData.materias, cursoId])
 
-  // Geração da Frase de Interpretação
   const getInterpretationPhrase = () => {
     if (!cursoId) return null
     const selectedCourse = cursosJson.find(c => c.id === cursoId)
     if (!selectedCourse) return null
 
-    const validMappedSubjects = initialData.materias.filter(m => mapMateriaToArea(m.name) !== 'outros')
-    const subjectsWithLevel = validMappedSubjects.filter(m => niveis[m.id])
+    const gaps = calcularGapsPorArea(selectedCourse.pesos, niveis, initialData.materias)
+    const texto = gerarFraseAnaliseFoco(gaps, selectedCourse.nome)
     
-    if (subjectsWithLevel.length < 2) {
-      return null
-    }
-
-    const highWeightAreas = Object.entries(selectedCourse.pesos)
-      .filter(([_, weight]) => weight === 3)
-      .map(([area]) => area)
-
-    const userSubjectsInHighWeight = validMappedSubjects.filter(m => highWeightAreas.includes(mapMateriaToArea(m.name)))
-    const inicianteSubjects = userSubjectsInHighWeight.filter(m => niveis[m.id] === 'iniciante')
-
-    if (inicianteSubjects.length > 0) {
-      const names = inicianteSubjects.slice(0, 2).map(m => m.name).join(' e ')
-      return `Análise de Foco: Para o curso de ${selectedCourse.nome}, as disciplinas de ${names} possuem peso máximo. Como seu nível atual nelas é iniciante, priorizar o nivelamento nessas áreas trará o maior impacto na sua nota final.`
-    } else if (userSubjectsInHighWeight.length > 0) {
-      return `Análise de Foco: Suas áreas de peso máximo para ${selectedCourse.nome} já estão com um bom embasamento. Mantenha a consistência nos estudos e foque na resolução prática de questões para blindar seus acertos.`
-    }
-    return null
+    return texto ? `Análise de Foco: ${texto}` : null
   }
 
   if (step === 1) {
@@ -369,7 +449,6 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
     )
   }
 
-  // DEFAULT VIEW (Step 0)
   const currentExamName = initialData.examGoal?.name || 'Não definido'
   const currentExamDate = initialData.examGoal?.target_date || null
   const daysRemaining = calculateDaysRemaining(currentExamDate)
@@ -383,7 +462,6 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
           <p className="text-sm text-slate-500 mt-2 font-medium">O contexto que norteia a urgência dos seus estudos diários.</p>
         </div>
 
-        {/* CONTADOR HERÓI */}
         <div className="bg-primary-900 text-white rounded-3xl p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8 shadow-lg relative overflow-hidden">
           <div className="absolute top-0 right-0 w-80 h-80 bg-primary-600 opacity-60 rounded-full blur-[80px] pointer-events-none translate-x-1/4 -translate-y-1/4"></div>
           
@@ -435,17 +513,13 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
           </div>
         </div>
 
-        {/* Parágrafo Analítico de Foco */}
         {interpretationPhrase && (
           <p className="text-slate-600 text-sm leading-relaxed px-2">
             {interpretationPhrase}
           </p>
         )}
 
-        {/* GRID INFERIOR */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* CURSO E METAS */}
           <div className={`bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col justify-center transition-all ${isEditingCourse ? 'lg:col-span-3' : 'lg:col-span-1'}`}>
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center gap-2"><GraduationCap className="w-4 h-4" /> Curso Desejado</span>
@@ -518,7 +592,6 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
             )}
           </div>
 
-          {/* MATÉRIAS E NÍVEIS */}
           <div className={`bg-white rounded-3xl p-6 border border-slate-100 shadow-sm ${isEditingCourse ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
             <div className="flex items-center gap-2 mb-6">
               <Compass className="w-5 h-5 text-primary-600" />
