@@ -156,6 +156,7 @@ const gerarFraseAnaliseFoco = (gaps: GapInfo[], nomeCurso: string): string | nul
 export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
+  const [examGoalState, setExamGoalState] = useState(initialData.examGoal)
   
   const isComplete = initialData.context?.onboarding_completo || false
   const [step, setStep] = useState(isComplete ? 0 : 1)
@@ -202,6 +203,7 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
         examName: finalExamName,
         examDate: finalExamDate,
         curso,
+        cursoId,
         niveis
       })
 
@@ -254,9 +256,9 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
     startTransition(async () => {
       const result = await updateExamGoalTarget(finalName, finalDate)
       if (result.success) {
+        setExamGoalState({ name: finalName, target_date: finalDate })
         setIsEditingExam(false)
         toast('Alvo atualizado.', 'success')
-        window.location.reload()
       }
     })
   }
@@ -288,8 +290,14 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
     if (!selectedCourse) return arr
 
     return arr.sort((a, b) => {
-      const weightA = selectedCourse.pesos[mapMateriaToArea(a.name) as keyof typeof selectedCourse.pesos] || 1
-      const weightB = selectedCourse.pesos[mapMateriaToArea(b.name) as keyof typeof selectedCourse.pesos] || 1
+      const areaA = mapMateriaToArea(a.name)
+      const areaB = mapMateriaToArea(b.name)
+      
+      if (areaA === 'outros' && areaB !== 'outros') return 1
+      if (areaB === 'outros' && areaA !== 'outros') return -1
+
+      const weightA = selectedCourse.pesos[areaA as keyof typeof selectedCourse.pesos] || 1
+      const weightB = selectedCourse.pesos[areaB as keyof typeof selectedCourse.pesos] || 1
       return weightB - weightA
     })
   }, [initialData.materias, cursoId])
@@ -302,7 +310,7 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
     const gaps = calcularGapsPorArea(selectedCourse.pesos, niveis, initialData.materias)
     const texto = gerarFraseAnaliseFoco(gaps, selectedCourse.nome)
     
-    return texto ? `Análise feito pelo Revyza: ${texto}` : null
+    return texto ? `Análise feita pelo Revyza: ${texto}` : null
   }
 
   if (step === 1) {
@@ -451,8 +459,8 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
     )
   }
 
-  const currentExamName = initialData.examGoal?.name || 'Não definido'
-  const currentExamDate = initialData.examGoal?.target_date || null
+  const currentExamName = examGoalState?.name || 'Não definido'
+  const currentExamDate = examGoalState?.target_date || null
   const daysRemaining = calculateDaysRemaining(currentExamDate)
   const interpretationPhrase = getInterpretationPhrase()
 
@@ -495,7 +503,12 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
                   </>
                 )}
                 <div className="flex gap-2 mt-2">
-                  <button onClick={() => setIsEditingExam(false)} className="flex-1 py-2 text-xs font-bold text-primary-200 hover:text-white transition">Cancelar</button>
+                  <button onClick={() => {
+                    setIsEditingExam(false)
+                    setExamType(currentExamName.includes('ENEM') ? 'ENEM' : 'OUTRO')
+                    setExamName(currentExamName)
+                    setExamDate(currentExamDate ? currentExamDate.substring(0, 10) : '')
+                  }} className="flex-1 py-2 text-xs font-bold text-primary-200 hover:text-white transition">Cancelar</button>
                   <button onClick={handleSaveExam} disabled={isPending} className="flex-1 py-2 bg-white text-primary-900 font-bold rounded-lg hover:bg-primary-50 transition">Salvar</button>
                 </div>
               </div>
@@ -571,7 +584,11 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
                 </div>
 
                 <div className="flex gap-3 justify-end pt-2">
-                  <button onClick={() => setIsEditingCourse(false)} className="px-6 py-2.5 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition">Cancelar</button>
+                  <button onClick={() => {
+                    setIsEditingCourse(false)
+                    setCursoSearch(initialData.context?.curso_desejado || '')
+                    setCursoId(initialData.context?.curso_id || null)
+                  }} className="px-6 py-2.5 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition">Cancelar</button>
                   <button onClick={handleSaveCourseData} disabled={isPending} className="px-8 py-2.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition">Salvar Metas</button>
                 </div>
               </div>
@@ -610,10 +627,16 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
                   {sortedMaterias.map(m => {
                     const nivelAtual = niveis[m.id]
                     const isEditing = editingSubjectId === m.id
+                    const isOutros = mapMateriaToArea(m.name) === 'outros'
 
                     return (
                       <div key={m.id} className="flex flex-col md:flex-row md:items-center justify-between p-3 border border-transparent hover:border-slate-100 hover:bg-slate-50 rounded-xl transition-all gap-3">
-                        <span className="font-bold text-slate-800 text-sm">{m.name}</span>
+                        <span className="font-bold text-slate-800 text-sm">
+                          {m.name}
+                          {isOutros && (
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-2">Área não identificada</span>
+                          )}
+                        </span>
                         
                         {isEditing ? (
                           <div className="flex bg-slate-200/60 p-1 rounded-xl shrink-0 w-full md:w-auto">

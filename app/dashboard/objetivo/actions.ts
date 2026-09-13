@@ -29,6 +29,7 @@ export async function saveOnboardingComplete(data: {
   examName: string
   examDate: string
   curso: string
+  cursoId: string | null
   niveis: Record<string, string>
 }) {
   const supabase = await createClient()
@@ -48,6 +49,7 @@ export async function saveOnboardingComplete(data: {
   const payload = {
     user_id: user.id,
     curso_desejado: data.curso || null,
+    curso_id: data.cursoId,
     nivel_percebido: data.niveis,
     onboarding_completo: true,
     updated_at: new Date().toISOString()
