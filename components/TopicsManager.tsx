@@ -8,7 +8,7 @@ import { useToast } from '@/components/ToastContext'
 import { 
   createTopico, updateTopico, deleteTopico,
   createAssunto, updateAssunto, deleteAssunto, toggleAssunto 
-} from '@/app/dashboard/materias/[id]/actions'
+} from '@/app/painel/materias/[id]/actions'
 
 interface Materia { id: string, name: string }
 interface Topico { id: string, name: string }

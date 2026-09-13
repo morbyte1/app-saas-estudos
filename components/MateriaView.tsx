@@ -11,7 +11,7 @@ import { useToast } from '@/components/ToastContext'
 import { 
   createTopico, updateTopico, deleteTopico, 
   createAssunto, updateAssunto, deleteAssunto, toggleAssunto 
-} from '@/app/dashboard/materias/[id]/actions'
+} from '@/app/painel/materias/[id]/actions'
 
 type Materia = any
 type Topico = any

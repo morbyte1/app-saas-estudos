@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ToastContext'
 import { Clock, Check, Edit2, AlertTriangle, Target, Save } from 'lucide-react'
 import Link from 'next/link'
@@ -18,6 +19,7 @@ interface Distribuicao {
   horasManuais: number | null
   motivoTexto: string
   weeklyStudiedHours: number
+  goalHoursAtual: number
 }
 
 interface MeuPlanoClientProps {
@@ -27,11 +29,13 @@ interface MeuPlanoClientProps {
     cursoId: string | null
     sugestaoRedacao: number
     totalHorasDisponiveis: number
+    horasRedacaoSemana: number
   }
 }
 
 export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
   const { toast } = useToast()
+  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   
   const [horasDias, setHorasDias] = useState(initialData.settings.horas_dias_semana)
@@ -46,19 +50,33 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
   const totalAlocado = initialData.distribuicao.reduce((acc, d) => acc + d.horasSugeridas, 0)
   const isOverAllocated = totalAlocado > totalCalculado
 
+  const materiasSemNivel = initialData.distribuicao.filter(d => d.motivoTexto.includes('Não avaliado'))
+  
+  const jaAplicado = initialData.distribuicao.every(d => 
+    d.goalHoursAtual === (d.horasManuais !== null ? d.horasManuais : d.horasSugeridas)
+  )
+
   const handleSaveAvailability = () => {
     startTransition(async () => {
       const res = await salvarDisponibilidade({ horasDiasSemana: horasDias, horasSabado, horasDomingo })
-      if (res.success) toast('Disponibilidade salva com sucesso!', 'success')
-      else toast('Erro ao salvar disponibilidade.', 'error')
+      if (res.success) {
+        toast('Disponibilidade salva com sucesso!', 'success')
+        router.refresh()
+      } else {
+        toast('Erro ao salvar disponibilidade.', 'error')
+      }
     })
   }
 
   const handleSaveRedacao = () => {
     startTransition(async () => {
       const res = await salvarFrequenciaRedacao(frequenciaRedacao)
-      if (res.success) toast('Frequência de redação salva!', 'success')
-      else toast('Erro ao salvar frequência.', 'error')
+      if (res.success) {
+        toast('Frequência de redação salva!', 'success')
+        router.refresh()
+      } else {
+        toast('Erro ao salvar frequência.', 'error')
+      }
     })
   }
 
@@ -69,6 +87,7 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
       if (res.success) {
         toast('Horas ajustadas!', 'success')
         setEditingMateriaId(null)
+        router.refresh()
       } else {
         toast('Erro ao ajustar horas.', 'error')
       }
@@ -79,12 +98,16 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
     startTransition(async () => {
       const payload: Record<string, number> = {}
       initialData.distribuicao.forEach(d => {
-        payload[d.id] = d.horasSugeridas
+        payload[d.id] = d.horasManuais !== null ? d.horasManuais : d.horasSugeridas
       })
       
       const res = await aplicarDistribuicaoAsMateriasGoalHours(payload)
-      if (res.success) toast('Distribuição aplicada nas suas metas com sucesso!', 'success')
-      else toast('Erro ao aplicar distribuição.', 'error')
+      if (res.success) {
+        toast('Distribuição aplicada nas suas metas com sucesso!', 'success')
+        router.refresh()
+      } else {
+        toast('Erro ao aplicar distribuição.', 'error')
+      }
     })
   }
 
@@ -139,15 +162,27 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
             </div>
           </div>
 
-          {!initialData.cursoId && (
-            <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-amber-900">Defina seu curso em Objetivo para receber uma distribuição mais precisa baseada em prioridade.</p>
-                <Link href="/dashboard/objetivo" className="text-xs font-bold text-amber-700 hover:underline mt-1 inline-block">Ir para Objetivo →</Link>
+          <div className="space-y-3">
+            {!initialData.cursoId && (
+              <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-900">Defina seu curso em Objetivo para receber uma distribuição mais precisa baseada em prioridade.</p>
+                  <Link href="/dashboard/objetivo" className="text-xs font-bold text-amber-700 hover:underline mt-1 inline-block">Ir para Objetivo →</Link>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+            
+            {materiasSemNivel.length > 0 && (
+              <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-900">Algumas matérias ainda não têm nível avaliado, o que reduz a precisão da distribuição: {materiasSemNivel.map(m => m.name).join(', ')}.</p>
+                  <Link href="/dashboard/objetivo" className="text-xs font-bold text-amber-700 hover:underline mt-1 inline-block">Avaliar agora →</Link>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="space-y-3">
             {initialData.distribuicao.map(d => (
@@ -201,6 +236,7 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
           <div>
             <h2 className="text-lg font-bold text-slate-900">Frequência de Redação</h2>
             <p className="text-sm text-slate-500 font-medium mt-1">A recomendação baseada no seu curso é de <strong className="text-primary-600">{initialData.sugestaoRedacao}x por semana</strong>.</p>
+            <p className="text-xs text-slate-400 mt-1">Estimativa de 1h por redação, descontada do seu tempo total disponível.</p>
           </div>
           <div className="flex items-center gap-3 w-full md:w-auto">
             <input type="number" min="0" value={frequenciaRedacao} onChange={e => setFrequenciaRedacao(Number(e.target.value))} className="w-24 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary-500 text-center" />
@@ -222,14 +258,19 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
             <div className="w-full bg-primary-800 rounded-full h-2.5 overflow-hidden">
               <div className={`h-2.5 rounded-full transition-all duration-500 ${isOverAllocated ? 'bg-red-400' : 'bg-primary-400'}`} style={{ width: `${Math.min((totalAlocado / totalCalculado) * 100, 100)}%` }}></div>
             </div>
+            <span className="text-[10px] text-primary-300 mt-1 block">Inclui {initialData.horasRedacaoSemana}h reservadas para Redação</span>
             {isOverAllocated && (
               <p className="text-xs text-red-300 font-semibold mt-2">Você distribuiu mais horas do que a sua disponibilidade semanal.</p>
             )}
           </div>
 
           <div className="relative z-10 w-full md:w-auto flex flex-col items-end shrink-0">
-            <button onClick={handleApplyToPlan} disabled={isPending} className="w-full md:w-auto px-8 py-3.5 bg-white text-primary-900 font-bold rounded-xl hover:bg-primary-50 transition shadow-sm disabled:opacity-75 flex items-center justify-center gap-2">
-              <Check className="w-5 h-5" /> {isPending ? 'Aplicando...' : 'Aplicar ao meu plano'}
+            <button 
+              onClick={handleApplyToPlan} 
+              disabled={isPending || jaAplicado} 
+              className="w-full md:w-auto px-8 py-3.5 bg-white text-primary-900 font-bold rounded-xl hover:bg-primary-50 transition shadow-sm disabled:opacity-75 flex items-center justify-center gap-2"
+            >
+              <Check className="w-5 h-5" /> {isPending ? 'Aplicando...' : (jaAplicado ? 'Plano já aplicado' : 'Aplicar ao meu plano')}
             </button>
             {initialData.settings.updated_at && (
               <span className="text-[10px] text-primary-300 font-medium mt-2">

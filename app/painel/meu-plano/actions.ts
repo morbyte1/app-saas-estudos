@@ -36,14 +36,18 @@ export async function getMeuPlanoData() {
   const totalHorasDisponiveis = (settings.horas_dias_semana * 5) + settings.horas_sabado + settings.horas_domingo
   const materias = materiasRes.data || []
   
-  // Tipando o fallback para evitar os alertas do TypeScript
   const context = contextRes.data || { curso_id: null, nivel_percebido: {} }
+
+  // CORREÇÃO 3: Cálculo e desconto das horas de redação
+  const HORAS_POR_REDACAO = 1
+  const horasRedacaoSemana = (settings.redacao_frequencia_semanal || 0) * HORAS_POR_REDACAO
+  const horasDisponiveisParaMaterias = Math.max(totalHorasDisponiveis - horasRedacaoSemana, 0)
   
   const distribuicaoBase = calcularDistribuicaoSugerida(
     materias,
     context.curso_id || null,
     context.nivel_percebido || {},
-    totalHorasDisponiveis,
+    horasDisponiveisParaMaterias, // <-- Usando horas descontadas
     settings.prioridades_manuais || {},
     settings.horas_manuais_override || {}
   )
@@ -51,9 +55,14 @@ export async function getMeuPlanoData() {
   const distribuicao = distribuicaoBase.map(d => {
     const mSessions = weekSessions.filter(s => s.materia_id === d.id)
     const seconds = mSessions.reduce((acc, s) => acc + (s.duration_seconds || 0), 0)
+    
+    // CORREÇÃO 5: Buscando o goal_hours do banco para comparar no Client
+    const materiaOriginal = materias.find(m => m.id === d.id)
+
     return {
       ...d,
-      weeklyStudiedHours: seconds / 3600
+      weeklyStudiedHours: seconds / 3600,
+      goalHoursAtual: materiaOriginal?.goal_hours || 1 
     }
   })
 
@@ -71,7 +80,8 @@ export async function getMeuPlanoData() {
       distribuicao,
       cursoId: context.curso_id || null,
       sugestaoRedacao,
-      totalHorasDisponiveis
+      totalHorasDisponiveis,
+      horasRedacaoSemana
     }
   }
 }

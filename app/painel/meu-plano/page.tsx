@@ -9,7 +9,8 @@ export default async function MeuPlanoPage() {
     distribuicao: [],
     cursoId: null,
     sugestaoRedacao: 1,
-    totalHorasDisponiveis: 16
+    totalHorasDisponiveis: 16,
+    horasRedacaoSemana: 0
   }
 
   return <MeuPlanoClient initialData={data as any} />

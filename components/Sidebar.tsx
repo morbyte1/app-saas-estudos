@@ -27,7 +27,7 @@ const navigation = [
   { 
     id: 'inicio', 
     name: 'Início', 
-    href: '/dashboard',
+    href: '/painel',
     icon: LayoutGrid 
   },
   { 
@@ -35,9 +35,9 @@ const navigation = [
     name: 'Estudar', 
     icon: BookOpen,
     subItems: [
-      { id: 'timer', name: 'Timer', href: '/dashboard/timer' },
-      { id: 'materias', name: 'Minhas matérias', href: '/dashboard/materias' },
-      { id: 'historico', name: 'Histórico', href: '/dashboard/historico' }
+      { id: 'timer', name: 'Timer', href: '/painel/timer' },
+      { id: 'materias', name: 'Minhas matérias', href: '/painel/materias' },
+      { id: 'historico', name: 'Histórico', href: '/painel/historico' }
     ]
   },
   { 
@@ -45,9 +45,9 @@ const navigation = [
     name: 'Planejamento', 
     icon: Calendar,
     subItems: [
-      { id: 'meu-plano', name: 'Meu plano', href: '/dashboard/meu-plano' },
-      { id: 'calendario', name: 'Calendário', href: '/dashboard/calendario' },
-      { id: 'objetivo', name: 'Objetivo', href: '/dashboard/objetivo' }
+      { id: 'meu-plano', name: 'Meu plano', href: '/painel/meu-plano' },
+      { id: 'calendario', name: 'Calendário', href: '/painel/calendario' },
+      { id: 'objetivo', name: 'Objetivo', href: '/painel/objetivo' }
     ]
   },
   { 
@@ -55,9 +55,9 @@ const navigation = [
     name: 'Desempenho', 
     icon: BarChart2,
     subItems: [
-      { id: 'visao-geral', name: 'Visão geral', href: '/dashboard/estatisticas' },
+      { id: 'visao-geral', name: 'Visão geral', href: '/painel/estatisticas' },
       { id: 'evolucao', name: 'Evolução', href: '#' },
-      { id: 'caderno-erros', name: 'Caderno de erros', href: '/dashboard/caderno' }
+      { id: 'caderno-erros', name: 'Caderno de erros', href: '/painel/caderno' }
     ]
   },
 ]
@@ -263,7 +263,7 @@ export default function Sidebar() {
             </div>
 
             <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-              <Link href="/dashboard/configuracoes" onClick={() => setIsMobileDrawerOpen(false)} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white transition-colors border border-transparent hover:border-slate-200">
+              <Link href="/painel/configuracoes" onClick={() => setIsMobileDrawerOpen(false)} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white transition-colors border border-transparent hover:border-slate-200">
                 <div className="w-10 h-10 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm">
                   {userInitials}
                 </div>
@@ -324,11 +324,11 @@ export default function Sidebar() {
         </nav>
 
         <div className="mt-auto p-4 border-t border-slate-100 flex flex-col gap-1">
-          <Link href="/dashboard/configuracoes" className={`flex items-center gap-3 p-2.5 rounded-xl font-medium transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900 ${isMinimized ? 'justify-center' : ''}`}>
+          <Link href="/painel/configuracoes" className={`flex items-center gap-3 p-2.5 rounded-xl font-medium transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900 ${isMinimized ? 'justify-center' : ''}`}>
             <User className="w-5 h-5 text-slate-400" />
             {!isMinimized && <span>Meu Perfil</span>}
           </Link>
-          <Link href="/dashboard/configuracoes" className={`flex items-center gap-3 p-2.5 rounded-xl font-medium transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900 ${isMinimized ? 'justify-center' : ''}`}>
+          <Link href="/painel/configuracoes" className={`flex items-center gap-3 p-2.5 rounded-xl font-medium transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900 ${isMinimized ? 'justify-center' : ''}`}>
             <Settings className="w-5 h-5 text-slate-400" />
             {!isMinimized && <span>Configurações</span>}
           </Link>

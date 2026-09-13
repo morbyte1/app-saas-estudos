@@ -1,6 +1,7 @@
 import cursosJson from '@/data/cursos.json'
 import { mapMateriaToArea } from './materiaUtils'
 
+export const HORAS_POR_REDACAO = 1;
 export function calcularDistribuicaoSugerida(
   materias: { id: string; name: string; goal_hours: number }[],
   cursoId: string | null,
