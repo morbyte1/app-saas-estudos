@@ -209,7 +209,7 @@ export async function importEnemDataAction(dailyHours: number) {
     const { error: rpcError } = await supabase.rpc('import_enem_data', { p_user_id: user.id, p_materias: payload })
     if (rpcError) throw rpcError
 
-    revalidatePath('/dashboard')
+    revalidatePath('/painel')
     revalidatePath('/dashboard/materias')
     return { success: true }
   } catch (error: any) {

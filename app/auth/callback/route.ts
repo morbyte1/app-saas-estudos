@@ -5,7 +5,7 @@ export async function GET(request: Request) {
   
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type')
-  const next = searchParams.get('next') ?? searchParams.get('redirect_to') ?? '/dashboard'
+  const next = searchParams.get('next') ?? searchParams.get('redirect_to') ?? '/painel'
 
   if (token_hash && type) {
     const confirmUrl = new URL('/auth/confirmar', origin)

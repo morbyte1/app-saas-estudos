@@ -14,7 +14,7 @@ function ConfirmarContent() {
 
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type')
-  const next = searchParams.get('next') ?? '/dashboard'
+  const next = searchParams.get('next') ?? '/painel'
 
   const handleConfirm = () => {
     if (!token_hash || !type) {

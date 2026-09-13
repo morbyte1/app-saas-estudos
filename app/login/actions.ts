@@ -24,7 +24,7 @@ export async function loginAction(formData: FormData) {
 
   if (error) return { error: translateAuthError(error.message) }
   
-  redirect('/dashboard')
+  redirect('/painel')
 }
 
 export async function signupAction(formData: FormData) {
@@ -56,7 +56,7 @@ export async function signupAction(formData: FormData) {
 
   if (error) return { error: translateAuthError(error.message) }
   
-  redirect('/dashboard')
+  redirect('/painel')
 }
 
 export async function resetPasswordAction(email: string) {

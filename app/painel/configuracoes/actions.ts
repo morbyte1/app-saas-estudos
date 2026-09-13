@@ -11,7 +11,7 @@ export async function updateUserProfile(fullName: string) {
   })
   
   if (error) return { error: error.message }
-  revalidatePath('/dashboard', 'layout')
+  revalidatePath('/painel', 'layout')
   return { success: true }
 }
 
@@ -85,6 +85,6 @@ export async function updateExamPreference(examType: 'ENEM' | 'OUTRO') {
       await supabase.from('exam_goals').delete().eq('user_id', user.id)
     }
   }
-  revalidatePath('/dashboard', 'layout')
+  revalidatePath('/painel', 'layout')
   return { success: true }
 }

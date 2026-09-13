@@ -29,5 +29,5 @@ export async function updatePasswordAction(formData: FormData) {
   }
 
   // Redireciona de volta para o dashboard logado
-  redirect('/dashboard')
+  redirect('/painel')
 }

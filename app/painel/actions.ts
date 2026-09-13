@@ -20,7 +20,7 @@ export async function saveStudySession(duration_seconds: number) {
   })
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard')
+  revalidatePath('/painel')
   return { success: true }
 }
 
@@ -72,7 +72,7 @@ export async function createTask(data: {
   }).select().single()
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard')
+  revalidatePath('/painel')
   return { success: true, task: newTask }
 }
 
@@ -95,7 +95,7 @@ export async function updateTask(id: string, data: {
     .single()
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard')
+  revalidatePath('/painel')
   return { success: true, task: updatedTask }
 }
 
@@ -106,7 +106,7 @@ export async function deleteTask(id: string) {
 
   const { error } = await supabase.from('tasks').delete().eq('id', id).eq('user_id', user.id)
   if (error) return { error: error.message }
-  revalidatePath('/dashboard')
+  revalidatePath('/painel')
   return { success: true }
 }
 
@@ -117,7 +117,7 @@ export async function toggleTaskStatus(id: string, is_done: boolean) {
 
   const { error } = await supabase.from('tasks').update({ is_done }).eq('id', id).eq('user_id', user.id)
   if (error) return { error: error.message }
-  revalidatePath('/dashboard')
+  revalidatePath('/painel')
   return { success: true }
 }
 
@@ -601,7 +601,7 @@ export async function updateExamGoal(id: string, data: { name: string, target_da
   }).eq('id', id).eq('user_id', user.id).select().single()
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard')
+  revalidatePath('/painel')
   return { success: true, goal: updatedGoal }
 }
 
@@ -612,7 +612,7 @@ export async function deleteExamGoal(id: string) {
 
   const { error } = await supabase.from('exam_goals').delete().eq('id', id).eq('user_id', user.id)
   if (error) return { error: error.message }
-  revalidatePath('/dashboard')
+  revalidatePath('/painel')
   return { success: true }
 }
 
@@ -628,7 +628,7 @@ export async function updateDailyGoal(hours: number) {
   }, { onConflict: 'user_id' })
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard')
+  revalidatePath('/painel')
   revalidatePath('/dashboard/calendario')
   return { success: true }
 }

@@ -36,7 +36,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Check if user is trying to access dashboard or timer
-  if (request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/timer')) {
+  if (request.nextUrl.pathname.startsWith('/painel') || request.nextUrl.pathname.startsWith('/timer')) {
     if (!user) {
       // User not authenticated, redirect to login
       const url = request.nextUrl.clone()
