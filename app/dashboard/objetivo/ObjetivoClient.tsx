@@ -10,7 +10,8 @@
 
 import { useState, useTransition, useMemo } from 'react'
 import { useToast } from '@/components/ToastContext'
-import { Target, ArrowRight, GraduationCap, Compass, CheckCircle2, Edit2, Check, X, Search } from 'lucide-react'
+import { Target, ArrowRight, GraduationCap, Compass, CheckCircle2, Edit2, Check, X, Search, AlertTriangle } from 'lucide-react'
+import Link from 'next/link'
 import { 
   saveOnboardingComplete, 
   updateCursoDesejado, 
@@ -68,6 +69,7 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
   const [niveis, setNiveis] = useState<Record<string, string>>(initialData.context?.nivel_percebido || {})
 
   const [isEditingCourse, setIsEditingCourse] = useState(false)
+  const [isCourseChangeModalOpen, setIsCourseChangeModalOpen] = useState(false)
   const [isEditingExam, setIsEditingExam] = useState(false)
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null)
 
@@ -111,21 +113,34 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
     })
   }
 
-  const handleSaveCourseData = () => {
+  const executeSaveCourse = (clearMetas: boolean) => {
     startTransition(async () => {
       const payload = {
         curso: cursoSearch,
         curso_id: cursoId,
         nota_alvo_geral: notaGeral === '' ? null : notaGeral,
-        nota_alvo_areas: Object.keys(notaAreas).length > 0 ? notaAreas : null
+        nota_alvo_areas: clearMetas ? null : (Object.keys(notaAreas).length > 0 ? notaAreas : null)
       }
       const result = await updateCursoDesejado(payload)
       if (result.success) {
         setCurso(cursoSearch)
+        if (clearMetas) setNotaAreas({})
         setIsEditingCourse(false)
+        setIsCourseChangeModalOpen(false)
         toast('Curso e metas atualizados.', 'success')
       }
     })
+  }
+
+  const handleSaveCourseData = () => {
+    const originalCursoId = initialData.context?.curso_id;
+    const hasNotaAlvoAreas = initialData.context?.nota_alvo_areas && Object.keys(initialData.context.nota_alvo_areas).length > 0;
+
+    if (originalCursoId && cursoId && originalCursoId !== cursoId && hasNotaAlvoAreas) {
+      setIsCourseChangeModalOpen(true);
+    } else {
+      executeSaveCourse(false);
+    }
   }
 
   const handleSaveExam = () => {
@@ -185,11 +200,18 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
     const selectedCourse = cursosJson.find(c => c.id === cursoId)
     if (!selectedCourse) return null
 
+    const validMappedSubjects = initialData.materias.filter(m => mapMateriaToArea(m.name) !== 'outros')
+    const subjectsWithLevel = validMappedSubjects.filter(m => niveis[m.id])
+    
+    if (subjectsWithLevel.length < 2) {
+      return null
+    }
+
     const highWeightAreas = Object.entries(selectedCourse.pesos)
       .filter(([_, weight]) => weight === 3)
       .map(([area]) => area)
 
-    const userSubjectsInHighWeight = initialData.materias.filter(m => highWeightAreas.includes(mapMateriaToArea(m.name)))
+    const userSubjectsInHighWeight = validMappedSubjects.filter(m => highWeightAreas.includes(mapMateriaToArea(m.name)))
     const inicianteSubjects = userSubjectsInHighWeight.filter(m => niveis[m.id] === 'iniciante')
 
     if (inicianteSubjects.length > 0) {
@@ -508,51 +530,105 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
                 <p className="text-slate-500 text-sm font-medium">Nenhuma matéria para avaliar.</p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {sortedMaterias.map(m => {
-                  const nivelAtual = niveis[m.id]
-                  const isEditing = editingSubjectId === m.id
+              <>
+                <div className="space-y-2">
+                  {sortedMaterias.map(m => {
+                    const nivelAtual = niveis[m.id]
+                    const isEditing = editingSubjectId === m.id
 
-                  return (
-                    <div key={m.id} className="flex flex-col md:flex-row md:items-center justify-between p-3 border border-transparent hover:border-slate-100 hover:bg-slate-50 rounded-xl transition-all gap-3">
-                      <span className="font-bold text-slate-800 text-sm">{m.name}</span>
-                      
-                      {isEditing ? (
-                        <div className="flex bg-slate-200/60 p-1 rounded-xl shrink-0 w-full md:w-auto">
-                          {['iniciante', 'intermediario', 'avancado'].map(nivel => (
-                            <button
-                              key={nivel}
-                              onClick={() => handleUpdateLevelInline(m.id, nivel)}
-                              disabled={isPending}
-                              className={`flex-1 md:w-24 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors ${niveis[m.id] === nivel ? 'bg-white text-primary-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                            >
-                              {nivel === 'intermediario' ? 'Interm.' : nivel}
+                    return (
+                      <div key={m.id} className="flex flex-col md:flex-row md:items-center justify-between p-3 border border-transparent hover:border-slate-100 hover:bg-slate-50 rounded-xl transition-all gap-3">
+                        <span className="font-bold text-slate-800 text-sm">{m.name}</span>
+                        
+                        {isEditing ? (
+                          <div className="flex bg-slate-200/60 p-1 rounded-xl shrink-0 w-full md:w-auto">
+                            {['iniciante', 'intermediario', 'avancado'].map(nivel => (
+                              <button
+                                key={nivel}
+                                onClick={() => handleUpdateLevelInline(m.id, nivel)}
+                                disabled={isPending}
+                                className={`flex-1 md:w-24 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors ${niveis[m.id] === nivel ? 'bg-white text-primary-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                              >
+                                {nivel === 'intermediario' ? 'Interm.' : nivel}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between md:justify-end w-full md:w-auto gap-4">
+                            {nivelAtual ? (
+                              <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md ${nivelAtual === 'iniciante' ? 'bg-orange-100 text-orange-700' : nivelAtual === 'intermediario' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                {nivelAtual === 'intermediario' ? 'Intermediário' : nivelAtual}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-slate-100 text-slate-500">Pendente</span>
+                            )}
+                            <button onClick={() => setEditingSubjectId(m.id)} className="text-[11px] font-bold text-primary-600 hover:text-primary-700 uppercase">
+                              Reavaliar
                             </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between md:justify-end w-full md:w-auto gap-4">
-                          {nivelAtual ? (
-                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md ${nivelAtual === 'iniciante' ? 'bg-orange-100 text-orange-700' : nivelAtual === 'intermediario' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                              {nivelAtual === 'intermediario' ? 'Intermediário' : nivelAtual}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-slate-100 text-slate-500">Pendente</span>
-                          )}
-                          <button onClick={() => setEditingSubjectId(m.id)} className="text-[11px] font-bold text-primary-600 hover:text-primary-700 uppercase">
-                            Reavaliar
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                {sortedMaterias.length > 0 && sortedMaterias.length < 3 && (
+                  <p className="text-xs text-slate-400 mt-5 text-center px-4">
+                    Cadastre mais matérias em <Link href="/dashboard/materias" className="text-primary-600 hover:text-primary-700 font-semibold transition-colors">Minhas Matérias</Link> para ver seu perfil completo por disciplina.
+                  </p>
+                )}
+              </>
             )}
           </div>
         </div>
-
       </div>
+
+      {isCourseChangeModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[999] p-4 animate-overlay">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
+            <div className="flex justify-between items-start mb-5">
+              <h3 className="text-xl font-bold flex items-center gap-2 text-amber-600 leading-tight">
+                <AlertTriangle className="w-5 h-5 shrink-0" />
+                Suas metas por área foram definidas para {initialData.context?.curso_desejado}
+              </h3>
+              <button 
+                onClick={() => setIsCourseChangeModalOpen(false)} 
+                disabled={isPending}
+                className="p-1.5 hover:bg-slate-100 rounded-lg transition shrink-0"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            <p className="text-sm text-slate-600 font-medium leading-relaxed mb-6">
+              Trocar de curso pode tornar essas metas desatualizadas. O que você deseja fazer?
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => executeSaveCourse(false)}
+                disabled={isPending}
+                className="w-full px-4 py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition disabled:opacity-50"
+              >
+                Manter valores
+              </button>
+              <button
+                onClick={() => executeSaveCourse(true)}
+                disabled={isPending}
+                className="w-full px-4 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
+              >
+                Limpar e definir depois
+              </button>
+              <button
+                onClick={() => setIsCourseChangeModalOpen(false)}
+                disabled={isPending}
+                className="w-full px-4 py-2.5 text-slate-500 font-medium rounded-xl hover:bg-slate-50 transition disabled:opacity-50"
+              >
+                Cancelar troca
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
