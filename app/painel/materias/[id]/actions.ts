@@ -87,7 +87,7 @@ export async function createTopico(materiaId: string, name: string) {
     .single()
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/materias/[id]', 'page')
+  revalidatePath('/painel/materias/[id]', 'page')
   return { topico: data }
 }
 
@@ -105,7 +105,7 @@ export async function updateTopico(topicoId: string, name: string) {
     .single()
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/materias/[id]', 'page')
+  revalidatePath('/painel/materias/[id]', 'page')
   return { topico: data }
 }
 
@@ -121,7 +121,7 @@ export async function deleteTopico(topicoId: string) {
     .eq('user_id', user.id)
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/materias/[id]', 'page')
+  revalidatePath('/painel/materias/[id]', 'page')
   return { success: true }
 }
 
@@ -137,7 +137,7 @@ export async function createAssunto(topicoId: string, name: string, durationMinu
     .single()
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/materias/[id]', 'page')
+  revalidatePath('/painel/materias/[id]', 'page')
   return { assunto: data }
 }
 
@@ -155,7 +155,7 @@ export async function updateAssunto(assuntoId: string, name: string) {
     .single()
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/materias/[id]', 'page')
+  revalidatePath('/painel/materias/[id]', 'page')
   return { assunto: data }
 }
 
@@ -171,7 +171,7 @@ export async function deleteAssunto(assuntoId: string) {
     .eq('user_id', user.id)
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/materias/[id]', 'page')
+  revalidatePath('/painel/materias/[id]', 'page')
   return { success: true }
 }
 
@@ -187,7 +187,7 @@ export async function toggleAssunto(assuntoId: string, isDone: boolean) {
     .eq('user_id', user.id)
 
   if (error) return { error: error.message }
-  revalidatePath('/dashboard/materias/[id]', 'page')
+  revalidatePath('/painel/materias/[id]', 'page')
   return { success: true }
 }
 
