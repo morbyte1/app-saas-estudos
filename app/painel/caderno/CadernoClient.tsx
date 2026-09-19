@@ -1,521 +1,133 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Flame, X, AlertTriangle, CheckCircle2, Pencil, Trash2, Calendar } from 'lucide-react'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Plus, Search, CalendarDays, RotateCcw } from 'lucide-react'
 import { useToast } from '@/components/ToastContext'
 import ConfirmModal from '@/components/ConfirmModal'
-import { createQuestaoErro, deleteQuestaoErro, editQuestaoErro, handleRevisaoQuestao } from './actions'
+import { assuntoDoErro, dataLocal, formatarData, type CadernoErro, type CadernoRevisao } from '@/lib/caderno'
+import { deleteCadernoErro } from './actions'
+import CadernoForm from './CadernoForm'
+import ReviewFlow from './ReviewFlow'
 
-const MOTIVOS = ['Não sabia o conteúdo', 'Confundi conceitos', 'Descuido / Cálculo', 'Falta de atenção', 'Interpretação']
-const CONFIANCAS = ['Baixa', 'Média', 'Alta']
-
-interface CadernoClientProps {
-  initialMaterias: { id: string; name: string }[]
-  initialAssuntos: { id: string; name: string; materia_id: string }[]
-  initialErros: any[]
+interface Props {
+  erros: CadernoErro[]
+  revisoes: CadernoRevisao[]
+  materias: { id: string; name: string }[]
+  assuntos: { id: string; name: string; materia_id: string }[]
 }
 
-export default function CadernoClient({ initialMaterias, initialAssuntos, initialErros }: CadernoClientProps) {
+export default function CadernoClient({ erros, revisoes, materias, assuntos }: Props) {
+  const router = useRouter()
   const { toast } = useToast()
-  const [activeTab, setActiveTab] = useState<'banco' | 'revisar'>('banco')
-  const [erros, setErros] = useState(initialErros)
-  const [isSaving, setIsSaving] = useState(false)
-  const [editandoId, setEditandoId] = useState<string | null>(null)
+  const [area, setArea] = useState<'erros' | 'revisoes'>('erros')
+  const [status, setStatus] = useState('todos')
+  const [materia, setMateria] = useState('todas')
+  const [busca, setBusca] = useState('')
+  const [showNew, setShowNew] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [detailId, setDetailId] = useState<string | null>(null)
+  const [reviewId, setReviewId] = useState<string | null>(null)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const hoje = dataLocal()
 
-  // Estados do Modal de Exclusão
-  const [questaoToDelete, setQuestaoToDelete] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const ativos = erros.filter(e => e.estado !== 'resolvido')
+  const resolvidos = erros.filter(e => e.estado === 'resolvido')
+  const devidos = ativos.filter(e => !e.proxima_revisao || e.proxima_revisao <= hoje)
+  const vencidos = devidos.filter(e => e.proxima_revisao && e.proxima_revisao < hoje).sort((a, b) => (a.proxima_revisao || '').localeCompare(b.proxima_revisao || ''))
+  const hojePendentes = devidos.filter(e => !e.proxima_revisao || e.proxima_revisao === hoje)
+  const proximos = ativos.filter(e => e.proxima_revisao && e.proxima_revisao > hoje).sort((a, b) => (a.proxima_revisao || '').localeCompare(b.proxima_revisao || ''))
+  const texto = busca.trim().toLocaleLowerCase('pt-BR')
+  const filtrados = erros.filter(e => (status === 'todos' || (status === 'ativo' ? e.estado !== 'resolvido' : e.estado === 'resolvido'))
+    && (materia === 'todas' || e.materia_id === materia)
+    && (!texto || `${assuntoDoErro(e)} ${e.motivo_erro} ${e.enunciado || ''} ${e.resposta_correta || ''}`.toLocaleLowerCase('pt-BR').includes(texto)))
+  const detail = erros.find(e => e.id === detailId)
+  const editing = erros.find(e => e.id === editingId)
+  const reviewing = erros.find(e => e.id === reviewId)
 
-  // Sincroniza o estado local com as atualizações do servidor
-  useEffect(() => {
-    setErros(initialErros)
-  }, [initialErros])
-
-  // Form State
-  const [materiaId, setMateriaId] = useState('')
-  const [assuntoId, setAssuntoId] = useState('')
-  const [enunciado, setEnunciado] = useState('')
-  const [resposta, setResposta] = useState('')
-  const [motivo, setMotivo] = useState('')
-  const [confianca, setConfianca] = useState('')
-
-  // Review State
-  const [reviewIndex, setReviewIndex] = useState(0)
-  const [rascunho, setRascunho] = useState('')
-  const [showGabarito, setShowGabarito] = useState(false)
-  
-  // Re-evaluation State
-  const [isReevaluating, setIsReevaluating] = useState(false)
-  const [novoMotivo, setNovoMotivo] = useState('')
-  const [novaConfianca, setNovaConfianca] = useState('')
-
-  const filteredAssuntos = initialAssuntos.filter(a => a.materia_id === materiaId)
-  
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return 'Hoje'
-    const [y, m, d] = dateStr.split('-')
-    return `${d}/${m}/${y}`
-  }
-
-  const hojeStr = new Date().toISOString().split('T')[0]
-  
-  const pendentesRaw = erros.filter(e => {
-    const dataRev = e.proxima_revisao || hojeStr
-    return dataRev <= hojeStr
-  })
-
-  pendentesRaw.sort((a, b) => {
-    if (a.confianca === 'Alta' && b.confianca !== 'Alta') return -1
-    if (a.confianca !== 'Alta' && b.confianca === 'Alta') return 1
-    
-    const errA = a.erros_recorrentes_count || 0
-    const errB = b.erros_recorrentes_count || 0
-    return errB - errA
-  })
-
-  const pendentes: typeof erros = []
-  const pool = [...pendentesRaw]
-  let ultimaMateriaId: string | null = null
-
-  while (pool.length > 0) {
-    let idx = pool.findIndex(q => q.materia_id !== ultimaMateriaId)
-    if (idx === -1) idx = 0 
-    
-    const q = pool.splice(idx, 1)[0]
-    pendentes.push(q)
-    ultimaMateriaId = q.materia_id
-  }
-
-  const questaoAtual = pendentes[0] 
-
-  const resetForm = () => {
-    setEditandoId(null); setMateriaId(''); setAssuntoId(''); 
-    setEnunciado(''); setResposta(''); setMotivo(''); setConfianca('')
-  }
-
-  const handleEditClick = (erro: any) => {
-    setEditandoId(erro.id)
-    setMateriaId(erro.materia_id)
-    setAssuntoId(erro.assunto_id)
-    setEnunciado(erro.enunciado)
-    setResposta(erro.resposta_correta)
-    setMotivo(erro.motivo_erro)
-    setConfianca(erro.confianca)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  const handleDeleteClick = (id: string) => {
-    setQuestaoToDelete(id)
-  }
-
-  const executeDeleteQuestao = async () => {
-    if (!questaoToDelete) return
-    setIsDeleting(true)
-    
-    const res = await deleteQuestaoErro(questaoToDelete)
-    if (res.success) {
-      toast('Questão excluída com sucesso!', 'success')
-      setErros(erros.filter(e => e.id !== questaoToDelete))
-      if (editandoId === questaoToDelete) resetForm()
-    } else {
-      toast('Erro ao excluir a questão.', 'error')
-    }
-    
-    setIsDeleting(false)
-    setQuestaoToDelete(null)
-  }
-
-  const handleSaveQuestao = async () => {
-    if (!materiaId || !assuntoId || !enunciado || !resposta || !motivo || !confianca) {
-      toast('Preencha todos os campos para salvar a questão.', 'error')
-      return
-    }
-
-    setIsSaving(true)
-    const payload = {
-      materia_id: materiaId,
-      assunto_id: assuntoId,
-      enunciado,
-      resposta_correta: resposta,
-      motivo_erro: motivo,
-      confianca
-    }
-
-    let res
-    if (editandoId) {
-      res = await editQuestaoErro(editandoId, payload)
-    } else {
-      res = await createQuestaoErro(payload)
-    }
-
-    if (res.success) {
-      toast(editandoId ? 'Questão atualizada!' : 'Questão salva com sucesso!', 'success')
-      resetForm()
-      window.location.reload()
-    } else {
-      toast('Erro ao salvar a questão.', 'error')
-    }
-    setIsSaving(false)
-  }
-
-  const handleReviewAction = async (acertou: boolean) => {
-    if (!questaoAtual) return
-
-    if (acertou) {
-      const amanha = new Date()
-      amanha.setDate(amanha.getDate() + 1)
-      setErros(erros.map(e => e.id === questaoAtual.id ? { ...e, proxima_revisao: amanha.toISOString().split('T')[0] } : e))
-      
-      await handleRevisaoQuestao(questaoAtual.id, true)
-      avancarQuestao()
-    } else {
-      setNovoMotivo('')
-      setNovaConfianca('')
-      setIsReevaluating(true)
+  const remove = async () => {
+    if (!deleteId) return
+    setDeleting(true)
+    try {
+      const result = await deleteCadernoErro(deleteId)
+      if (result.error) return toast(result.error, 'error')
+      toast('Erro excluído.', 'success')
+      setDeleteId(null)
+      setDetailId(null)
+      router.refresh()
+    } catch {
+      toast('Não foi possível excluir o erro. Tente novamente.', 'error')
+    } finally {
+      setDeleting(false)
     }
   }
 
-  const confirmarErro = async () => {
-    if (!novoMotivo || !novaConfianca) {
-      toast('Selecione o novo motivo e confiança.', 'error')
-      return
-    }
-
-    const amanha = new Date()
-    amanha.setDate(amanha.getDate() + 1)
-    setErros(erros.map(e => e.id === questaoAtual.id ? { 
-      ...e, 
-      proxima_revisao: amanha.toISOString().split('T')[0],
-      motivo_erro: novoMotivo,
-      confianca: novaConfianca
-    } : e))
-
-    await handleRevisaoQuestao(questaoAtual.id, false, novoMotivo, novaConfianca)
-    setIsReevaluating(false)
-    avancarQuestao()
-  }
-
-  const avancarQuestao = () => {
-    setRascunho('')
-    setShowGabarito(false)
-    setReviewIndex(0)
-  }
-
-  return (
-    <div className={`min-h-screen p-8 transition-colors ${activeTab === 'revisar' ? 'bg-primary-50' : 'bg-slate-50'}`}>
-      <div className="max-w-7xl mx-auto">
-        
-        {/* TABS HEADER */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              {activeTab === 'banco' ? 'Banco de Questões' : 'Revisar'}
-            </h1>
-            <p className="text-sm text-slate-500 mt-2 font-medium">
-              {activeTab === 'banco' ? 'Gerencie seus erros e mapeie suas falhas' : 'Recupere o conteúdo na memória'}
-            </p>
-          </div>
-          <div className="flex bg-white p-1 rounded-xl shadow-sm border border-slate-200">
-            <button
-              onClick={() => { setActiveTab('banco'); resetForm(); }}
-              className={`px-6 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === 'banco' ? 'bg-primary-50 text-primary-700' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              Banco de Questões
-            </button>
-            <button
-              onClick={() => { setActiveTab('revisar'); avancarQuestao(); }}
-              className={`px-6 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === 'revisar' ? 'bg-primary-50 text-primary-700' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              Revisar
-            </button>
-          </div>
-        </div>
-
-        {activeTab === 'banco' && (
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* ESQUERDA: LISTA */}
-            <div className="flex-1 flex flex-col gap-4">
-              <div className="bg-primary-100 text-primary-700 rounded-2xl p-4 flex items-center gap-3 font-semibold shadow-sm">
-                <Flame className="w-6 h-6" />
-                Você tem {pendentes.length} questões prontas para revisar hoje
-              </div>
-              
-              <div className="grid grid-cols-1 gap-4">
-                {erros.map(erro => (
-                  <div key={erro.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3 group">
-                    <div className="flex justify-between items-start">
-                      <div className="flex gap-2">
-                        <span className="bg-primary-100 text-primary-700 text-xs font-bold px-2.5 py-1 rounded-md">
-                          {erro.materias?.name} - {erro.assuntos?.name}
-                        </span>
-                        <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-md">
-                          {erro.motivo_erro}
-                        </span>
-                      </div>
-                      
-                      <div className="flex gap-2 transition-opacity">
-                        <button onClick={() => handleEditClick(erro)} className="p-1.5 text-slate-400 hover:text-primary-600 bg-slate-50 hover:bg-primary-50 rounded-lg transition">
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDeleteClick(erro.id)} className="p-1.5 text-slate-400 hover:text-red-600 bg-slate-50 hover:bg-red-50 rounded-lg transition">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <p className="text-slate-700 text-sm font-medium line-clamp-2">
-                      {erro.enunciado}
-                    </p>
-
-                    <div className="flex items-center gap-2 mt-1 border-t border-slate-100 pt-3">
-                      <Calendar className="w-4 h-4 text-slate-400" />
-                      <span className="text-xs text-slate-500 font-medium">Próxima revisão: <strong className="text-slate-700">{formatDate(erro.proxima_revisao)}</strong></span>
-                      {erro.erros_recorrentes_count > 0 && (
-                         <span className="text-xs text-amber-600 font-bold ml-2">• Errou {erro.erros_recorrentes_count}x</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {erros.length === 0 && (
-                  <p className="text-slate-500 text-sm text-center py-8">Nenhuma questão registrada ainda.</p>
-                )}
-              </div>
-            </div>
-
-            {/* DIREITA: NOVA/EDITAR QUESTÃO */}
-            <div className="w-full lg:w-[450px] bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex flex-col h-fit sticky top-24">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-slate-900">{editandoId ? 'Editar Questão' : 'Nova Questão'}</h2>
-                <button onClick={resetForm} className="text-slate-400 hover:text-slate-600 transition"><X className="w-5 h-5"/></button>
-              </div>
-
-              <div className="space-y-4 overflow-y-auto max-h-[70vh] pr-2">
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase">Matéria</label>
-                    <select
-                      value={materiaId}
-                      onChange={(e) => { setMateriaId(e.target.value); setAssuntoId(''); }}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 font-medium"
-                    >
-                      <option value="">Selecione...</option>
-                      {initialMaterias.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                    </select>
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase">Assunto</label>
-                    <select
-                      value={assuntoId}
-                      onChange={(e) => setAssuntoId(e.target.value)}
-                      disabled={!materiaId}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 font-medium disabled:opacity-50"
-                    >
-                      <option value="">Selecione...</option>
-                      {filteredAssuntos.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase">Enunciado da Questão</label>
-                  <textarea 
-                    value={enunciado}
-                    onChange={(e) => setEnunciado(e.target.value)}
-                    className="w-full h-24 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 resize-none font-medium" 
-                    placeholder="Cole aqui o texto da questão..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase">Resposta Correta e Explicação</label>
-                  <textarea 
-                    value={resposta}
-                    onChange={(e) => setResposta(e.target.value)}
-                    className="w-full h-24 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 resize-none font-medium" 
-                    placeholder="Explique o raciocínio correto..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">Por que você errou?</label>
-                  <div className="flex flex-wrap gap-2">
-                    {MOTIVOS.map(m => (
-                      <button
-                        key={m}
-                        onClick={() => setMotivo(m)}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-full transition-colors border ${motivo === m ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-primary-600 border-primary-600 hover:bg-primary-50'}`}
-                      >
-                        {m}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">Qual era sua confiança ao responder?</label>
-                  <div className="flex gap-2">
-                    {CONFIANCAS.map(c => (
-                      <button
-                        key={c}
-                        onClick={() => setConfianca(c)}
-                        className={`flex-1 py-2 text-xs font-bold rounded-full transition-colors border ${confianca === c ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-primary-600 border-primary-600 hover:bg-primary-50'}`}
-                      >
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6 pt-4 border-t border-slate-100">
-                <button 
-                  className="flex-1 py-3 text-slate-700 font-bold hover:bg-slate-50 rounded-xl transition-colors"
-                  onClick={resetForm}
-                >
-                  Cancelar
-                </button>
-                <button 
-                  onClick={handleSaveQuestao}
-                  disabled={isSaving}
-                  className="flex-1 py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition-colors shadow-sm disabled:opacity-50"
-                >
-                  {editandoId ? 'Atualizar' : 'Salvar'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'revisar' && (
-          <div className="flex items-center justify-center py-10">
-            {pendentes.length === 0 ? (
-              <div className="text-center">
-                <CheckCircle2 className="w-16 h-16 text-primary-500 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">Tudo revisado!</h2>
-                <p className="text-slate-500">Você não tem questões pendentes para revisar agora.</p>
-              </div>
-            ) : (
-              <div className="w-full max-w-2xl bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
-                <div className="bg-amber-50 px-6 py-3 flex items-center gap-3 border-b border-amber-100">
-                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
-                  <p className="text-sm text-amber-800 font-semibold">
-                    Tenha cuidado, a última vez que você fez essa questão errou por: <span className="font-extrabold">{questaoAtual.motivo_erro}</span>.
-                  </p>
-                </div>
-                
-                <div className="p-8">
-                  <span className="inline-block bg-primary-100 text-primary-700 text-xs font-bold px-3 py-1.5 rounded-lg mb-6">
-                    {questaoAtual.materias?.name} - {questaoAtual.assuntos?.name}
-                  </span>
-                  
-                  <p className="text-lg text-slate-800 font-medium leading-relaxed mb-8 whitespace-pre-wrap">
-                    {questaoAtual.enunciado}
-                  </p>
-                  
-                  <hr className="border-slate-100 mb-8" />
-                  
-                  <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-4">Sua Recordação Ativa</h3>
-                  <textarea
-                    value={rascunho}
-                    onChange={(e) => setRascunho(e.target.value)}
-                    placeholder="Qual é a resposta e por quê? (Raciocínio mental opcional)"
-                    className="w-full h-32 bg-transparent text-slate-700 text-base font-medium resize-none focus:outline-none placeholder:text-slate-300"
-                  />
-
-                  {!showGabarito ? (
-                    <button 
-                      onClick={() => setShowGabarito(true)}
-                      className="w-full mt-4 py-3.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
-                    >
-                      Ver Gabarito
-                    </button>
-                  ) : (
-                    <div className="animate-in fade-in slide-in-from-top-4">
-                      <div className="bg-primary-50 p-6 rounded-2xl mb-6">
-                        <div className="flex items-center gap-2 mb-3">
-                          <CheckCircle2 className="w-5 h-5 text-primary-700" />
-                          <h4 className="font-bold text-primary-700">Resposta Correta</h4>
-                        </div>
-                        <p className="text-primary-900 font-medium whitespace-pre-wrap">
-                          {questaoAtual.resposta_correta}
-                        </p>
-                      </div>
-                      
-                      {!isReevaluating ? (
-                        <div className="flex justify-end gap-4">
-                          <button 
-                            onClick={() => handleReviewAction(false)}
-                            className="px-6 py-3 font-bold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
-                          >
-                            Errei
-                          </button>
-                          <button 
-                            onClick={() => handleReviewAction(true)}
-                            className="px-8 py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition-colors shadow-sm"
-                          >
-                            Acertei o raciocínio
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="bg-white border border-slate-200 p-6 rounded-2xl animate-in zoom-in-95">
-                          <h4 className="font-bold text-slate-900 mb-4 text-center">Vamos corrigir esse erro imediatamente.</h4>
-                          
-                          <div className="mb-4">
-                            <label className="block text-xs font-bold text-slate-700 mb-2 uppercase text-center">Por que você errou agora?</label>
-                            <div className="flex flex-wrap justify-center gap-2">
-                              {MOTIVOS.map(m => (
-                                <button
-                                  key={m}
-                                  onClick={() => setNovoMotivo(m)}
-                                  className={`px-3 py-1.5 text-xs font-bold rounded-full transition-colors border ${novoMotivo === m ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-primary-600 border-primary-600 hover:bg-primary-50'}`}
-                                >
-                                  {m}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="mb-6">
-                            <label className="block text-xs font-bold text-slate-700 mb-2 uppercase text-center">Nova Confiança (antes de ler a resposta)</label>
-                            <div className="flex justify-center gap-2">
-                              {CONFIANCAS.map(c => (
-                                <button
-                                  key={c}
-                                  onClick={() => setNovaConfianca(c)}
-                                  className={`px-6 py-2 text-xs font-bold rounded-full transition-colors border ${novaConfianca === c ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-primary-600 border-primary-600 hover:bg-primary-50'}`}
-                                >
-                                  {c}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          <button 
-                            onClick={confirmarErro}
-                            className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-sm"
-                          >
-                            Confirmar Erro e Agendar para Amanhã
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <ConfirmModal
-          isOpen={!!questaoToDelete}
-          title="Excluir Questão"
-          message="Tem certeza que deseja excluir esta questão do seu caderno de erros?"
-          confirmText="Sim, excluir"
-          onConfirm={executeDeleteQuestao}
-          onCancel={() => setQuestaoToDelete(null)}
-          isLoading={isDeleting}
-        />
-      </div>
+  const errorCard = (erro: CadernoErro) => <button key={erro.id} onClick={() => setDetailId(erro.id)} className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-primary-300">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <span className="text-xs font-bold text-primary-700">{erro.materias?.name || materias.find(m => m.id === erro.materia_id)?.name || 'Matéria'} · {assuntoDoErro(erro)}</span>
+      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${erro.estado === 'resolvido' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{erro.estado === 'resolvido' ? 'Resolvido' : 'Em revisão'}</span>
     </div>
-  )
+    <p className="mt-2 font-semibold text-slate-800">{erro.motivo_erro || 'Motivo não informado'}</p>
+    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+      <span>Registrado em {formatarData(erro.created_at)}</span>
+      {erro.estado !== 'resolvido' && <span>Revisão: {erro.proxima_revisao ? formatarData(erro.proxima_revisao) : 'disponível agora'}</span>}
+      {!!erro.erros_recorrentes_count && <span>{erro.erros_recorrentes_count} falha(s) em revisões</span>}
+    </div>
+  </button>
+
+  return <main className="min-h-screen bg-slate-50 p-4 pb-8 text-slate-900 sm:p-8">
+    <div className="mx-auto max-w-5xl">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div><h1 className="text-3xl font-extrabold">Caderno de Erros</h1><p className="mt-2 text-sm text-slate-600">Entenda seus erros e acompanhe o que ainda precisa corrigir.</p></div>
+        <button onClick={() => setShowNew(true)} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 font-bold text-white"><Plus className="h-4 w-4" />Registrar erro</button>
+      </header>
+
+      <div className="mt-6 grid grid-cols-3 gap-2 text-center sm:gap-4">
+        <div className="rounded-2xl bg-white p-3 shadow-sm"><strong className="block text-xl">{ativos.length}</strong><span className="text-xs text-slate-500">Ativos</span></div>
+        <div className="rounded-2xl bg-white p-3 shadow-sm"><strong className="block text-xl">{devidos.length}</strong><span className="text-xs text-slate-500">Para revisar</span></div>
+        <div className="rounded-2xl bg-white p-3 shadow-sm"><strong className="block text-xl">{resolvidos.length}</strong><span className="text-xs text-slate-500">Resolvidos</span></div>
+      </div>
+
+      <nav aria-label="Áreas do Caderno" className="mt-7 flex gap-2 border-b border-slate-200">
+        <button onClick={() => setArea('erros')} className={`px-4 py-3 text-sm font-bold ${area === 'erros' ? 'border-b-2 border-primary-600 text-primary-700' : 'text-slate-500'}`}>Meus erros</button>
+        <button onClick={() => setArea('revisoes')} className={`px-4 py-3 text-sm font-bold ${area === 'revisoes' ? 'border-b-2 border-primary-600 text-primary-700' : 'text-slate-500'}`}>Revisões</button>
+      </nav>
+
+      {area === 'erros' ? <section className="mt-5">
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3"><Search className="h-4 w-4 text-slate-400" /><input aria-label="Buscar erros" value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar assunto ou texto" className="w-full bg-transparent py-3 outline-none" /></label>
+          <select aria-label="Filtrar status" value={status} onChange={e => setStatus(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2"><option value="todos">Todos os status</option><option value="ativo">Ativos</option><option value="resolvido">Resolvidos</option></select>
+          <select aria-label="Filtrar matéria" value={materia} onChange={e => setMateria(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2"><option value="todas">Todas as matérias</option>{materias.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select>
+        </div>
+        <div className="mt-5 space-y-3">{filtrados.map(errorCard)}</div>
+        {erros.length === 0 && <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-slate-600">Seu caderno começa com um erro que vale lembrar. Registre o primeiro quando quiser.</div>}
+        {erros.length > 0 && filtrados.length === 0 && <p className="mt-6 text-center text-sm text-slate-500">Nenhum erro corresponde aos filtros.</p>}
+      </section> : <section className="mt-5 space-y-7">
+        {devidos.length === 0 && <div className="rounded-2xl border border-primary-100 bg-primary-50 p-6 text-slate-700">Nenhuma revisão pendente agora. Seus erros continuam disponíveis em Meus erros.</div>}
+        {[{ title: 'Vencidas', items: vencidos }, { title: 'Para hoje', items: hojePendentes }, { title: 'Próximas', items: proximos }].map(group => group.items.length > 0 && <div key={group.title}>
+          <h2 className="mb-3 text-lg font-bold">{group.title}</h2><div className="space-y-3">{group.items.map(erro => <div key={erro.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+            <div><p className="font-semibold">{erro.materias?.name || 'Matéria'} · {assuntoDoErro(erro)}</p><p className="mt-1 text-xs text-slate-500">{erro.motivo_erro} · {erro.proxima_revisao ? formatarData(erro.proxima_revisao) : 'Disponível agora'}</p></div>
+            {group.title !== 'Próximas' && <button onClick={() => setReviewId(erro.id)} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-bold text-white"><RotateCcw className="h-4 w-4" />Revisar</button>}
+          </div>)}</div>
+        </div>)}
+      </section>}
+    </div>
+
+    {detail && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/40 p-4" onClick={() => setDetailId(null)}><section role="dialog" aria-modal="true" aria-label="Detalhe do erro" onClick={e => e.stopPropagation()} className="max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-5 shadow-xl sm:p-7">
+      <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold text-primary-700">{detail.materias?.name || 'Matéria'} · {assuntoDoErro(detail)}</p><h2 className="mt-2 text-xl font-bold">{detail.motivo_erro}</h2></div><button aria-label="Fechar" onClick={() => setDetailId(null)}>✕</button></div>
+      <p className="mt-3 text-sm text-slate-500">{detail.estado === 'resolvido' ? 'Resolvido' : 'Em revisão'} · Registrado em {formatarData(detail.created_at)}</p>
+      {detail.confianca && <p className="mt-2 text-sm text-slate-600">Confiança registrada: {detail.confianca}</p>}
+      {detail.motivo_erro_original && <p className="mt-2 text-xs text-slate-500">Motivo original: {detail.motivo_erro_original}</p>}
+      {detail.enunciado && <div className="mt-5 rounded-2xl bg-slate-50 p-4"><h3 className="text-xs font-bold uppercase text-slate-500">Questão ou referência</h3><p className="mt-2 whitespace-pre-wrap text-sm">{detail.enunciado}</p></div>}
+      {detail.resposta_correta && <div className="mt-3 rounded-2xl bg-primary-50 p-4"><h3 className="text-xs font-bold uppercase text-primary-700">Aprendizado</h3><p className="mt-2 whitespace-pre-wrap text-sm">{detail.resposta_correta}</p></div>}
+      <div className="mt-5 flex flex-wrap gap-3 text-sm text-slate-600"><span>Nível {detail.nivel_revisao || 0}</span><span><CalendarDays className="mr-1 inline h-4 w-4" />{detail.estado === 'resolvido' ? `Resolvido em ${formatarData(detail.resolvido_em)}` : `Próxima revisão: ${detail.proxima_revisao ? formatarData(detail.proxima_revisao) : 'disponível agora'}`}</span><span>{detail.erros_recorrentes_count || 0} falha(s) desta questão em revisões</span></div>
+      <h3 className="mt-6 font-bold">Histórico de revisões</h3>
+      <div className="mt-2 space-y-2">{revisoes.filter(r => r.erro_id === detail.id).map(r => <p key={r.id} className="rounded-xl bg-slate-50 px-3 py-2 text-sm"><span className="font-semibold">{formatarData(r.reviewed_at)}</span> — {r.resultado === 'acertou' ? 'acertei' : 'ainda errei'}{r.confianca ? ` · confiança ${r.confianca}` : ''}{r.motivo_erro ? ` · ${r.motivo_erro}` : ''}</p>)}{!revisoes.some(r => r.erro_id === detail.id) && <p className="text-sm text-slate-500">Nenhuma revisão registrada ainda.</p>}</div>
+      <div className="mt-6 flex flex-wrap justify-end gap-3"><button onClick={() => { setEditingId(detail.id); setDetailId(null) }} className="rounded-xl border border-slate-200 px-4 py-2 font-semibold">Editar</button><button onClick={() => setDeleteId(detail.id)} className="rounded-xl px-4 py-2 font-semibold text-red-600">Excluir</button>{detail.estado !== 'resolvido' && <button onClick={() => { setReviewId(detail.id); setDetailId(null) }} className="rounded-xl bg-primary-600 px-4 py-2 font-semibold text-white">Revisar</button>}</div>
+    </section></div>}
+    {(showNew || editing) && <CadernoForm key={editing?.id || 'new'} materias={materias} assuntos={assuntos} erro={editing} onClose={() => { setShowNew(false); setEditingId(null) }} />}
+    {reviewing && <ReviewFlow key={reviewing.id} erro={reviewing} onClose={() => setReviewId(null)} />}
+    <ConfirmModal isOpen={!!deleteId} title="Excluir erro" message="Excluir este erro também remove seu histórico de revisões. Deseja continuar?" confirmText="Excluir" onConfirm={remove} onCancel={() => setDeleteId(null)} isLoading={deleting} />
+  </main>
 }

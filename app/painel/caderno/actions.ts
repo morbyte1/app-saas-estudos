@@ -2,181 +2,91 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { MOTIVOS_ERRO, CONFIANCAS, type CadernoErro, type CadernoRevisao, type ErroInput } from '@/lib/caderno'
 
-export async function getCadernoErros() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Usuário não autenticado', data: [] }
-
-  const { data, error } = await supabase
-    .from('caderno_erros')
-    .select(`
-      *,
-      materias(name),
-      assuntos(name)
-    `)
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-
-  if (error) return { error: error.message, data: [] }
-  return { success: true, data: data || [] }
+function materiaDoTopico(topicos: { materia_id: string }[] | { materia_id: string } | null) {
+  return Array.isArray(topicos) ? topicos[0]?.materia_id : topicos?.materia_id
 }
 
-export async function getTodosAssuntos() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Usuário não autenticado', data: [] }
-
-  // Buscamos o materia_id através do relacionamento com a tabela topicos
-  const { data, error } = await supabase
-    .from('assuntos')
-    .select(`
-      id, 
-      name, 
-      topicos (
-        materia_id
-      )
-    `)
-    .eq('user_id', user.id)
-
-  if (error) return { error: error.message, data: [] }
-
-  // Formatamos os dados para que o frontend receba exatamente { id, name, materia_id }
-  const formattedData = data?.map((item: any) => ({
-    id: item.id,
-    name: item.name,
-    materia_id: item.topicos?.materia_id || null
-  })) || []
-
-  return { success: true, data: formattedData }
-}
-
-export async function createQuestaoErro(data: {
-  materia_id: string
-  assunto_id: string
-  enunciado: string
-  resposta_correta: string
-  motivo_erro: string
-  confianca: string
-}) {
+export async function getCadernoData() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Usuário não autenticado' }
-
-  const { error } = await supabase.from('caderno_erros').insert({
-    user_id: user.id,
-    materia_id: data.materia_id,
-    assunto_id: data.assunto_id,
-    enunciado: data.enunciado,
-    resposta_correta: data.resposta_correta,
-    motivo_erro: data.motivo_erro,
-    confianca: data.confianca,
-    status: 'revisar'
-  })
-
+  const [erros, revisoes, materias, assuntos] = await Promise.all([
+    supabase.from('caderno_erros').select('*, materias(name), assuntos(name)').eq('user_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('caderno_revisoes').select('id, erro_id, reviewed_at, resultado, motivo_erro, confianca').eq('user_id', user.id).order('reviewed_at', { ascending: false }),
+    supabase.from('materias').select('id, name').eq('user_id', user.id).order('name'),
+    supabase.from('assuntos').select('id, name, topicos(materia_id)').eq('user_id', user.id).order('name'),
+  ])
+  const error = erros.error || revisoes.error || materias.error || assuntos.error
   if (error) return { error: error.message }
-  revalidatePath('/painel/caderno')
-  return { success: true }
-}
-
-export async function editQuestaoErro(id: string, data: {
-  materia_id: string
-  assunto_id: string
-  enunciado: string
-  resposta_correta: string
-  motivo_erro: string
-  confianca: string
-}) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Usuário não autenticado' }
-
-  const { error } = await supabase
-    .from('caderno_erros')
-    .update({
-      materia_id: data.materia_id,
-      assunto_id: data.assunto_id,
-      enunciado: data.enunciado,
-      resposta_correta: data.resposta_correta,
-      motivo_erro: data.motivo_erro,
-      confianca: data.confianca
-    })
-    .eq('id', id)
-    .eq('user_id', user.id)
-
-  if (error) return { error: error.message }
-  revalidatePath('/painel/caderno')
-  return { success: true }
-}
-
-export async function deleteQuestaoErro(id: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Usuário não autenticado' }
-
-  const { error } = await supabase
-    .from('caderno_erros')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', user.id)
-
-  if (error) return { error: error.message }
-  revalidatePath('/painel/caderno')
-  return { success: true }
-}
-
-export async function handleRevisaoQuestao(
-  id: string, 
-  acertou: boolean, 
-  novoMotivo?: string, 
-  novaConfianca?: string
-) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Usuário não autenticado' }
-
-  const { data: questao, error: fetchError } = await supabase
-    .from('caderno_erros')
-    .select('*')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .single()
-
-  if (fetchError || !questao) return { error: 'Questão não encontrada' }
-
-  const today = new Date()
-
-  if (acertou) {
-    const novoNivel = (questao.nivel_revisao || 0) + 1
-    
-    if (novoNivel >= 4) {
-      await supabase.from('caderno_erros').delete().eq('id', id).eq('user_id', user.id)
-    } else {
-      let dias = 3
-      if (novoNivel === 2) dias = 7
-      if (novoNivel === 3) dias = 21
-      
-      const proxima = new Date(today)
-      proxima.setDate(today.getDate() + dias)
-
-      await supabase.from('caderno_erros').update({
-        nivel_revisao: novoNivel,
-        proxima_revisao: proxima.toISOString().split('T')[0]
-      }).eq('id', id)
-    }
-  } else {
-    const proxima = new Date(today)
-    proxima.setDate(today.getDate() + 1)
-
-    await supabase.from('caderno_erros').update({
-      nivel_revisao: 0,
-      erros_recorrentes_count: (questao.erros_recorrentes_count || 0) + 1,
-      proxima_revisao: proxima.toISOString().split('T')[0],
-      motivo_erro: novoMotivo || questao.motivo_erro,
-      confianca: novaConfianca || questao.confianca
-    }).eq('id', id)
+  return {
+    success: true,
+    data: {
+      erros: (erros.data || []) as CadernoErro[],
+      revisoes: (revisoes.data || []) as CadernoRevisao[],
+      materias: materias.data || [],
+      assuntos: (assuntos.data || []).map(a => ({ id: a.id, name: a.name, materia_id: materiaDoTopico(a.topicos) || '' })),
+    },
   }
+}
 
+async function validateInput(userId: string, input: ErroInput) {
+  if (!input.materia_id || !input.assunto_texto.trim() || !MOTIVOS_ERRO.includes(input.motivo_erro)) return 'Informe matéria, assunto e motivo válidos.'
+  if (input.confianca && !CONFIANCAS.includes(input.confianca)) return 'Confiança inválida.'
+  const supabase = await createClient()
+  const { data: materia, error } = await supabase.from('materias').select('id').eq('id', input.materia_id).eq('user_id', userId).maybeSingle()
+  if (error || !materia) return 'Matéria não encontrada.'
+  if (input.assunto_id) {
+    const { data: assunto, error: assuntoError } = await supabase.from('assuntos').select('id, topicos(materia_id)').eq('id', input.assunto_id).eq('user_id', userId).maybeSingle()
+    if (assuntoError || !assunto || materiaDoTopico(assunto.topicos) !== input.materia_id) return 'Assunto não pertence à matéria selecionada.'
+  }
+  return null
+}
+
+export async function saveCadernoErro(input: ErroInput, id?: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Usuário não autenticado' }
+  const validationError = await validateInput(user.id, input)
+  if (validationError) return { error: validationError }
+  const payload = {
+    materia_id: input.materia_id,
+    assunto_id: input.assunto_id || null,
+    assunto_texto: input.assunto_texto.trim(),
+    motivo_erro: input.motivo_erro,
+    enunciado: input.enunciado?.trim() || null,
+    resposta_correta: input.resposta_correta?.trim() || null,
+    confianca: input.confianca || null,
+  }
+  const result = id
+    ? await supabase.from('caderno_erros').update(payload).eq('id', id).eq('user_id', user.id).select('id').single()
+    : await supabase.from('caderno_erros').insert({ ...payload, user_id: user.id, status: 'revisar', estado: 'ativo', nivel_revisao: 0, proxima_revisao: null, erros_recorrentes_count: 0 }).select('id').single()
+  if (result.error) return { error: result.error.message }
+  revalidatePath('/painel/caderno')
+  return { success: true }
+}
+
+export async function deleteCadernoErro(id: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Usuário não autenticado' }
+  const { data, error } = await supabase.from('caderno_erros').delete().eq('id', id).eq('user_id', user.id).select('id').maybeSingle()
+  if (error || !data) return { error: error?.message || 'Erro não encontrado.' }
+  revalidatePath('/painel/caderno')
+  return { success: true }
+}
+
+export async function reviewCadernoErro(id: string, acertou: boolean, motivo?: string | null, confianca?: string | null) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Usuário não autenticado' }
+  if (motivo && !MOTIVOS_ERRO.includes(motivo as typeof MOTIVOS_ERRO[number])) return { error: 'Motivo inválido.' }
+  if (confianca && !CONFIANCAS.includes(confianca as typeof CONFIANCAS[number])) return { error: 'Confiança inválida.' }
+  const { error } = await supabase.rpc('registrar_revisao_caderno', {
+    p_erro_id: id, p_acertou: acertou, p_motivo: motivo || null, p_confianca: confianca || null,
+  })
+  if (error) return { error: error.message }
   revalidatePath('/painel/caderno')
   return { success: true }
 }
