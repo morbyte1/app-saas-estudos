@@ -152,7 +152,7 @@ export async function getDashboardStats() {
     supabase.from('study_sessions').select('id, session_date, duration_seconds, materia_id, assunto_id, questions_total, questions_wrong').eq('user_id', user.id),
     supabase.from('materias').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
     supabase.from('user_settings').select('daily_goal_hours').eq('user_id', user.id).maybeSingle(),
-    supabase.from('caderno_erros').select('materia_id, erros_recorrentes_count').eq('user_id', user.id)
+    supabase.from('caderno_erros').select('materia_id, erros_recorrentes_count').eq('user_id', user.id).is('deleted_at', null)
   ])
 
   const sessions = sessionsData || []

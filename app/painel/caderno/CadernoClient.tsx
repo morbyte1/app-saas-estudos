@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, Search, CalendarDays, RotateCcw } from 'lucide-react'
 import { useToast } from '@/components/ToastContext'
 import ConfirmModal from '@/components/ConfirmModal'
-import { assuntoDoErro, dataLocal, formatarData, type CadernoErro, type CadernoRevisao } from '@/lib/caderno'
+import { assuntoDoErro, dataLocal, formatarData, podeRevisar, dadosRevisaoCompletos, type CadernoErro, type CadernoRevisao } from '@/lib/caderno'
 import { deleteCadernoErro } from './actions'
 import CadernoForm from './CadernoForm'
 import ReviewFlow from './ReviewFlow'
@@ -34,14 +34,15 @@ export default function CadernoClient({ erros, revisoes, materias, assuntos }: P
 
   const ativos = erros.filter(e => e.estado !== 'resolvido')
   const resolvidos = erros.filter(e => e.estado === 'resolvido')
-  const devidos = ativos.filter(e => !e.proxima_revisao || e.proxima_revisao <= hoje)
+  const devidos = ativos.filter(e => podeRevisar(e, hoje))
+  const revisaveis = devidos.filter(dadosRevisaoCompletos)
   const vencidos = devidos.filter(e => e.proxima_revisao && e.proxima_revisao < hoje).sort((a, b) => (a.proxima_revisao || '').localeCompare(b.proxima_revisao || ''))
   const hojePendentes = devidos.filter(e => !e.proxima_revisao || e.proxima_revisao === hoje)
   const proximos = ativos.filter(e => e.proxima_revisao && e.proxima_revisao > hoje).sort((a, b) => (a.proxima_revisao || '').localeCompare(b.proxima_revisao || ''))
   const texto = busca.trim().toLocaleLowerCase('pt-BR')
   const filtrados = erros.filter(e => (status === 'todos' || (status === 'ativo' ? e.estado !== 'resolvido' : e.estado === 'resolvido'))
     && (materia === 'todas' || e.materia_id === materia)
-    && (!texto || `${assuntoDoErro(e)} ${e.motivo_erro} ${e.enunciado || ''} ${e.resposta_correta || ''}`.toLocaleLowerCase('pt-BR').includes(texto)))
+    && (!texto || `${assuntoDoErro(e)} ${e.motivo_erro} ${e.enunciado || ''} ${e.resposta_correta || ''} ${e.origem_questao || ''}`.toLocaleLowerCase('pt-BR').includes(texto)))
   const detail = erros.find(e => e.id === detailId)
   const editing = erros.find(e => e.id === editingId)
   const reviewing = erros.find(e => e.id === reviewId)
@@ -71,7 +72,8 @@ export default function CadernoClient({ erros, revisoes, materias, assuntos }: P
     <p className="mt-2 font-semibold text-slate-800">{erro.motivo_erro || 'Motivo não informado'}</p>
     <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
       <span>Registrado em {formatarData(erro.created_at)}</span>
-      {erro.estado !== 'resolvido' && <span>Revisão: {erro.proxima_revisao ? formatarData(erro.proxima_revisao) : 'disponível agora'}</span>}
+      {erro.estado !== 'resolvido' && <span>{dadosRevisaoCompletos(erro) ? `Próxima revisão: ${erro.proxima_revisao ? formatarData(erro.proxima_revisao) : 'disponível'}` : 'Complete os dados para revisar'}</span>}
+      <span>{revisoes.filter(r => r.erro_id === erro.id).length} tentativa(s)</span>
       {!!erro.erros_recorrentes_count && <span>{erro.erros_recorrentes_count} falha(s) em revisões</span>}
     </div>
   </button>
@@ -85,7 +87,7 @@ export default function CadernoClient({ erros, revisoes, materias, assuntos }: P
 
       <div className="mt-6 grid grid-cols-3 gap-2 text-center sm:gap-4">
         <div className="rounded-2xl bg-white p-3 shadow-sm"><strong className="block text-xl">{ativos.length}</strong><span className="text-xs text-slate-500">Ativos</span></div>
-        <div className="rounded-2xl bg-white p-3 shadow-sm"><strong className="block text-xl">{devidos.length}</strong><span className="text-xs text-slate-500">Para revisar</span></div>
+        <div className="rounded-2xl bg-white p-3 shadow-sm"><strong className="block text-xl">{revisaveis.length}</strong><span className="text-xs text-slate-500">Para revisar</span></div>
         <div className="rounded-2xl bg-white p-3 shadow-sm"><strong className="block text-xl">{resolvidos.length}</strong><span className="text-xs text-slate-500">Resolvidos</span></div>
       </div>
 
@@ -108,7 +110,7 @@ export default function CadernoClient({ erros, revisoes, materias, assuntos }: P
         {[{ title: 'Vencidas', items: vencidos }, { title: 'Para hoje', items: hojePendentes }, { title: 'Próximas', items: proximos }].map(group => group.items.length > 0 && <div key={group.title}>
           <h2 className="mb-3 text-lg font-bold">{group.title}</h2><div className="space-y-3">{group.items.map(erro => <div key={erro.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
             <div><p className="font-semibold">{erro.materias?.name || 'Matéria'} · {assuntoDoErro(erro)}</p><p className="mt-1 text-xs text-slate-500">{erro.motivo_erro} · {erro.proxima_revisao ? formatarData(erro.proxima_revisao) : 'Disponível agora'}</p></div>
-            {group.title !== 'Próximas' && <button onClick={() => setReviewId(erro.id)} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-bold text-white"><RotateCcw className="h-4 w-4" />Revisar</button>}
+            {group.title !== 'Próximas' && (dadosRevisaoCompletos(erro) ? <button onClick={() => setReviewId(erro.id)} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-bold text-white"><RotateCcw className="h-4 w-4" />Revisar</button> : <button onClick={() => setEditingId(erro.id)} className="rounded-xl border border-primary-200 px-4 py-2 text-sm font-bold text-primary-700">Completar dados</button>)}
           </div>)}</div>
         </div>)}
       </section>}
@@ -118,16 +120,18 @@ export default function CadernoClient({ erros, revisoes, materias, assuntos }: P
       <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold text-primary-700">{detail.materias?.name || 'Matéria'} · {assuntoDoErro(detail)}</p><h2 className="mt-2 text-xl font-bold">{detail.motivo_erro}</h2></div><button aria-label="Fechar" onClick={() => setDetailId(null)}>✕</button></div>
       <p className="mt-3 text-sm text-slate-500">{detail.estado === 'resolvido' ? 'Resolvido' : 'Em revisão'} · Registrado em {formatarData(detail.created_at)}</p>
       {detail.confianca && <p className="mt-2 text-sm text-slate-600">Confiança registrada: {detail.confianca}</p>}
+      {detail.origem_questao && <p className="mt-2 text-sm text-slate-600">Origem / banca: {detail.origem_questao}</p>}
       {detail.motivo_erro_original && <p className="mt-2 text-xs text-slate-500">Motivo original: {detail.motivo_erro_original}</p>}
+      {detail.estado === 'ativo' && !dadosRevisaoCompletos(detail) && <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-900">Este registro antigo precisa de assunto, questão e resolução para uma revisão útil. Complete os dados em Editar.</p>}
       {detail.enunciado && <div className="mt-5 rounded-2xl bg-slate-50 p-4"><h3 className="text-xs font-bold uppercase text-slate-500">Questão ou referência</h3><p className="mt-2 whitespace-pre-wrap text-sm">{detail.enunciado}</p></div>}
       {detail.resposta_correta && <div className="mt-3 rounded-2xl bg-primary-50 p-4"><h3 className="text-xs font-bold uppercase text-primary-700">Aprendizado</h3><p className="mt-2 whitespace-pre-wrap text-sm">{detail.resposta_correta}</p></div>}
-      <div className="mt-5 flex flex-wrap gap-3 text-sm text-slate-600"><span>Nível {detail.nivel_revisao || 0}</span><span><CalendarDays className="mr-1 inline h-4 w-4" />{detail.estado === 'resolvido' ? `Resolvido em ${formatarData(detail.resolvido_em)}` : `Próxima revisão: ${detail.proxima_revisao ? formatarData(detail.proxima_revisao) : 'disponível agora'}`}</span><span>{detail.erros_recorrentes_count || 0} falha(s) desta questão em revisões</span></div>
+      <div className="mt-5 flex flex-wrap gap-3 text-sm text-slate-600"><span><CalendarDays className="mr-1 inline h-4 w-4" />{detail.estado === 'resolvido' ? `Resolvido em ${formatarData(detail.resolvido_em)}` : `Próxima revisão: ${detail.proxima_revisao ? formatarData(detail.proxima_revisao) : 'disponível'}`}</span><span>{revisoes.filter(r => r.erro_id === detail.id).length} tentativa(s)</span><span>{detail.erros_recorrentes_count || 0} recorrência(s)</span></div>
       <h3 className="mt-6 font-bold">Histórico de revisões</h3>
       <div className="mt-2 space-y-2">{revisoes.filter(r => r.erro_id === detail.id).map(r => <p key={r.id} className="rounded-xl bg-slate-50 px-3 py-2 text-sm"><span className="font-semibold">{formatarData(r.reviewed_at)}</span> — {r.resultado === 'acertou' ? 'acertei' : 'ainda errei'}{r.confianca ? ` · confiança ${r.confianca}` : ''}{r.motivo_erro ? ` · ${r.motivo_erro}` : ''}</p>)}{!revisoes.some(r => r.erro_id === detail.id) && <p className="text-sm text-slate-500">Nenhuma revisão registrada ainda.</p>}</div>
-      <div className="mt-6 flex flex-wrap justify-end gap-3"><button onClick={() => { setEditingId(detail.id); setDetailId(null) }} className="rounded-xl border border-slate-200 px-4 py-2 font-semibold">Editar</button><button onClick={() => setDeleteId(detail.id)} className="rounded-xl px-4 py-2 font-semibold text-red-600">Excluir</button>{detail.estado !== 'resolvido' && <button onClick={() => { setReviewId(detail.id); setDetailId(null) }} className="rounded-xl bg-primary-600 px-4 py-2 font-semibold text-white">Revisar</button>}</div>
+      <div className="mt-6 flex flex-wrap justify-end gap-3"><button onClick={() => { setEditingId(detail.id); setDetailId(null) }} className="rounded-xl border border-slate-200 px-4 py-2 font-semibold">Editar</button><button onClick={() => setDeleteId(detail.id)} className="rounded-xl px-4 py-2 font-semibold text-red-600">Excluir</button>{podeRevisar(detail, hoje) && dadosRevisaoCompletos(detail) && <button onClick={() => { setReviewId(detail.id); setDetailId(null) }} className="rounded-xl bg-primary-600 px-4 py-2 font-semibold text-white">Revisar</button>}</div>
     </section></div>}
     {(showNew || editing) && <CadernoForm key={editing?.id || 'new'} materias={materias} assuntos={assuntos} erro={editing} onClose={() => { setShowNew(false); setEditingId(null) }} />}
     {reviewing && <ReviewFlow key={reviewing.id} erro={reviewing} onClose={() => setReviewId(null)} />}
-    <ConfirmModal isOpen={!!deleteId} title="Excluir erro" message="Excluir este erro também remove seu histórico de revisões. Deseja continuar?" confirmText="Excluir" onConfirm={remove} onCancel={() => setDeleteId(null)} isLoading={deleting} />
+    <ConfirmModal isOpen={!!deleteId} title="Excluir erro" message="Este erro deixará de aparecer no seu Caderno. Deseja continuar?" confirmText="Excluir" onConfirm={remove} onCancel={() => setDeleteId(null)} isLoading={deleting} />
   </main>
 }

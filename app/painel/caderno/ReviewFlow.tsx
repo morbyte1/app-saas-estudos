@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ToastContext'
-import { MOTIVOS_ERRO, CONFIANCAS, assuntoDoErro, type CadernoErro } from '@/lib/caderno'
+import { MOTIVOS_ERRO, CONFIANCAS, assuntoDoErro, dadosRevisaoCompletos, type CadernoErro } from '@/lib/caderno'
 import { reviewCadernoErro } from './actions'
 
 export default function ReviewFlow({ erro, onClose }: { erro: CadernoErro; onClose: () => void }) {
@@ -39,14 +39,14 @@ export default function ReviewFlow({ erro, onClose }: { erro: CadernoErro; onClo
         <div><p className="text-xs font-bold uppercase text-primary-700">Revisão</p><h2 className="mt-1 text-xl font-bold text-slate-900">{erro.materias?.name || 'Matéria'} · {assuntoDoErro(erro)}</h2></div>
         <button aria-label="Fechar" onClick={onClose} className="text-slate-500">✕</button>
       </div>
-      {feedback ? <div className="mt-6 rounded-2xl bg-primary-50 p-5 text-primary-900"><p>{feedback}</p><button onClick={onClose} className="mt-4 font-bold text-primary-700">Concluir</button></div> : <>
+      {!dadosRevisaoCompletos(erro) ? <p className="mt-6 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">Complete assunto, questão e resolução em Editar antes de revisar.</p> : feedback ? <div className="mt-6 rounded-2xl bg-primary-50 p-5 text-primary-900"><p>{feedback}</p><button onClick={onClose} className="mt-4 font-bold text-primary-700">Concluir</button></div> : <>
         <p className="mt-5 text-sm text-slate-600">Tente resolver ou lembrar o raciocínio antes de revelar o aprendizado.</p>
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-slate-800">{erro.enunciado || `Relembre o erro em ${assuntoDoErro(erro)}. O motivo registrado foi: ${erro.motivo_erro}.`}</div>
+        <div className="mt-4 whitespace-pre-wrap rounded-2xl border border-slate-200 bg-slate-50 p-4 text-slate-800">{erro.enunciado}</div>
         <label className="mt-4 block text-sm font-semibold text-slate-700">Seu rascunho (opcional)
           <textarea value={rascunho} onChange={e => setRascunho(e.target.value)} rows={3} placeholder="Anote como resolveria antes de revelar" className="mt-1 w-full rounded-xl border border-slate-200 p-3 font-normal" />
         </label>
         {!revealed ? <button onClick={() => setRevealed(true)} className="mt-5 rounded-xl bg-primary-600 px-5 py-3 font-bold text-white">Revelar aprendizado</button> : <>
-          <div className="mt-5 rounded-2xl bg-primary-50 p-4 text-slate-800"><p className="text-xs font-bold uppercase text-primary-700">Aprendizado</p><p className="mt-2">{erro.resposta_correta || 'Não há explicação cadastrada. Avalie se conseguiu corrigir o raciocínio.'}</p></div>
+          <div className="mt-5 rounded-2xl bg-primary-50 p-4 text-slate-800"><p className="text-xs font-bold uppercase text-primary-700">Resolução / aprendizado</p><p className="mt-2 whitespace-pre-wrap">{erro.resposta_correta}</p></div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <label className="text-sm font-semibold text-slate-700">Motivo percebido (opcional)<select value={motivo} onChange={e => setMotivo(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 p-2"><option value="">Manter motivo atual</option>{MOTIVOS_ERRO.map(m => <option key={m}>{m}</option>)}</select></label>
             <label className="text-sm font-semibold text-slate-700">Confiança (opcional)<select value={confianca} onChange={e => setConfianca(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 p-2"><option value="">Não informar</option>{CONFIANCAS.map(c => <option key={c}>{c}</option>)}</select></label>
