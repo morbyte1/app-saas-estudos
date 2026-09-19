@@ -8,6 +8,7 @@ export type SessaoDesempenho = {
   questions_done: number | null // O Timer grava aqui os acertos, não o total.
   questions_wrong: number | null
   materia_id: string | null
+  assunto_id: string | null
 }
 export type ErroDesempenho = {
   materia_id: string | null
@@ -19,8 +20,10 @@ export type ErroDesempenho = {
   created_at: string
   assuntos: { name: string } | null
 }
-export type Resumo = { segundos: number; questoes: number; erradas: number; sessoes: number; precisao: number | null }
-export type Ponto = { label: string; questoes: number; segundos: number; precisao: number | null }
+export type Resumo = { segundos: number; questoes: number; acertos: number; erradas: number; sessoes: number; precisao: number | null }
+export type Ponto = { label: string; inicio: string; fim: string; questoes: number; acertos: number; erradas: number; segundos: number; sessoes: number; precisao: number | null }
+export type AssuntoDesempenho = { id: string; name: string; materia_id: string }
+export type DiaAtividade = { data: string; segundos: number; sessoes: number; questoes: number; nivel: 0 | 1 | 2 | 3 | 4 }
 // Com menos de 20 questões por janela, uma única questão muda a precisão em mais de 5 p.p.
 export const AMOSTRA_MINIMA_PRECISAO = 20
 
@@ -61,12 +64,31 @@ export function resumirSessoes(sessoes: SessaoDesempenho[]): Resumo {
     questoes += q.total
     erradas += q.erradas
   }
-  return { segundos, questoes, erradas, sessoes: sessoes.length, precisao: precisao(questoes, erradas) }
+  return { segundos, questoes, acertos: questoes - erradas, erradas, sessoes: sessoes.length, precisao: precisao(questoes, erradas) }
 }
 export const formatarTempo = (segundos: number) => {
   const minutos = Math.round(Math.abs(segundos) / 60)
   const horas = Math.floor(minutos / 60)
   return horas ? `${horas}h${String(minutos % 60).padStart(2, '0')}` : `${minutos}min`
+}
+export const formatarTempoExtenso = (segundos: number) => {
+  const minutos = Math.round(Math.max(0, segundos) / 60)
+  const horas = Math.floor(minutos / 60)
+  const resto = minutos % 60
+  const h = `${horas} ${horas === 1 ? 'hora' : 'horas'}`
+  const m = `${resto} ${resto === 1 ? 'minuto' : 'minutos'}`
+  return horas && resto ? `${h} e ${m}` : horas ? h : `${minutos} ${minutos === 1 ? 'minuto' : 'minutos'}`
+}
+export const formatarDataHumana = (date: string, comAno = false) =>
+  new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'long', ...(comAno ? { year: 'numeric' } : {}), timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))
+export const tituloPeriodo = (ponto: Pick<Ponto, 'inicio' | 'fim'>) => {
+  if (ponto.inicio === ponto.fim) return formatarDataHumana(ponto.inicio)
+  if (ponto.inicio.slice(0, 7) === ponto.fim.slice(0, 7) && ponto.inicio.slice(8) === '01' &&
+    somarDiasCivis(ponto.fim, 1).slice(5, 7) !== ponto.fim.slice(5, 7))
+    return new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${ponto.inicio}T12:00:00Z`))
+  if (ponto.inicio.slice(0, 4) !== ponto.fim.slice(0, 4))
+    return `${formatarDataHumana(ponto.inicio, true)} a ${formatarDataHumana(ponto.fim, true)}`
+  return `${formatarDataHumana(ponto.inicio)} a ${formatarDataHumana(ponto.fim)}`
 }
 
 export function pontosEvolucao(sessoes: SessaoDesempenho[], periodo: Periodo, inicio: string | null, fim: string): Ponto[] {
@@ -92,14 +114,63 @@ export function pontosEvolucao(sessoes: SessaoDesempenho[], periodo: Periodo, in
   }
   if (periodo === 'all') return [...porBucket].sort(([a], [b]) => a.localeCompare(b)).map(([key, rows]) => {
     const r = resumirSessoes(rows)
-    return { label: key.slice(5) + '/' + key.slice(0, 4), questoes: r.questoes, segundos: r.segundos, precisao: r.precisao }
+    const fimMes = somarDiasCivis(somarDiasCivis(`${key}-01`, 32).slice(0, 7) + '-01', -1)
+    return { label: key.slice(5) + '/' + key.slice(0, 4), inicio: `${key}-01`, fim: fimMes > fim ? fim : fimMes, questoes: r.questoes, acertos: r.acertos, erradas: r.erradas, segundos: r.segundos, sessoes: r.sessoes, precisao: r.precisao }
   })
   const keys: string[] = []
   for (let date = start; date <= fim; date = somarDiasCivis(date, periodo === '30' ? 7 : 1)) keys.push(date)
   return keys.map(key => {
     const r = resumirSessoes(porBucket.get(key) || [])
-    return { label: `${key.slice(8)}/${key.slice(5, 7)}`, questoes: r.questoes, segundos: r.segundos, precisao: r.precisao }
+    const bucketFim = periodo === '30' ? somarDiasCivis(key, 6) : key
+    return { label: `${key.slice(8)}/${key.slice(5, 7)}`, inicio: key, fim: bucketFim > fim ? fim : bucketFim, questoes: r.questoes, acertos: r.acertos, erradas: r.erradas, segundos: r.segundos, sessoes: r.sessoes, precisao: r.precisao }
   })
+}
+
+export function assuntosDaMateria(sessoes: SessaoDesempenho[], assuntos: AssuntoDesempenho[], materiaId: string) {
+  const validos = new Map(assuntos.filter(a => a.materia_id === materiaId).map(a => [a.id, a]))
+  const grupos = new Map<string, SessaoDesempenho[]>()
+  let questoesSemAssunto = 0
+  for (const s of sessoes) {
+    if (s.materia_id !== materiaId) continue
+    if (!s.assunto_id || !validos.has(s.assunto_id)) {
+      questoesSemAssunto += questoesDaSessao(s).total
+      continue
+    }
+    const grupo = grupos.get(s.assunto_id) || []
+    grupo.push(s)
+    grupos.set(s.assunto_id, grupo)
+  }
+  return {
+    itens: [...grupos].map(([id, rows]) => ({ id, name: validos.get(id)!.name, ...resumirSessoes(rows) }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+    questoesSemAssunto,
+  }
+}
+
+// Faixas de atividade: 0, 1–29, 30–59, 60–119 e 120+ minutos no dia.
+export const nivelAtividade = (segundos: number): DiaAtividade['nivel'] =>
+  segundos <= 0 ? 0 : segundos < 1800 ? 1 : segundos < 3600 ? 2 : segundos < 7200 ? 3 : 4
+
+export function atividadeAno(sessoes: SessaoDesempenho[], hoje = dataBrasil()): DiaAtividade[] {
+  const inicioMaximo = somarDiasCivis(hoje, -364)
+  const validas = sessoes.filter(s => dentro(dataDaSessao(s), inicioMaximo, hoje))
+  if (validas.length === 0) return []
+  const inicio = validas.map(s => dataDaSessao(s)!).sort()[0]
+  const agregados = new Map<string, { segundos: number; sessoes: number; questoes: number }>()
+  for (const s of validas) {
+    const data = dataDaSessao(s)!
+    const atual = agregados.get(data) || { segundos: 0, sessoes: 0, questoes: 0 }
+    atual.segundos += Math.max(0, s.duration_seconds ?? 0)
+    atual.sessoes++
+    atual.questoes += questoesDaSessao(s).total
+    agregados.set(data, atual)
+  }
+  const dias: DiaAtividade[] = []
+  for (let data = inicio; data <= hoje; data = somarDiasCivis(data, 1)) {
+    const a = agregados.get(data) || { segundos: 0, sessoes: 0, questoes: 0 }
+    dias.push({ data, ...a, nivel: nivelAtividade(a.segundos) })
+  }
+  return dias
 }
 
 export function padroesErros(erros: ErroDesempenho[], materias: { id: string; name: string }[]) {
