@@ -25,7 +25,6 @@ const navigation: NavItem[] = [
   ] },
   { id: 'desempenho', name: 'Desempenho', icon: BarChart2, subItems: [
     { id: 'visao-geral', name: 'Visão geral', href: '/painel/estatisticas' },
-    { id: 'evolucao', name: 'Evolução', href: '/painel/evolucao' },
     { id: 'caderno-erros', name: 'Caderno de erros', href: '/painel/caderno' },
   ] },
   { id: 'mais', name: 'Mais', icon: MoreHorizontal, subItems: [

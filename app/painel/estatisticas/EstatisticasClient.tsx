@@ -1,383 +1,106 @@
 'use client'
 
-import { 
-  Clock, CheckCircle2, Target, BookOpen, 
-  TrendingUp, TrendingDown, Library, Award, 
-  AlertTriangle, Brain, AlertCircle,
-  Book, FileQuestion, BarChart2
-} from 'lucide-react'
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, PieChart, Pie, Cell
-} from 'recharts'
+import { useState } from 'react'
 import Link from 'next/link'
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { AMOSTRA_MINIMA_PRECISAO, dataDaSessao, dataTimestampBrasil, dentro, diferencaPrecisao, formatarTempo, padroesErros, pontosEvolucao, resumirSessoes, type ErroDesempenho, type Periodo, type SessaoDesempenho } from '@/lib/desempenho'
 
-const errorReasons = [
-  { id: 1, name: 'Falta de Atenção', percent: 45, icon: AlertCircle },
-  { id: 2, name: 'Erro de Cálculo', percent: 30, icon: AlertTriangle },
-  { id: 3, name: 'Erro de Conceito', percent: 25, icon: Brain },
+type Props = {
+  periodo: Periodo
+  limites: { inicio: string | null; fim: string; anteriorInicio: string | null; anteriorFim: string | null }
+  sessoes: SessaoDesempenho[]
+  materias: { id: string; name: string }[]
+  erros: ErroDesempenho[]
+}
+type Metrica = 'precisao' | 'questoes' | 'tempo'
+const periodos: { key: Periodo; label: string }[] = [
+  { key: '7', label: '7 dias' }, { key: '14', label: '14 dias' }, { key: '30', label: '30 dias' }, { key: 'all', label: 'Todo período' },
 ]
 
-interface EstatisticasProps {
-  initialStats: {
-    totalDurationFormatted: string;
-    totalQuestions: number;
-    globalPrecision: number;
-    totalTopicosFeitos: number;
-    totalErros: number;
-    destaques: {
-      maisEstudada: string;
-      menosEstudada: string;
-      maisTopicos: string;
-      menosTopicos: string;
-      melhorPrecisao: string;
-      piorPrecisao: string;
-      maisQuestoes: string;
-      menosQuestoes: string;
-    };
-    annualData: any[];
-    monthlyData: any[];
-    finishedTopicsData: any[];
-    wrongQuestionsData: any[];
-  }
-}
+export default function EstatisticasClient({ periodo, limites, sessoes, materias, erros }: Props) {
+  const [metrica, setMetrica] = useState<Metrica>('precisao')
+  const atual = sessoes.filter(s => dentro(dataDaSessao(s), limites.inicio, limites.fim))
+  const anterior = limites.anteriorInicio && limites.anteriorFim
+    ? sessoes.filter(s => dentro(dataDaSessao(s), limites.anteriorInicio, limites.anteriorFim!)) : []
+  const resumo = resumirSessoes(atual)
+  const resumoAnterior = resumirSessoes(anterior)
+  const temComparacao = periodo !== 'all' && resumoAnterior.sessoes > 0
+  const deltaPrecisao = temComparacao ? diferencaPrecisao(resumo, resumoAnterior) : null
+  const errosAtuais = erros.filter(e => dentro(dataTimestampBrasil(e.created_at), limites.inicio, limites.fim))
+  const padroes = padroesErros(errosAtuais, materias)
+  const pontos = pontosEvolucao(atual, periodo, limites.inicio, limites.fim)
+  const dadosGrafico = pontos.map(p => ({ ...p, tempo: Number((p.segundos / 3600).toFixed(2)) }))
+  const materiasAtivas = materias.map(m => {
+    const a = resumirSessoes(atual.filter(s => s.materia_id === m.id))
+    const b = resumirSessoes(anterior.filter(s => s.materia_id === m.id))
+    return { ...m, atual: a, anterior: b, delta: temComparacao ? diferencaPrecisao(a, b) : null }
+  }).filter(m => m.atual.sessoes > 0).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+  const sinal = (n: number) => n > 0 ? '+' : n < 0 ? '−' : ''
+  const numero = (n: number) => `${sinal(n)}${Math.abs(n)}`
+  const infoAnterior = periodo === 'all' ? null : 'Sem sessões no período anterior'
+  const cards = [
+    { label: 'Tempo estudado', value: formatarTempo(resumo.segundos), detail: temComparacao ? `${sinal(resumo.segundos - resumoAnterior.segundos)}${formatarTempo(resumo.segundos - resumoAnterior.segundos)} vs período anterior` : infoAnterior },
+    { label: 'Questões', value: String(resumo.questoes), detail: temComparacao ? `${numero(resumo.questoes - resumoAnterior.questoes)} vs período anterior` : infoAnterior },
+    { label: 'Precisão', value: resumo.precisao === null ? '—' : `${resumo.precisao}%`, detail: deltaPrecisao === null ? (periodo === 'all' ? null : `Comparação exige ${AMOSTRA_MINIMA_PRECISAO} questões em cada período`) : `${numero(deltaPrecisao)} p.p. vs período anterior` },
+    { label: 'Sessões', value: String(resumo.sessoes), detail: temComparacao ? `${numero(resumo.sessoes - resumoAnterior.sessoes)} vs período anterior` : infoAnterior },
+  ]
+  const leitura = deltaPrecisao === null ? 'Ainda não há dados suficientes para avaliar sua evolução da precisão.'
+    : deltaPrecisao === 0 ? `Precisão estável em ${resumo.precisao}%, com ${resumo.questoes} questões neste período.`
+      : `Precisão ${deltaPrecisao > 0 ? 'subiu' : 'caiu'} de ${resumoAnterior.precisao}% para ${resumo.precisao}%, com ${resumo.questoes} questões neste período.`
 
-export default function EstatisticasClient({ initialStats }: EstatisticasProps) {
-  // Os dados já chegam carregados do servidor
-  const stats = initialStats;
+  return <main className="min-h-screen bg-slate-50 p-4 pb-10 text-slate-900 sm:p-8">
+    <div className="mx-auto max-w-6xl space-y-8">
+      <header>
+        <h1 className="text-3xl font-extrabold">Desempenho</h1>
+        <p className="mt-2 text-sm text-slate-600">Acompanhe estudo, prática e precisão com base nos seus registros.</p>
+        <nav aria-label="Período da análise" className="mt-5 flex flex-wrap gap-2">
+          {periodos.map(p => <Link key={p.key} href={`/painel/estatisticas?periodo=${p.key}`} aria-current={periodo === p.key ? 'page' : undefined} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${periodo === p.key ? 'bg-primary-600 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:border-primary-300'}`}>{p.label}</Link>)}
+        </nav>
+        <p className="mt-3 text-xs text-slate-500">{periodo === 'all' ? 'Todo o histórico disponível' : `${limites.inicio?.split('-').reverse().join('/')} a ${limites.fim.split('-').reverse().join('/')} · comparação com os ${periodo} dias anteriores`}</p>
+      </header>
 
-  const getErrorColorClass = (percent: number) => {
-    if (percent >= 40) return { bg: 'bg-red-600', text: 'text-red-700', track: 'bg-red-100' }
-    if (percent >= 26 && percent <= 39) return { bg: 'bg-red-400', text: 'text-red-600', track: 'bg-red-50' }
-    return { bg: 'bg-red-200', text: 'text-red-500', track: 'bg-slate-100' }
-  }
+      <section aria-label="Resumo do período" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {cards.map(card => <div key={card.label} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{card.label}</p>
+          <p className="mt-2 text-2xl font-extrabold text-slate-900 sm:text-3xl">{card.value}</p>
+          {card.detail && <p className="mt-2 text-xs leading-relaxed text-slate-500">{card.detail}</p>}
+        </div>)}
+      </section>
 
-  // Componente Customizado para renderizar a Semana + Período no XAxis
-  const CustomXAxisTick = ({ x, y, payload }: any) => {
-    const dataPoint = stats.monthlyData.find(d => d.name === payload.value)
-    return (
-      <g transform={`translate(${x},${y})`}>
-        <text x={0} y={0} dy={16} textAnchor="middle" fill="#64748b" fontSize={12} className="font-semibold">
-          {payload.value}
-        </text>
-        {dataPoint && (
-          <text x={0} y={0} dy={32} textAnchor="middle" fill="#94a3b8" fontSize={10}>
-            {dataPoint.label}
-          </text>
-        )}
-      </g>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 p-8 overflow-y-auto">
-      <div className="max-w-7xl mx-auto space-y-8">
-        
-        {/* CABEÇALHO */}
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Estatísticas</h1>
-          <p className="text-sm text-slate-500 mt-2 font-medium">Veja como você tá evoluindo</p>
-        </div>
-
-        {/* 1. KPIs REAIS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
-            <div className="bg-primary-100 p-3 rounded-xl text-primary-600">
-              <Clock className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Meu tempo total</p>
-              <div className="text-2xl font-bold text-slate-900 min-h-[32px] flex items-center">
-                {stats.totalDurationFormatted}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
-            <div className="bg-blue-100 p-3 rounded-xl text-blue-600">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Minhas questões feitas</p>
-              <div className="text-2xl font-bold text-slate-900 min-h-[32px] flex items-center">
-                {stats.totalQuestions}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
-            <div className="bg-emerald-100 p-3 rounded-xl text-emerald-600">
-              <Target className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Minha precisão</p>
-              <div className="text-2xl font-bold text-slate-900 min-h-[32px] flex items-center">
-                {`${stats.globalPrecision}%`}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
-            <div className="bg-orange-100 p-3 rounded-xl text-orange-600">
-              <BookOpen className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Meus tópicos concluídos</p>
-              <div className="text-2xl font-bold text-slate-900 min-h-[32px] flex items-center">
-                {stats.totalTopicosFeitos}
-              </div>
-            </div>
+      <section aria-labelledby="evolucao-title" className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div><h2 id="evolucao-title" className="text-xl font-bold">Sua evolução</h2><p className="mt-1 text-sm text-slate-500">{periodo === 'all' ? 'Agrupado por mês' : periodo === '30' ? 'Agrupado em blocos de sete dias' : 'Agrupado por dia'}</p></div>
+          <div className="flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1" role="group" aria-label="Métrica do gráfico">
+            {([{ key: 'precisao', label: 'Precisão' }, { key: 'questoes', label: 'Questões' }, { key: 'tempo', label: 'Tempo' }] as const).map(item => <button key={item.key} onClick={() => setMetrica(item.key)} aria-pressed={metrica === item.key} className={`rounded-lg px-3 py-2 text-xs font-semibold ${metrica === item.key ? 'bg-white text-primary-700 shadow-sm' : 'text-slate-600'}`}>{item.label}</button>)}
           </div>
         </div>
-
-        {/* 2. DESTAQUES REAIS */}
-        <div>
-          <h2 className="text-lg font-bold text-slate-900 mb-4">Meus destaques</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
-              <TrendingUp className="w-5 h-5 text-emerald-500" />
-              <span className="text-xs text-slate-500 font-medium">Matéria mais estudada</span>
-              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
-                {stats.destaques.maisEstudada}
-              </div>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
-              <TrendingDown className="w-5 h-5 text-red-500" />
-              <span className="text-xs text-slate-500 font-medium">Matéria menos estudada</span>
-              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
-                {stats.destaques.menosEstudada}
-              </div>
-            </div>
-
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
-              <Library className="w-5 h-5 text-blue-500" />
-              <span className="text-xs text-slate-500 font-medium">Matéria com mais tópicos</span>
-              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
-                {stats.destaques.maisTopicos}
-              </div>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
-              <Book className="w-5 h-5 text-slate-400" />
-              <span className="text-xs text-slate-500 font-medium">Matéria com menos tópicos</span>
-              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
-                {stats.destaques.menosTopicos}
-              </div>
-            </div>
-
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
-              <Award className="w-5 h-5 text-amber-500" />
-              <span className="text-xs text-slate-500 font-medium">Melhor Precisão</span>
-              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
-                {stats.destaques.melhorPrecisao}
-              </div>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
-              <AlertCircle className="w-5 h-5 text-red-500" />
-              <span className="text-xs text-slate-500 font-medium">Precisão mais baixa</span>
-              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
-                {stats.destaques.piorPrecisao}
-              </div>
-            </div>
-
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
-              <FileQuestion className="w-5 h-5 text-indigo-500" />
-              <span className="text-xs text-slate-500 font-medium">Matéria com mais questões feitas</span>
-              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
-                {stats.destaques.maisQuestoes}
-              </div>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
-              <FileQuestion className="w-5 h-5 text-slate-400" />
-              <span className="text-xs text-slate-500 font-medium">Matéria com menos questões feitas</span>
-              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
-                {stats.destaques.menosQuestoes}
-              </div>
-            </div>
-
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              <span className="text-xs text-slate-500 font-medium">Melhor resultado em provas</span>
-              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
-                {'-'}
-              </div>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
-              <AlertTriangle className="w-5 h-5 text-orange-500" />
-              <span className="text-xs text-slate-500 font-medium">Resultado a melhorar em provas</span>
-              <div className="text-sm font-bold text-slate-900 min-h-[20px] flex items-center">
-                {'-'}
-              </div>
-            </div>
+        {atual.length === 0 ? <p className="mt-6 rounded-2xl bg-slate-50 p-5 text-sm text-slate-600">Ainda não há sessões neste período.</p> : <>
+          <div role="img" aria-label={`Evolução de ${metrica} no período selecionado`} className="mt-6 h-64 w-full sm:h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              {metrica === 'precisao' ? <LineChart data={dadosGrafico} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}><CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" /><XAxis dataKey="label" tick={{ fontSize: 11 }} minTickGap={16} /><YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" /><Tooltip formatter={(value) => value === null ? 'Sem questões' : `${value}%`} /><Line dataKey="precisao" name="Precisão" stroke="#436E4B" strokeWidth={2.5} dot={dadosGrafico.length <= 14} connectNulls={false} /></LineChart>
+                : <BarChart data={dadosGrafico} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}><CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" /><XAxis dataKey="label" tick={{ fontSize: 11 }} minTickGap={16} /><YAxis tick={{ fontSize: 11 }} /><Tooltip formatter={(value) => metrica === 'tempo' ? `${value}h` : value} /><Bar dataKey={metrica === 'tempo' ? 'tempo' : 'questoes'} name={metrica === 'tempo' ? 'Horas' : 'Questões'} fill="#436E4B" radius={[5, 5, 0, 0]} /></BarChart>}
+            </ResponsiveContainer>
           </div>
-        </div>
+          {metrica === 'precisao' && resumo.questoes === 0 && <p className="mt-3 text-sm text-slate-500">Nenhuma questão registrada neste período; precisão indisponível.</p>}
+          {periodo !== 'all' && <p className="mt-4 border-t border-slate-100 pt-4 text-sm text-slate-600">{leitura}</p>}
+        </>}
+      </section>
 
-        {/* 3, 4 E 5. GRÁFICOS OU EMPTY STATE */}
-        {stats.totalDurationFormatted === '0min' && stats.totalQuestions === 0 ? (
-          <div className="flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-200 rounded-3xl p-16 text-center mt-8 shadow-sm">
-            <BarChart2 className="w-16 h-16 text-slate-300 mb-4" />
-            <h2 className="text-xl font-bold text-slate-900 mb-2">Seu mapa de evolução aparecerá aqui</h2>
-            <p className="text-slate-500 mb-6 max-w-md">
-              Comece a registrar seus estudos no Timer para ver seu desempenho.
-            </p>
-            <Link 
-              href="/painel/timer" 
-              className="px-6 py-3 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition shadow-sm"
-            >
-              Ir para o Timer
-            </Link>
-          </div>
-        ) : (
-          <>
-            {/* 3. EVOLUÇÃO (GRÁFICOS) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-                <h2 className="text-lg font-bold text-slate-900 mb-6">Evolução Anual (Horas)</h2>
-                <div className="h-72 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stats.annualData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
-                      <Tooltip 
-                        cursor={{ fill: '#f8fafc' }}
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-                      />
-                      <Bar dataKey="horas" fill="#71c385" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
+      <section aria-labelledby="materias-title">
+        <div><h2 id="materias-title" className="text-xl font-bold">Por matéria</h2><p className="mt-1 text-sm text-slate-500">Matérias com sessões no período, em ordem alfabética.</p></div>
+        {materiasAtivas.length ? <div className="mt-4 grid gap-3 md:grid-cols-2">{materiasAtivas.map(m => <article key={m.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
+          <h3 className="font-bold text-slate-900">{m.name}</h3>
+          <p className="mt-2 text-sm text-slate-600">{formatarTempo(m.atual.segundos)} · {m.atual.questoes} questões · {m.atual.precisao === null ? 'Precisão —' : `${m.atual.precisao}% de precisão`}</p>
+          {m.delta !== null && <p className="mt-2 text-xs font-semibold text-primary-700">Precisão {numero(m.delta)} p.p. vs período anterior</p>}
+          {m.atual.questoes > 0 && m.delta === null && periodo !== 'all' && <p className="mt-2 text-xs text-slate-500">Amostra insuficiente para comparar precisão</p>}
+        </article>)}</div> : <p className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-sm text-slate-600">Nenhuma matéria com sessão registrada neste período.</p>}
+        {atual.some(s => !s.materia_id) && <p className="mt-2 text-xs text-slate-500">Sessões sem matéria associada entram no total geral, mas não aparecem nesta lista.</p>}
+      </section>
 
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-                <h2 className="text-lg font-bold text-slate-900 mb-6">Atividade Mensal (30 dias)</h2>
-                <div className="h-72 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={stats.monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={<CustomXAxisTick />} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
-                      <Tooltip 
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-                      />
-                      <Line type="monotone" dataKey="atividade" stroke="#5F8C65" strokeWidth={3} dot={{ r: 4, fill: '#5F8C65', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-
-            {/* 4. DISTRIBUIÇÃO E 5. MOTIVOS DE ERRO */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              
-              <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col items-center">
-                  <h2 className="text-lg font-bold text-slate-900 mb-2 self-start">Meus tópicos finalizados</h2>
-                  <div className="relative h-56 w-full flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={stats.finishedTopicsData}
-                          innerRadius={60}
-                          outerRadius={80}
-                          paddingAngle={2}
-                          dataKey="value"
-                          stroke="none"
-                        >
-                          {stats.finishedTopicsData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                          ))}
-                        </Pie>
-                        <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <div className="text-3xl font-bold text-slate-900 h-9 flex items-center justify-center">
-                        {stats.totalTopicosFeitos}
-                      </div>
-                      <span className="text-xs font-medium text-slate-500 uppercase">Total</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-3 justify-center mt-2">
-                    {stats.finishedTopicsData.map((item, i) => (
-                      <div key={i} className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.fill }}></div>
-                        {item.name}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col items-center">
-                  <h2 className="text-lg font-bold text-slate-900 mb-2 self-start">Meus erros por matéria</h2>
-                  <div className="relative h-56 w-full flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={stats.wrongQuestionsData}
-                          innerRadius={60}
-                          outerRadius={80}
-                          paddingAngle={2}
-                          dataKey="value"
-                          stroke="none"
-                        >
-                          {stats.wrongQuestionsData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                          ))}
-                        </Pie>
-                        <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <div className="text-3xl font-bold text-slate-900 h-9 flex items-center justify-center">
-                        {stats.totalErros}
-                      </div>
-                      <span className="text-xs font-medium text-slate-500 uppercase">Total</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-3 justify-center mt-2">
-                    {stats.wrongQuestionsData.map((item, i) => (
-                      <div key={i} className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.fill }}></div>
-                        {item.name}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-                <h2 className="text-lg font-bold text-slate-900 mb-6">Por que eu erro</h2>
-                <div className="space-y-6">
-                  {errorReasons.map((reason) => {
-                    const colors = getErrorColorClass(reason.percent)
-                    const Icon = reason.icon
-                    
-                    return (
-                      <div key={reason.id} className="flex flex-col gap-2">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <Icon className={`w-4 h-4 ${colors.text}`} />
-                            <span className="text-sm font-bold text-slate-700">{reason.name}</span>
-                          </div>
-                          <span className={`text-sm font-bold ${colors.text}`}>{reason.percent}%</span>
-                        </div>
-                        <div className={`w-full h-2 rounded-full ${colors.track}`}>
-                          <div 
-                            className={`h-2 rounded-full ${colors.bg} transition-all duration-500`} 
-                            style={{ width: `${reason.percent}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-              
-            </div>
-          </>
-        )}
-      </div>
+      <section aria-labelledby="erros-title" className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 id="erros-title" className="text-xl font-bold">Padrões nos seus erros</h2><p className="mt-1 text-sm text-slate-500">{errosAtuais.length} erros registrados no Caderno neste período · {errosAtuais.filter(e => e.estado === 'resolvido').length} resolvidos</p></div><Link href="/painel/caderno" className="text-sm font-bold text-primary-700 hover:underline">Ver no Caderno</Link></div>
+        {padroes.length ? <ul className="mt-5 space-y-3">{padroes.map(p => <li key={p} className="rounded-xl bg-primary-50 p-3 text-sm text-slate-700">{p}</li>)}</ul> : <p className="mt-5 text-sm text-slate-500">Ainda não há um padrão consistente nos erros registrados neste período.</p>}
+      </section>
     </div>
-  )
+  </main>
 }

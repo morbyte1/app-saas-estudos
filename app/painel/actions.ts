@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { dataBrasil, dataTimestampBrasil, diferencaPrecisao, precisao, questoesDaSessao, resumirSessoes } from '@/lib/desempenho'
 
 export async function saveStudySession(duration_seconds: number) {
   const supabase = await createClient()
@@ -133,9 +134,8 @@ export async function getDashboardStats() {
 
   const userName = user.user_metadata?.full_name || 'Estudante'
 
-  // Ajuste de Timezone (Foca no horário de Brasília - UTC-3) para cálculo de "Hoje" e períodos
-  const now = new Date()
-  now.setUTCHours(now.getUTCHours() - 3)
+  // Datas civis de São Paulo para alinhar as janelas com Desempenho.
+  const now = new Date(`${dataBrasil()}T12:00:00Z`)
   
   const getYYYYMMDD = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
   const todayStr = getYYYYMMDD(now)
@@ -149,13 +149,13 @@ export async function getDashboardStats() {
     { data: userSettings },
     { data: errosData }
   ] = await Promise.all([
-    supabase.from('study_sessions').select('id, session_date, duration_seconds, materia_id, assunto_id, questions_total, questions_wrong').eq('user_id', user.id),
+    supabase.from('study_sessions').select('id, session_date, created_at, duration_seconds, materia_id, assunto_id, questions_total, questions_done, questions_wrong').eq('user_id', user.id),
     supabase.from('materias').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
     supabase.from('user_settings').select('daily_goal_hours').eq('user_id', user.id).maybeSingle(),
     supabase.from('caderno_erros').select('materia_id, erros_recorrentes_count').eq('user_id', user.id).is('deleted_at', null)
   ])
 
-  const sessions = sessionsData || []
+  const sessions = (sessionsData || []).map(s => ({ ...s, session_date: s.session_date || (s.created_at ? dataTimestampBrasil(s.created_at) : '') })).filter(s => !!s.session_date && s.session_date <= todayStr)
   const materias = materiasData || []
   const dailyGoalHours = userSettings?.daily_goal_hours || 3
 
@@ -205,26 +205,15 @@ export async function getDashboardStats() {
   // GERADOR DE PERÍODOS (7, 14, 30, All)
   // ----------------------------------------------------
   const calculatePeriod = (days: number | 'all') => {
-    let periodSessions = []
-    let prevPeriodSessions = []
-    let periodTotalQuestions = 0
-    let periodWrongQuestions = 0
-    let prevTotalQuestions = 0
-    let prevWrongQuestions = 0
-    let periodDuration = 0
-    
+    let periodSessions: typeof sessions = []
+    let prevPeriodSessions: typeof sessions = []
     const activityMap = new Map<string, number>()
 
     if (days === 'all') {
       periodSessions = sessions
       sessions.forEach(s => {
-        periodDuration += (s.duration_seconds || 0)
-        if (s.questions_total && s.questions_total > 0) {
-          periodTotalQuestions += s.questions_total
-          periodWrongQuestions += (s.questions_wrong || 0)
-        }
         const monthYear = s.session_date.substring(0, 7)
-        activityMap.set(monthYear, (activityMap.get(monthYear) || 0) + (s.duration_seconds || 0))
+        activityMap.set(monthYear, (activityMap.get(monthYear) || 0) + Math.max(0, s.duration_seconds || 0))
       })
     } else {
       const cutOffDate = new Date(now)
@@ -238,33 +227,25 @@ export async function getDashboardStats() {
       sessions.forEach(s => {
         if (s.session_date >= cutOffStr && s.session_date <= todayStr) {
           periodSessions.push(s)
-          periodDuration += (s.duration_seconds || 0)
-          if (s.questions_total && s.questions_total > 0) {
-            periodTotalQuestions += s.questions_total
-            periodWrongQuestions += (s.questions_wrong || 0)
-          }
-          activityMap.set(s.session_date, (activityMap.get(s.session_date) || 0) + (s.duration_seconds || 0))
+          activityMap.set(s.session_date, (activityMap.get(s.session_date) || 0) + Math.max(0, s.duration_seconds || 0))
         } else if (s.session_date >= prevCutOffStr && s.session_date < cutOffStr) {
           prevPeriodSessions.push(s)
-          if (s.questions_total && s.questions_total > 0) {
-            prevTotalQuestions += s.questions_total
-            prevWrongQuestions += (s.questions_wrong || 0)
-          }
         }
       })
     }
 
-    const accuracy = periodTotalQuestions > 0 ? Math.round(((periodTotalQuestions - periodWrongQuestions) / periodTotalQuestions) * 100) : null
-    const prevAccuracy = prevTotalQuestions > 0 ? Math.round(((prevTotalQuestions - prevWrongQuestions) / prevTotalQuestions) * 100) : null
+    const atual = resumirSessoes(periodSessions)
+    const anterior = resumirSessoes(prevPeriodSessions)
+    const accuracy = atual.precisao
 
     let evolutionLabel = "— Dados insuficientes para comparar"
-    if (accuracy !== null && prevAccuracy !== null) {
-      const diff = accuracy - prevAccuracy
+    const diff = diferencaPrecisao(atual, anterior)
+    if (diff !== null) {
       evolutionLabel = diff === 0 ? '0 p.p.' : `${diff > 0 ? '+' : ''}${diff} p.p.`
     }
 
-    const hours = Math.floor(periodDuration / 3600)
-    const minutes = Math.floor((periodDuration % 3600) / 60)
+    const hours = Math.floor(atual.segundos / 3600)
+    const minutes = Math.floor((atual.segundos % 3600) / 60)
     const timeFormatted = hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`
 
     let activityChart = []
@@ -305,7 +286,7 @@ export async function getDashboardStats() {
       }
     }
 
-    return { timeFormatted, questions: periodTotalQuestions, accuracy, evolutionLabel, activityChart }
+    return { timeFormatted, questions: atual.questoes, accuracy, evolutionLabel, activityChart }
   }
 
   const periods = {
@@ -361,16 +342,17 @@ export async function getDashboardStats() {
       if (!lastStudiedAt || s.session_date > lastStudiedAt) lastStudiedAt = s.session_date
       durations.push(s.duration_seconds || 0)
 
-      if (s.questions_total && s.questions_total > 0) {
-        totalQ += s.questions_total
-        wrongQ += (s.questions_wrong || 0)
+      const q = questoesDaSessao(s)
+      if (q.total > 0) {
+        totalQ += q.total
+        wrongQ += q.erradas
         
         if (s.session_date >= fourteenStr) {
-          recentQ += s.questions_total
-          recentWrong += (s.questions_wrong || 0)
+          recentQ += q.total
+          recentWrong += q.erradas
         } else if (s.session_date >= twentyEightStr && s.session_date < fourteenStr) {
-          prevQ += s.questions_total
-          prevWrong += (s.questions_wrong || 0)
+          prevQ += q.total
+          prevWrong += q.erradas
         }
       }
     })
@@ -395,9 +377,9 @@ export async function getDashboardStats() {
       statusColor = 'bg-red-100 text-red-700'
     }
 
-    const accuracy = totalQ > 0 ? Math.round(((totalQ - wrongQ) / totalQ) * 100) : null
-    const recentAccuracy = recentQ > 0 ? Math.round(((recentQ - recentWrong) / recentQ) * 100) : null
-    const prevAccuracy = prevQ > 0 ? Math.round(((prevQ - prevWrong) / prevQ) * 100) : null
+    const accuracy = precisao(totalQ, wrongQ)
+    const recentAccuracy = precisao(recentQ, recentWrong)
+    const prevAccuracy = precisao(prevQ, prevWrong)
 
     const sortedDurations = [...durations].sort((a, b) => a - b)
     const medianDurationMinutes = sortedDurations.length > 0 
