@@ -53,10 +53,11 @@ test('tempo humano usa minutos e concordância, sem horas decimais', () => {
   assert.equal(formatarTempoExtenso(66180), '18 horas e 23 minutos')
 })
 
-test('atividade diária não cria dias futuros, limita a 365 dias e preserva dias sem sessão', () => {
-  assert.deepEqual(atividadeAno([], '2026-09-19'), [])
+test('atividade diária vai de janeiro até hoje, inclusive sem sessões e em anos bissextos', () => {
+  assert.deepEqual(atividadeAno([], '2026-01-01').map(dia => [dia.data, dia.nivel]), [['2026-01-01', 0]])
   const dias = atividadeAno([sessao('2025-09-20', 2), sessao('2026-09-19', 3), sessao('2026-09-20', 99)], '2026-09-19')
-  assert.equal(dias.length, 365)
+  assert.equal(dias.length, 262)
+  assert.equal(dias[0].data, '2026-01-01')
   assert.equal(dias.at(-1).data, '2026-09-19')
   assert.equal(dias[1].sessoes, 0)
   assert.equal(dias[1].nivel, 0)
@@ -65,6 +66,8 @@ test('atividade diária não cria dias futuros, limita a 365 dias e preserva dia
   assert.equal(nivelAtividade(1800), 2)
   assert.equal(nivelAtividade(3600), 3)
   assert.equal(nivelAtividade(7200), 4)
+  assert.equal(atividadeAno([], '2024-12-31').length, 366)
+  assert.equal(atividadeAno([], '2025-01-01').length, 1)
   const pertoDaMeiaNoite = atividadeAno([{ ...sessao('2026-09-20', 2), session_date: null, created_at: '2026-09-20T02:30:00Z' }], '2026-09-19')
   assert.equal(pertoDaMeiaNoite.at(-1).data, '2026-09-19')
 })

@@ -38,11 +38,8 @@ export default function EstatisticasClient({ periodo, limites, sessoes, materias
   const pontos = pontosEvolucao(atual, periodo, limites.inicio, limites.fim)
   const dadosGrafico = pontos.map(p => ({ ...p, tempo: Number((p.segundos / 3600).toFixed(2)) }))
   const ano = atividadeAno(sessoes, limites.fim)
-  const dia = ano.find(item => item.data === diaSelecionado) || ano.at(-1)
+  const dia = ano.find(item => item.data === diaSelecionado)
   const inicioSemana = ano.length ? (new Date(`${ano[0].data}T12:00:00Z`).getUTCDay() + 6) % 7 : 0
-  const marcadoresMes = ano.flatMap((item, index) => index === 0 || item.data.endsWith('-01')
-    ? [{ label: new Intl.DateTimeFormat('pt-BR', { month: 'short', timeZone: 'UTC' }).format(new Date(`${item.data}T12:00:00Z`)), coluna: Math.floor((inicioSemana + index) / 7) }] : [])
-  const meses = marcadoresMes.filter((mes, index) => marcadoresMes.findLastIndex(outro => outro.coluna === mes.coluna) === index)
   const materiasAtivas = materias.map(m => {
     const a = resumirSessoes(atual.filter(s => s.materia_id === m.id))
     const b = resumirSessoes(anterior.filter(s => s.materia_id === m.id))
@@ -134,21 +131,18 @@ export default function EstatisticasClient({ periodo, limites, sessoes, materias
 
       <section aria-labelledby="ano-title" className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
         <h2 id="ano-title" className="text-xl font-bold">Seu ano de estudos</h2>
-        <p className="mt-1 text-sm text-slate-500">Veja sua constância ao longo dos últimos 365 dias.</p>
-        {ano.length ? <>
-          <p className="mt-3 text-xs text-slate-500">{formatarDataHumana(ano[0].data, true)} a {formatarDataHumana(ano[ano.length - 1].data, true)} · selecione um dia para ver os registros</p>
+        <p className="mt-1 text-sm text-slate-500">Veja sua constância desde 1º de janeiro deste ano.</p>
+          <p className="mt-3 text-xs text-slate-500">{formatarDataHumana(ano[0].data, true)} a {formatarDataHumana(ano[ano.length - 1].data, true)} · clique ou toque em um dia para ver os registros</p>
           <div className="mt-4 max-w-full overflow-x-auto pb-2" aria-label="Atividade diária dos estudos">
-            <div className="relative w-max pt-5">
-              {meses.map((mes, index) => <span key={`${mes.coluna}-${index}`} aria-hidden="true" className="absolute top-0 text-[10px] font-medium capitalize text-slate-500" style={{ left: mes.coluna * 16 }}>{mes.label}</span>)}
+            <div className="w-max">
               <div className="grid w-max grid-flow-col grid-rows-7 auto-cols-[12px] gap-1">
                 {Array.from({ length: inicioSemana }, (_, index) => <span key={`vazio-${index}`} aria-hidden="true" className="h-3 w-3" />)}
-                {ano.map(item => <button key={item.data} type="button" aria-label={`${formatarDataHumana(item.data, true)}: ${item.sessoes} sessões, ${formatarTempoExtenso(item.segundos)}, ${item.questoes} questões`} aria-pressed={dia?.data === item.data} onMouseEnter={() => setDiaSelecionado(item.data)} onFocus={() => setDiaSelecionado(item.data)} onClick={() => setDiaSelecionado(item.data)} className={`h-3 w-3 rounded-[3px] ${coresAtividade[item.nivel]} ${dia?.data === item.data ? 'ring-2 ring-primary-700 ring-offset-1' : 'hover:ring-1 hover:ring-primary-500'}`} />)}
+                {ano.map(item => <button key={item.data} type="button" aria-label={`${formatarDataHumana(item.data, true)}: ${item.sessoes} sessões, ${formatarTempoExtenso(item.segundos)}, ${item.questoes} questões`} aria-pressed={diaSelecionado === item.data} onClick={() => setDiaSelecionado(item.data)} className={`h-3 w-3 rounded-[3px] ${coresAtividade[item.nivel]} ${diaSelecionado === item.data ? 'ring-2 ring-primary-700 ring-offset-1' : 'hover:ring-1 hover:ring-primary-500'}`} />)}
               </div>
             </div>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-500"><span>Menos atividade</span>{coresAtividade.map((cor, index) => <span key={index} className={`h-3 w-3 rounded-[3px] ${cor}`} />)}<span>Mais atividade</span><span className="ml-auto">Intensidade por tempo estudado</span></div>
           {dia && <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3 text-sm text-slate-700 shadow-sm" aria-live="polite"><p className="font-bold text-slate-900">{formatarDataHumana(dia.data, true)}</p>{dia.sessoes ? <div className="mt-2 space-y-1"><p>Tempo estudado: {formatarTempoExtenso(dia.segundos)}</p><p>Sessões: {dia.sessoes}</p><p>Questões: {dia.questoes}</p></div> : <p className="mt-2">Nenhuma sessão registrada.</p>}</div>}
-        </> : <p className="mt-5 text-sm text-slate-500">Nenhuma sessão registrada nos últimos 365 dias. Sua atividade aparecerá aqui quando houver registros.</p>}
       </section>
     </div>
   </main>

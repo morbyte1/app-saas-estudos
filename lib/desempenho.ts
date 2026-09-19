@@ -152,10 +152,8 @@ export const nivelAtividade = (segundos: number): DiaAtividade['nivel'] =>
   segundos <= 0 ? 0 : segundos < 1800 ? 1 : segundos < 3600 ? 2 : segundos < 7200 ? 3 : 4
 
 export function atividadeAno(sessoes: SessaoDesempenho[], hoje = dataBrasil()): DiaAtividade[] {
-  const inicioMaximo = somarDiasCivis(hoje, -364)
-  const validas = sessoes.filter(s => dentro(dataDaSessao(s), inicioMaximo, hoje))
-  if (validas.length === 0) return []
-  const inicio = validas.map(s => dataDaSessao(s)!).sort()[0]
+  const inicio = `${hoje.slice(0, 4)}-01-01`
+  const validas = sessoes.filter(s => dentro(dataDaSessao(s), inicio, hoje))
   const agregados = new Map<string, { segundos: number; sessoes: number; questoes: number }>()
   for (const s of validas) {
     const data = dataDaSessao(s)!

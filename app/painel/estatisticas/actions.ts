@@ -60,7 +60,7 @@ export async function getDesempenho(periodo: Periodo) {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return { error: 'Usuário não autenticado.' }
   const limites = janela(periodo)
-  const inicioAno = somarDiasCivis(limites.fim, -364)
+  const inicioAno = `${limites.fim.slice(0, 4)}-01-01`
   const inicioSessoes = limites.anteriorInicio && limites.anteriorInicio < inicioAno ? limites.anteriorInicio : inicioAno
   const [sessoes, materias, assuntos, erros] = await Promise.all([
     carregarSessoes(supabase, user.id, periodo === 'all' ? null : inicioSessoes),
