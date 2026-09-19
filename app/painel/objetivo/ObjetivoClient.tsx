@@ -194,7 +194,7 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
         toast('Contexto de objetivo salvo com sucesso!', 'success')
         setStep(0)
       } else {
-        toast('Erro ao salvar suas configurações.', 'error')
+        toast(result.error || 'Erro ao salvar suas configurações.', 'error')
       }
     })
   }
@@ -242,7 +242,7 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
         setExamGoalState({ name: finalName, target_date: finalDate })
         setIsEditingExam(false)
         toast('Alvo atualizado.', 'success')
-      }
+      } else toast(result.error || 'Erro ao atualizar o alvo.', 'error')
     })
   }
 

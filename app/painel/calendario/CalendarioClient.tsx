@@ -14,7 +14,6 @@ import {
   Target, 
   Sparkles, 
   Clock, 
-  BookOpen, 
   CheckCircle2 
 } from 'lucide-react'
 import {
@@ -25,7 +24,8 @@ import {
   toggleEventStatus,
   duplicateEvents,
   getDayContext,
-  DayContext
+  DayContext,
+  ActivityType
 } from './actions'
 import { gerarSugestaoDoDia, SugestaoDia } from '@/lib/calendarioSugestao'
 
@@ -34,7 +34,8 @@ interface Event {
   title: string
   time: string
   duration: number
-  subject_id: string
+  subject_id: string | null
+  activity_type?: ActivityType | null
   is_done: boolean
   event_date: string
 }
@@ -68,6 +69,7 @@ export default function CalendarioClient({
   // Modal de Evento
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalData, setModalData] = useState({
+    activityType: 'Estudo' as ActivityType,
     title: '',
     time: '',
     duration: '',
@@ -176,10 +178,11 @@ export default function CalendarioClient({
   const openModal = () => {
     setIsModalOpen(true)
     setModalData({
+      activityType: 'Estudo',
       title: '',
       time: '',
       duration: '',
-      subjectId: materias.length > 0 ? materias[0].id : ''
+      subjectId: ''
     })
     setEditingEventId(null)
   }
@@ -199,13 +202,13 @@ export default function CalendarioClient({
       return
     }
 
-    if (!finalSubjectId) {
+    if (modalData.activityType === 'Estudo' && !finalSubjectId) {
       toast("Por favor, selecione uma matéria.", "error")
       return
     }
 
-    const parsedDuration = parseInt(modalData.duration)
-    if (isNaN(parsedDuration) || parsedDuration <= 0) {
+    const parsedDuration = Number(modalData.duration)
+    if (!Number.isInteger(parsedDuration) || parsedDuration <= 0) {
       toast("A duração deve ser um número válido maior que zero.", "error")
       return
     }
@@ -215,7 +218,8 @@ export default function CalendarioClient({
         title: modalData.title,
         time: modalData.time,
         duration: parsedDuration,
-        subject_id: finalSubjectId,
+        subject_id: finalSubjectId || null,
+        activity_type: modalData.activityType,
         event_date: eventDate
       })
       
@@ -239,7 +243,8 @@ export default function CalendarioClient({
         title: modalData.title,
         time: modalData.time,
         duration: parsedDuration,
-        subject_id: finalSubjectId,
+        subject_id: finalSubjectId || null,
+        activity_type: modalData.activityType,
         event_date: eventDate
       })
       
@@ -265,10 +270,11 @@ export default function CalendarioClient({
     const event = events.find(e => e.id === eventId)
     if (event) {
       setModalData({
+        activityType: event.activity_type || 'Estudo',
         title: event.title,
         time: event.time,
         duration: event.duration.toString(),
-        subjectId: event.subject_id
+        subjectId: event.subject_id || ''
       })
       setEditingEventId(eventId)
       setIsModalOpen(true)
@@ -330,6 +336,7 @@ export default function CalendarioClient({
   const handleApplySuggestion = (sugestao: SugestaoDia) => {
     const durationMinutes = Math.round(sugestao.duracaoSugerida * 60)
     setModalData({
+      activityType: 'Estudo',
       title: `Estudo ${sugestao.materiaNome}`,
       time: '09:00',
       duration: durationMinutes.toString(),
@@ -361,6 +368,10 @@ export default function CalendarioClient({
   const sugestaoCalculada = gerarSugestaoDoDia(dayContext)
   const isSuggestionDismissed = dismissedSuggestionDate === selectedDateStr
   const sugestaoVisivel = sugestaoCalculada && !isSuggestionDismissed
+  const examDate = dayContext?.examGoal?.target_date?.slice(0, 10)
+  const examDaysRemaining = examDate
+    ? Math.ceil((Date.parse(`${examDate}T12:00:00Z`) - Date.parse(`${formatDateStr(new Date())}T12:00:00Z`)) / 86400000)
+    : null
 
   return (
     <div className="p-8 min-h-screen bg-slate-50">
@@ -378,7 +389,7 @@ export default function CalendarioClient({
                 <Target className="w-5 h-5" />
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Disponibilidade de Hoje</span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Disponibilidade do Dia</span>
                 <span className="text-sm font-extrabold text-slate-800">
                   {dayContext ? `${dayContext.disponibilidadeDia}h no seu plano` : '—'}
                 </span>
@@ -387,52 +398,11 @@ export default function CalendarioClient({
           </div>
         </div>
 
-        {/* Resumo de Metas Semanais por Matéria */}
-        {dayContext && dayContext.materiasSemanaStatus.length > 0 && (
-          <div className="mb-6 bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-primary-600" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Meta Semanal das Matérias
-                </h3>
-              </div>
-              <span className="text-xs font-medium text-slate-400">
-                Semana da data selecionada
-              </span>
-            </div>
-            
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-              {dayContext.materiasSemanaStatus.map((m) => {
-                const progresso = m.goalHours > 0 
-                  ? Math.min(Math.round((m.weeklyStudiedHours / m.goalHours) * 100), 100) 
-                  : 0
-                const metaBatida = m.weeklyStudiedHours >= m.goalHours
-
-                return (
-                  <div key={m.materiaId} className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col justify-between">
-                    <div>
-                      <span className="font-bold text-slate-800 text-xs truncate block mb-1">
-                        {m.materiaNome}
-                      </span>
-                      <div className="flex items-baseline justify-between text-[11px] mb-1.5 font-medium">
-                        <span className={metaBatida ? 'text-emerald-700 font-bold' : 'text-slate-600'}>
-                          {m.weeklyStudiedHours}h
-                        </span>
-                        <span className="text-slate-400">de {m.goalHours}h</span>
-                      </div>
-                    </div>
-                    <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                      <div 
-                        className={`h-1.5 rounded-full transition-all duration-300 ${metaBatida ? 'bg-emerald-500' : 'bg-primary-500'}`} 
-                        style={{ width: `${progresso}%` }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
+        {dayContext?.examGoal?.name && examDaysRemaining !== null && Number.isFinite(examDaysRemaining) && (
+          <p className="text-sm text-slate-500 mb-6">
+            Objetivo: <span className="font-semibold text-slate-700">{dayContext.examGoal.name}</span>
+            {' · '}{examDaysRemaining > 0 ? `${examDaysRemaining} dias para a prova` : examDaysRemaining === 0 ? 'prova hoje' : 'data da prova já passou'}
+          </p>
         )}
 
         {/* Grade do Calendário e Coluna Direita */}
@@ -508,13 +478,13 @@ export default function CalendarioClient({
                 <div className="flex items-center gap-2.5">
                   <Clock className="w-4 h-4 text-primary-600 shrink-0" />
                   <p className="text-sm font-medium text-slate-700">
-                    Você tem <strong className="text-slate-900">{dayContext.disponibilidadeDia}h</strong> disponíveis hoje.{' '}
-                    <strong className="text-slate-900">{dayContext.jaEstudadoDia}h</strong> já estudadas,{' '}
-                    <strong className="text-slate-900">{dayContext.jaAgendadoDia}h</strong> agendadas.
+                    Para este dia: <strong className="text-slate-900">{dayContext.disponibilidadeDia}h</strong> disponíveis,{' '}
+                    <strong className="text-slate-900">{dayContext.jaAgendadoDia}h</strong> planejadas,{' '}
+                    <strong className="text-slate-900">{dayContext.jaEstudadoDia}h</strong> estudadas.
                   </p>
                 </div>
                 <span className="text-xs font-bold text-primary-700 bg-primary-50 px-3 py-1 rounded-lg shrink-0">
-                  {dayContext.espacoLivre}h livres
+                  {dayContext.espacoLivre}h livres para planejar
                 </span>
               </div>
             )}
@@ -640,6 +610,7 @@ export default function CalendarioClient({
                         <p className={`font-semibold ${event.is_done ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
                           {event.title}
                         </p>
+                        <span className="text-xs text-slate-500">{event.activity_type || 'Estudo'}</span>
                       </div>
 
                       {materia && (
@@ -696,15 +667,27 @@ export default function CalendarioClient({
 
               <div className="space-y-4">
                 <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Tipo de atividade</label>
+                  <select
+                    value={modalData.activityType}
+                    onChange={(e) => setModalData({ ...modalData, activityType: e.target.value as ActivityType })}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl bg-white"
+                  >
+                    {(['Estudo', 'Revisão', 'Simulado', 'Redação', 'Outro'] as ActivityType[]).map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Nome do Estudo
+                    Título da atividade
                   </label>
                   <input
                     type="text"
                     value={modalData.title}
                     onChange={(e) => setModalData({ ...modalData, title: e.target.value })}
                     className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="Ex: Estudo Matemática"
+                    placeholder="Ex: Revisão de funções"
                   />
                 </div>
 
@@ -740,14 +723,14 @@ export default function CalendarioClient({
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Matéria
+                    Matéria {modalData.activityType !== 'Estudo' && '(opcional)'}
                   </label>
                   <select
                     value={modalData.subjectId}
                     onChange={(e) => setModalData({ ...modalData, subjectId: e.target.value })}
                     className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
-                    <option value="" disabled>Selecione uma matéria</option>
+                    <option value="">{modalData.activityType === 'Estudo' ? 'Selecione uma matéria' : 'Sem matéria'}</option>
                     {materias.map(materia => (
                       <option key={materia.id} value={materia.id}>
                         {materia.name}

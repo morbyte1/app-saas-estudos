@@ -91,7 +91,8 @@ export async function salvarDisponibilidade(data: { horasDiasSemana: number, hor
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
 
-  const { data: existing } = await supabase.from('user_plan_settings').select('id').eq('user_id', user.id).maybeSingle()
+  const { data: existing, error: readError } = await supabase.from('user_plan_settings').select('id').eq('user_id', user.id).maybeSingle()
+  if (readError) return { error: readError.message }
   
   const payload = {
     horas_dias_semana: data.horasDiasSemana,
@@ -100,11 +101,10 @@ export async function salvarDisponibilidade(data: { horasDiasSemana: number, hor
     updated_at: new Date().toISOString()
   }
 
-  if (existing) {
-    await supabase.from('user_plan_settings').update(payload).eq('id', existing.id)
-  } else {
-    await supabase.from('user_plan_settings').insert({ user_id: user.id, ...payload })
-  }
+  const { error } = existing
+    ? await supabase.from('user_plan_settings').update(payload).eq('id', existing.id).eq('user_id', user.id).select('id').single()
+    : await supabase.from('user_plan_settings').insert({ user_id: user.id, ...payload })
+  if (error) return { error: error.message }
 
   revalidatePath('/painel/meu-plano')
   return { success: true }
@@ -115,13 +115,13 @@ export async function salvarFrequenciaRedacao(frequencia: number) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
 
-  const { data: existing } = await supabase.from('user_plan_settings').select('id').eq('user_id', user.id).maybeSingle()
+  const { data: existing, error: readError } = await supabase.from('user_plan_settings').select('id').eq('user_id', user.id).maybeSingle()
+  if (readError) return { error: readError.message }
   
-  if (existing) {
-    await supabase.from('user_plan_settings').update({ redacao_frequencia_semanal: frequencia }).eq('id', existing.id)
-  } else {
-    await supabase.from('user_plan_settings').insert({ user_id: user.id, redacao_frequencia_semanal: frequencia })
-  }
+  const { error } = existing
+    ? await supabase.from('user_plan_settings').update({ redacao_frequencia_semanal: frequencia }).eq('id', existing.id).eq('user_id', user.id).select('id').single()
+    : await supabase.from('user_plan_settings').insert({ user_id: user.id, redacao_frequencia_semanal: frequencia })
+  if (error) return { error: error.message }
 
   revalidatePath('/painel/meu-plano')
   return { success: true }
@@ -132,9 +132,13 @@ export async function ajustarHorasManualMateria(materiaId: string, horas: number
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
 
-  const { data: existing } = await supabase.from('user_plan_settings').select('id, horas_manuais_override').eq('user_id', user.id).maybeSingle()
+  const { data: existing, error: readError } = await supabase.from('user_plan_settings').select('id, horas_manuais_override').eq('user_id', user.id).maybeSingle()
+  if (readError) return { error: readError.message }
+  const { data: materia, error: materiaError } = await supabase.from('materias').select('id').eq('id', materiaId).eq('user_id', user.id).maybeSingle()
+  if (materiaError || !materia) return { error: materiaError?.message || 'Matéria não encontrada.' }
+  if (horas !== null && (!Number.isFinite(horas) || horas < 0)) return { error: 'Horas inválidas.' }
   
-  const overrides = existing?.horas_manuais_override || {}
+  const overrides = { ...(existing?.horas_manuais_override || {}) }
   
   if (horas === null) {
     delete overrides[materiaId]
@@ -142,11 +146,10 @@ export async function ajustarHorasManualMateria(materiaId: string, horas: number
     overrides[materiaId] = horas
   }
 
-  if (existing) {
-    await supabase.from('user_plan_settings').update({ horas_manuais_override: overrides }).eq('id', existing.id)
-  } else {
-    await supabase.from('user_plan_settings').insert({ user_id: user.id, horas_manuais_override: overrides })
-  }
+  const { error } = existing
+    ? await supabase.from('user_plan_settings').update({ horas_manuais_override: overrides }).eq('id', existing.id).eq('user_id', user.id).select('id').single()
+    : await supabase.from('user_plan_settings').insert({ user_id: user.id, horas_manuais_override: overrides })
+  if (error) return { error: error.message }
 
   revalidatePath('/painel/meu-plano')
   return { success: true }
@@ -157,11 +160,43 @@ export async function aplicarDistribuicaoAsMateriasGoalHours(distribuicao: Recor
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
 
-  for (const [materiaId, hours] of Object.entries(distribuicao)) {
-    await supabase.from('materias').update({ goal_hours: hours }).eq('id', materiaId).eq('user_id', user.id)
+  const [{ data: settings, error: settingsError }, { data: materias, error: materiasError }] = await Promise.all([
+    supabase.from('user_plan_settings').select('horas_dias_semana, horas_sabado, horas_domingo, redacao_frequencia_semanal').eq('user_id', user.id).maybeSingle(),
+    supabase.from('materias').select('id, goal_hours').eq('user_id', user.id)
+  ])
+  if (settingsError || materiasError) return { error: settingsError?.message || materiasError?.message }
+
+  const ids = Object.keys(distribuicao)
+  if (!materias || ids.length !== materias.length || ids.some(id => !materias.some(m => m.id === id))) {
+    return { error: 'A lista de matérias mudou. Atualize o plano antes de aplicar.' }
+  }
+  const horasDisponiveis = Math.max(
+    (settings?.horas_dias_semana ?? 2) * 5 + (settings?.horas_sabado ?? 3) +
+    (settings?.horas_domingo ?? 3) - (settings?.redacao_frequencia_semanal ?? 1), 0
+  )
+  const horas = Object.values(distribuicao)
+  if (horas.some(h => !Number.isFinite(h) || h < 0) || horas.reduce((sum, h) => sum + h, 0) > horasDisponiveis + 0.000001) {
+    return { error: 'A distribuição excede as horas disponíveis após a reserva de redação.' }
   }
 
-  await supabase.from('user_plan_settings').update({ updated_at: new Date().toISOString() }).eq('user_id', user.id)
+  const atualizadas: typeof materias = []
+  for (const materia of materias) {
+    const { error } = await supabase.from('materias').update({ goal_hours: distribuicao[materia.id] })
+      .eq('id', materia.id).eq('user_id', user.id).select('id').single()
+    if (error) {
+      const rollback = await Promise.all(atualizadas.map(m => supabase.from('materias')
+        .update({ goal_hours: m.goal_hours }).eq('id', m.id).eq('user_id', user.id)))
+      return { error: rollback.some(r => r.error)
+        ? 'Falha ao aplicar metas; algumas alterações podem permanecer. Atualize a página e confira suas matérias.'
+        : `Falha ao aplicar metas: ${error.message}` }
+    }
+    atualizadas.push(materia)
+  }
+
+  if (settings) {
+    const { error } = await supabase.from('user_plan_settings').update({ updated_at: new Date().toISOString() }).eq('user_id', user.id)
+    if (error) return { error: `Metas aplicadas, mas a data de atualização não foi salva: ${error.message}` }
+  }
 
   revalidatePath('/painel/materias')
   revalidatePath('/painel/meu-plano')

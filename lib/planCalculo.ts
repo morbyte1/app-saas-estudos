@@ -122,14 +122,15 @@ export function calcularDistribuicaoSugerida(
     const somaPesos = materiasParaCalcular.reduce((acc, m) => acc + m.pesoFinal, 0)
 
     let horasDistribuidas = 0
-    materiasParaCalcular.forEach((m, index) => {
+    materiasParaCalcular.forEach(m => {
       let horasCalculadas = 0
       if (somaPesos > 0) {
         const proporcao = m.pesoFinal / somaPesos
         horasCalculadas = Math.round(proporcao * horasParaDistribuir)
       }
 
-      horasCalculadas = Math.max(horasCalculadas, 1)
+      // Não inventar uma hora mínima quando não há capacidade para todas as matérias.
+      horasCalculadas = Math.max(horasCalculadas, horasParaDistribuir >= materiasParaCalcular.length ? 1 : 0)
       horasDistribuidas += horasCalculadas
 
       resultado.push({
@@ -142,10 +143,18 @@ export function calcularDistribuicaoSugerida(
     })
 
     const diferenca = horasParaDistribuir - horasDistribuidas
-    if (diferenca !== 0 && resultado.filter(r => r.horasManuais === null).length > 0) {
-      const ajustavel = resultado.find(r => r.horasManuais === null)
-      if (ajustavel) {
-        ajustavel.horasSugeridas = Math.max(ajustavel.horasSugeridas + diferenca, 1)
+    if (diferenca !== 0) {
+      const automaticas = resultado.filter(r => r.horasManuais === null)
+      if (diferenca > 0 && automaticas[0]) automaticas[0].horasSugeridas += diferenca
+      if (diferenca < 0) {
+        let excesso = -diferenca
+        const minimo = horasParaDistribuir >= materiasParaCalcular.length ? 1 : 0
+        for (const materia of automaticas) {
+          const desconto = Math.min(excesso, materia.horasSugeridas - minimo)
+          materia.horasSugeridas -= desconto
+          excesso -= desconto
+          if (excesso <= 0) break
+        }
       }
     }
   }

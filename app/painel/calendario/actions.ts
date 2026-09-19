@@ -4,6 +4,16 @@ import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { calcularPesoMateria } from '@/lib/planCalculo'
 
+export type ActivityType = 'Estudo' | 'Revisão' | 'Simulado' | 'Redação' | 'Outro'
+const activityTypes: ActivityType[] = ['Estudo', 'Revisão', 'Simulado', 'Redação', 'Outro']
+
+function validateEvent(data: { title?: string; time?: string; duration?: number; subject_id?: string | null; activity_type?: ActivityType; event_date?: string }) {
+  if (!data.activity_type || !activityTypes.includes(data.activity_type)) return 'Tipo de atividade inválido.'
+  if (!data.title?.trim() || !data.time || !data.event_date || !Number.isInteger(data.duration) || data.duration! <= 0) return 'Preencha título, horário, data e duração válida.'
+  if (data.activity_type === 'Estudo' && !data.subject_id) return 'Selecione uma matéria para Estudo.'
+  return null
+}
+
 export interface MateriaPendente {
   materiaId: string
   materiaNome: string
@@ -28,6 +38,7 @@ export interface DayContext {
     weeklyStudiedHours: number
   }[]
   diasRestantesSemana: number
+  examGoal: { name: string; target_date: string } | null
 }
 
 export async function getCalendarData() {
@@ -71,7 +82,8 @@ export async function createEvent(data: {
   title: string
   time: string
   duration: number
-  subject_id: string
+  subject_id: string | null
+  activity_type: ActivityType
   event_date: string
 }) {
   const supabase = await createClient()
@@ -86,12 +98,16 @@ export async function createEvent(data: {
     return { error: 'User not authenticated' }
   }
 
+  const validationError = validateEvent(data)
+  if (validationError) return { error: validationError }
+
   const { data: newEvent, error } = await supabase.from('schedule_events').insert({
     user_id: user.id,
     title: data.title,
     time: data.time,
     duration: data.duration,
     subject_id: data.subject_id,
+    activity_type: data.activity_type,
     event_date: data.event_date,
     is_done: false,
   }).select().single()
@@ -109,7 +125,8 @@ export async function updateEvent(id: string, data: {
   title?: string
   time?: string
   duration?: number
-  subject_id?: string
+  subject_id?: string | null
+  activity_type?: ActivityType
   event_date?: string
 }) {
   const supabase = await createClient()
@@ -123,6 +140,9 @@ export async function updateEvent(id: string, data: {
     console.error('Error getting user:', userError?.message)
     return { error: 'User not authenticated' }
   }
+
+  const validationError = validateEvent(data)
+  if (validationError) return { error: validationError }
 
   const { data: updatedEvent, error } = await supabase
     .from('schedule_events')
@@ -241,6 +261,7 @@ export async function duplicateEvents(
         time: event.time,
         duration: event.duration,
         subject_id: event.subject_id,
+        activity_type: event.activity_type || 'Estudo',
         event_date: targetDateString,
         is_done: false,
       })
@@ -292,14 +313,16 @@ export async function getDayContext(dateStr: string): Promise<{ success: boolean
     sessionsWeekRes,
     planSettingsRes,
     materiasRes,
-    objectiveRes
+    objectiveRes,
+    examGoalRes
   ] = await Promise.all([
     supabase.from('schedule_events').select('duration').eq('user_id', user.id).eq('event_date', dateStr),
     supabase.from('study_sessions').select('materia_id, duration_seconds').eq('user_id', user.id).eq('session_date', dateStr),
     supabase.from('study_sessions').select('materia_id, duration_seconds').eq('user_id', user.id).gte('session_date', startOfWeekStr).lte('session_date', endOfWeekStr),
     supabase.from('user_plan_settings').select('*').eq('user_id', user.id).maybeSingle(),
     supabase.from('materias').select('id, name, goal_hours').eq('user_id', user.id).order('name', { ascending: true }),
-    supabase.from('user_objective_context').select('curso_id, nivel_percebido').eq('user_id', user.id).maybeSingle()
+    supabase.from('user_objective_context').select('curso_id, nivel_percebido').eq('user_id', user.id).maybeSingle(),
+    supabase.from('exam_goals').select('name, target_date').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1)
   ])
 
   const planSettings = planSettingsRes.data || {
@@ -325,7 +348,7 @@ export async function getDayContext(dateStr: string): Promise<{ success: boolean
   const totalSecondsEstudadosDia = daySessions.reduce((acc, s) => acc + (s.duration_seconds || 0), 0)
   const jaEstudadoDia = Number((totalSecondsEstudadosDia / 3600).toFixed(1))
 
-  const espacoLivre = Number(Math.max(disponibilidadeDia - jaAgendadoDia - jaEstudadoDia, 0).toFixed(1))
+  const espacoLivre = Number(Math.max(disponibilidadeDia - totalMinutesAgendados / 60, 0).toFixed(1))
 
   const weekSessions = sessionsWeekRes.data || []
   const weeklyStudiedMap: Record<string, number> = {}
@@ -385,7 +408,8 @@ export async function getDayContext(dateStr: string): Promise<{ success: boolean
       espacoLivre,
       materiasPendentes,
       materiasSemanaStatus,
-      diasRestantesSemana
+      diasRestantesSemana,
+      examGoal: examGoalRes.data?.[0] || null
     }
   }
 }

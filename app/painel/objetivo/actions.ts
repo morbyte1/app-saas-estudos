@@ -36,30 +36,34 @@ export async function saveOnboardingComplete(data: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Usuário não autenticado' }
 
-  const { data: existingGoals } = await supabase.from('exam_goals').select('id').eq('user_id', user.id)
+  const { data: existingGoals, error: goalsReadError } = await supabase.from('exam_goals').select('id').eq('user_id', user.id)
+  if (goalsReadError) return { error: goalsReadError.message }
+  const { data: existingContext, error: contextReadError } = await supabase.from('user_objective_context').select('id').eq('user_id', user.id).maybeSingle()
+  if (contextReadError) return { error: contextReadError.message }
   
-  if (existingGoals && existingGoals.length > 0) {
-    await supabase.from('exam_goals').update({ name: data.examName, target_date: data.examDate }).eq('id', existingGoals[0].id)
-  } else {
-    await supabase.from('exam_goals').insert({ user_id: user.id, name: data.examName, target_date: data.examDate })
-  }
-
-  const { data: existingContext } = await supabase.from('user_objective_context').select('id').eq('user_id', user.id).maybeSingle()
-
   const payload = {
     user_id: user.id,
     curso_desejado: data.curso || null,
     curso_id: data.cursoId,
     nivel_percebido: data.niveis,
-    onboarding_completo: true,
+    onboarding_completo: false,
     updated_at: new Date().toISOString()
   }
 
-  if (existingContext) {
-    await supabase.from('user_objective_context').update(payload).eq('id', existingContext.id)
-  } else {
-    await supabase.from('user_objective_context').insert(payload)
-  }
+  const { error: contextError } = existingContext
+    ? await supabase.from('user_objective_context').update(payload).eq('id', existingContext.id).eq('user_id', user.id).select('id').single()
+    : await supabase.from('user_objective_context').insert(payload)
+  if (contextError) return { error: contextError.message }
+
+  const { error: goalError } = existingGoals?.length
+    ? await supabase.from('exam_goals').update({ name: data.examName, target_date: data.examDate })
+      .eq('id', existingGoals[0].id).eq('user_id', user.id).select('id').single()
+    : await supabase.from('exam_goals').insert({ user_id: user.id, name: data.examName, target_date: data.examDate })
+  if (goalError) return { error: goalError.message }
+
+  const { error: completeError } = await supabase.from('user_objective_context')
+    .update({ onboarding_completo: true }).eq('user_id', user.id).select('id').single()
+  if (completeError) return { error: completeError.message }
 
   revalidatePath('/painel/objetivo')
   return { success: true }
@@ -115,13 +119,14 @@ export async function updateExamGoalTarget(examName: string, examDate: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Usuário não autenticado' }
 
-  const { data: existingGoals } = await supabase.from('exam_goals').select('id').eq('user_id', user.id)
+  const { data: existingGoals, error: readError } = await supabase.from('exam_goals').select('id').eq('user_id', user.id)
+  if (readError) return { error: readError.message }
   
-  if (existingGoals && existingGoals.length > 0) {
-    await supabase.from('exam_goals').update({ name: examName, target_date: examDate }).eq('id', existingGoals[0].id)
-  } else {
-    await supabase.from('exam_goals').insert({ user_id: user.id, name: examName, target_date: examDate })
-  }
+  const { error } = existingGoals?.length
+    ? await supabase.from('exam_goals').update({ name: examName, target_date: examDate })
+      .eq('id', existingGoals[0].id).eq('user_id', user.id).select('id').single()
+    : await supabase.from('exam_goals').insert({ user_id: user.id, name: examName, target_date: examDate })
+  if (error) return { error: error.message }
 
   revalidatePath('/painel/objetivo')
   return { success: true }

@@ -24,7 +24,13 @@ interface Distribuicao {
 
 interface MeuPlanoClientProps {
   initialData: {
-    settings: any
+    settings: {
+      horas_dias_semana: number
+      horas_sabado: number
+      horas_domingo: number
+      redacao_frequencia_semanal: number
+      updated_at?: string | null
+    }
     distribuicao: Distribuicao[]
     cursoId: string | null
     sugestaoRedacao: number
@@ -48,7 +54,8 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
 
   const totalCalculado = (horasDias * 5) + horasSabado + horasDomingo
   const totalAlocado = initialData.distribuicao.reduce((acc, d) => acc + d.horasSugeridas, 0)
-  const isOverAllocated = totalAlocado > totalCalculado
+  const horasParaMaterias = Math.max(totalCalculado - frequenciaRedacao, 0)
+  const isOverAllocated = totalAlocado > horasParaMaterias
 
   const materiasSemNivel = initialData.distribuicao.filter(d => d.motivoTexto.includes('Não avaliado'))
   
@@ -63,7 +70,7 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
         toast('Disponibilidade salva com sucesso!', 'success')
         router.refresh()
       } else {
-        toast('Erro ao salvar disponibilidade.', 'error')
+        toast(res.error || 'Erro ao salvar disponibilidade.', 'error')
       }
     })
   }
@@ -75,7 +82,7 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
         toast('Frequência de redação salva!', 'success')
         router.refresh()
       } else {
-        toast('Erro ao salvar frequência.', 'error')
+        toast(res.error || 'Erro ao salvar frequência.', 'error')
       }
     })
   }
@@ -89,12 +96,16 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
         setEditingMateriaId(null)
         router.refresh()
       } else {
-        toast('Erro ao ajustar horas.', 'error')
+        toast(res.error || 'Erro ao ajustar horas.', 'error')
       }
     })
   }
 
   const handleApplyToPlan = () => {
+    if (isOverAllocated) {
+      toast('A distribuição excede as horas disponíveis após a reserva de redação.', 'error')
+      return
+    }
     startTransition(async () => {
       const payload: Record<string, number> = {}
       initialData.distribuicao.forEach(d => {
@@ -106,7 +117,7 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
         toast('Distribuição aplicada nas suas metas com sucesso!', 'success')
         router.refresh()
       } else {
-        toast('Erro ao aplicar distribuição.', 'error')
+        toast(res.error || 'Erro ao aplicar distribuição.', 'error')
       }
     })
   }
@@ -253,10 +264,10 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
           <div className="relative z-10 w-full md:w-auto flex-1">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-bold text-primary-200 uppercase tracking-wider">Alocação de Tempo</span>
-              <span className={`text-sm font-bold ${isOverAllocated ? 'text-red-400' : 'text-white'}`}>{totalAlocado}h / {totalCalculado}h</span>
+              <span className={`text-sm font-bold ${isOverAllocated ? 'text-red-400' : 'text-white'}`}>{totalAlocado}h / {horasParaMaterias}h</span>
             </div>
             <div className="w-full bg-primary-800 rounded-full h-2.5 overflow-hidden">
-              <div className={`h-2.5 rounded-full transition-all duration-500 ${isOverAllocated ? 'bg-red-400' : 'bg-primary-400'}`} style={{ width: `${Math.min((totalAlocado / totalCalculado) * 100, 100)}%` }}></div>
+              <div className={`h-2.5 rounded-full transition-all duration-500 ${isOverAllocated ? 'bg-red-400' : 'bg-primary-400'}`} style={{ width: `${horasParaMaterias > 0 ? Math.min((totalAlocado / horasParaMaterias) * 100, 100) : 0}%` }}></div>
             </div>
             <span className="text-[10px] text-primary-300 mt-1 block">Inclui {initialData.horasRedacaoSemana}h reservadas para Redação</span>
             {isOverAllocated && (
@@ -267,7 +278,7 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
           <div className="relative z-10 w-full md:w-auto flex flex-col items-end shrink-0">
             <button 
               onClick={handleApplyToPlan} 
-              disabled={isPending || jaAplicado} 
+              disabled={isPending || jaAplicado || isOverAllocated}
               className="w-full md:w-auto px-8 py-3.5 bg-white text-primary-900 font-bold rounded-xl hover:bg-primary-50 transition shadow-sm disabled:opacity-75 flex items-center justify-center gap-2"
             >
               <Check className="w-5 h-5" /> {isPending ? 'Aplicando...' : (jaAplicado ? 'Plano já aplicado' : 'Aplicar ao meu plano')}
