@@ -44,7 +44,7 @@ export type DashboardInput = {
   today: string; time: string
   sessions: SessaoDesempenho[]; materias: DashboardMateria[]; assuntos: AssuntoDesempenho[]
   erros: CadernoErro[]; events: DashboardEvento[]; plan: DashboardPlano
-  dailyGoal: number | null; examGoal: { name: string; target_date: string } | null
+  examGoal: { name: string; target_date: string } | null
 }
 
 type EvidenceConfidence = 'insufficient' | 'sufficient'
@@ -164,8 +164,9 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
   const expectedWeek = weeklyExpectation(plan, weekDay)
   const todaySummary = resumirSessoes(sessions.filter(s => dataDaSessao(s) === today))
   const availabilityHours = plan ? (dayOfWeek === 0 ? plan.horas_domingo : dayOfWeek === 6 ? plan.horas_sabado : plan.horas_dias_semana) : null
-  const available = availabilityHours === null || !Number.isFinite(availabilityHours) ? null
-    : Math.max(0, Math.round(availabilityHours * 60) - Math.round(todaySummary.segundos / 60))
+  const todayGoal = validHours(availabilityHours) ? availabilityHours : null
+  const available = todayGoal === null ? null
+    : Math.max(0, Math.round(todayGoal * 60) - Math.round(todaySummary.segundos / 60))
   const scheduledRemaining = events.filter(e => !e.is_done).reduce((sum, e) => sum + Math.max(0, e.duration || 0), 0)
   const freeForExtra = available === null ? null : Math.max(0, available - scheduledRemaining)
   const noSpaceForExtra = freeForExtra !== null && freeForExtra < 5
@@ -408,8 +409,8 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
     selectedInsights.push({ family: insight.family, title: insight.title, message: insight.message, tone: insight.tone })
     if (selectedInsights.length === 2) break
   }
-  return { maturity, today: { seconds: todaySummary.segundos, goal: input.dailyGoal,
-    progress: input.dailyGoal && input.dailyGoal > 0 ? Math.min(100, Math.round(todaySummary.segundos / (input.dailyGoal * 3600) * 100)) : null },
+  return { maturity, today: { seconds: todaySummary.segundos, goal: todayGoal,
+    progress: todayGoal !== null && todayGoal > 0 ? Math.min(100, Math.round(todaySummary.segundos / (todayGoal * 3600) * 100)) : null },
     streak: streak(sessions, today), recommendation, insights: selectedInsights, periods,
     subjects: [...rankedSubjects.values()].slice(0, 3), materias: materias.map(m => ({ id: m.id, name: m.name })), events, examGoal }
 }

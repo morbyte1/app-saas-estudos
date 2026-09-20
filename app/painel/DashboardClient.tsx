@@ -131,9 +131,9 @@ export default function DashboardClient({ initialTasks, initialStats: stats }: P
             <div className="flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wider text-slate-400">Estudo de hoje</span><Clock className="h-4 w-4 text-primary-600" /></div>
             <p className="mt-2 text-2xl font-extrabold">{formatarTempo(stats.today.seconds)}</p>
             {stats.today.goal !== null && stats.today.goal > 0 ? <>
-              <p className="mt-1 text-sm font-medium text-slate-500">{stats.today.progress}% da meta de {stats.today.goal}h</p>
+              <p className="mt-1 text-sm font-medium text-slate-500">{stats.today.progress}% da meta de {formatarTempo(stats.today.goal * 3600)}</p>
               <div className="mt-3 h-2 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-primary-600" style={{ width: `${stats.today.progress}%` }} /></div>
-            </> : <p className="mt-1 text-sm text-slate-500">{stats.today.goal === 0 ? 'Meta diária definida como 0h' : 'Sem meta diária configurada'}</p>}
+            </> : <p className="mt-1 text-sm text-slate-500">{stats.today.goal === 0 ? 'Disponibilidade de hoje: 0h' : 'Meta diária não configurada'}</p>}
           </div>
           <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wider text-slate-400">Sequência atual</span><Flame className="h-4 w-4 text-orange-500" /></div>

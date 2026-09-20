@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useToast } from '@/components/ToastContext'
 import { createClient } from '@/utils/supabase/client'
-import { User, Mail, Lock, LogOut, Loader2, AlertTriangle, X, Target } from 'lucide-react'
+import { User, Mail, Lock, LogOut, AlertTriangle, X, Target } from 'lucide-react'
 import { updateUserProfile, updateUserEmail, updateUserPassword, deleteAccount, updateExamPreference } from './actions'
 import { signout } from '../actions'
 import ConfirmModal from '@/components/ConfirmModal'
 import { usePendingActions } from '@/lib/usePendingActions'
+import PanelPageLoading from '@/components/PanelPageLoading'
 
 
 export default function ConfiguracoesPage() {
@@ -53,19 +54,6 @@ useEffect(() => {
   
   const { toast } = useToast()
 
-  useEffect(() => {
-    async function loadUserData() {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        setFullName(user.user_metadata?.full_name || '')
-        setEmail(user.email || '')
-      }
-      setIsLoadingData(false)
-    }
-    loadUserData()
-  }, [])
-
   const handleUpdateName = () => {
     if (!fullName.trim()) return toast('O nome não pode estar vazio.', 'error')
     return run('name', async () => {
@@ -110,13 +98,7 @@ useEffect(() => {
     })
   }
 
-  if (isLoadingData) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
-      </div>
-    )
-  }
+  if (isLoadingData) return <PanelPageLoading />
 
   return (
     <div className="min-h-screen bg-slate-50 p-8">

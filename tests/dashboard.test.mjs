@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buildDashboard, formatarDataObjetivo, formatarDiferencaTempo } from '../lib/dashboard.ts'
+import { dataBrasil } from '../lib/desempenho.ts'
 
 const today = '2026-09-17' // quinta-feira
 const materia = (goal_hours = 0, created_at = '2026-08-01T12:00:00Z') => ({ id: 'm1', name: 'Matemática', goal_hours, created_at })
@@ -20,7 +21,42 @@ const erro = (id, proxima_revisao, changes = {}) => ({
 })
 const input = (changes = {}) => ({ today, time: '12:00', sessions: [], materias: [materia()],
   assuntos: [{ id: 'a1', name: 'Funções', materia_id: 'm1' }], erros: [], events: [], plan: null,
-  dailyGoal: null, examGoal: null, ...changes })
+  examGoal: null, ...changes })
+
+const plan = { horas_dias_semana: 2, horas_sabado: 4, horas_domingo: 1.5 }
+
+test('meta de hoje acompanha a disponibilidade de dia útil, sábado e domingo', () => {
+  for (const [date, hours] of [['2026-09-21', 2], ['2026-09-19', 4], ['2026-09-20', 1.5]]) {
+    const out = buildDashboard(input({ today: date, plan }))
+    assert.equal(out.today.goal, hours)
+    assert.equal(out.today.progress, 0)
+  }
+})
+
+test('sem disponibilidade configurada mantém o tempo estudado sem inventar meta', () => {
+  const out = buildDashboard(input({ sessions: [session(today, 0, 0, null, 3600)] }))
+  assert.deepEqual(out.today, { seconds: 3600, goal: null, progress: null })
+  const missingDay = buildDashboard(input({ plan: { ...plan, horas_dias_semana: null } }))
+  assert.equal(missingDay.today.goal, null)
+  assert.equal(missingDay.today.progress, null)
+})
+
+test('progresso da meta diária usa o tempo de hoje e limita o valor em 100%', () => {
+  const normal = buildDashboard(input({ plan, sessions: [session(today, 0, 0, null, 3600)] }))
+  assert.deepEqual(normal.today, { seconds: 3600, goal: 2, progress: 50 })
+  const exceeded = buildDashboard(input({ plan, sessions: [session(today, 0, 0, null, 9000)] }))
+  assert.deepEqual(exceeded.today, { seconds: 9000, goal: 2, progress: 100 })
+  const unavailable = buildDashboard(input({ plan: { ...plan, horas_dias_semana: 0 } }))
+  assert.deepEqual(unavailable.today, { seconds: 0, goal: 0, progress: null })
+})
+
+test('meta usa a data civil brasileira mesmo quando UTC está no dia seguinte', () => {
+  const instant = new Date('2026-09-20T01:30:00Z')
+  const date = dataBrasil(instant)
+  assert.equal(date, '2026-09-19')
+  const out = buildDashboard(input({ today: date, plan, sessions: [session(date, 0, 0, null, 7200)] }))
+  assert.deepEqual(out.today, { seconds: 7200, goal: 4, progress: 50 })
+})
 
 test('sem dados orienta primeiro estudo sem inventar insight', () => {
   const out = buildDashboard(input())

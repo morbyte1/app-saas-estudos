@@ -112,6 +112,7 @@ export default function CalendarioClient({
 
   const selectDate = (date: Date) => {
     setSelectedDate(date)
+    setDayContext(null)
     refreshDayContext(formatDateStr(date))
   }
 
@@ -405,6 +406,8 @@ export default function CalendarioClient({
             {' · '}{examDaysRemaining > 0 ? `${examDaysRemaining} dias para a prova` : examDaysRemaining === 0 ? 'prova hoje' : 'data da prova já passou'}
           </p>
         )}
+
+        {isPendingContext && <p className="mb-4 text-sm text-slate-600" role="status">Carregando dados do dia...</p>}
 
         {/* Grade do Calendário e Coluna Direita */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

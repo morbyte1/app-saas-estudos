@@ -177,23 +177,22 @@ export async function getDashboardStats() {
     return { error: null, rows }
   }
 
-  const [sessions, errors, topics, materias, events, plan, dailyGoal, examGoal] = await Promise.all([
+  const [sessions, errors, topics, materias, events, plan, examGoal] = await Promise.all([
     loadSessions(), loadErrors(), loadTopics(),
     supabase.from('materias').select('id, name, goal_hours, created_at').eq('user_id', user.id).order('created_at', { ascending: false }),
     supabase.from('schedule_events').select('id, title, event_date, time, duration, subject_id, activity_type, is_done')
       .eq('user_id', user.id).eq('event_date', today).order('time'),
     supabase.from('user_plan_settings').select('horas_dias_semana, horas_sabado, horas_domingo').eq('user_id', user.id).maybeSingle(),
-    supabase.from('user_settings').select('daily_goal_hours').eq('user_id', user.id).maybeSingle(),
     supabase.from('exam_goals').select('name, target_date').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
   ])
   const error = sessions.error || errors.error || topics.error || materias.error?.message || events.error?.message
-    || plan.error?.message || dailyGoal.error?.message || examGoal.error?.message
+    || plan.error?.message || examGoal.error?.message
   if (error) return { success: false, error, data: null }
 
   const dashboard = buildDashboard({
     today, time, sessions: sessions.rows, erros: errors.rows, assuntos: topics.rows,
     materias: (materias.data || []) as DashboardMateria[], events: (events.data || []) as DashboardEvento[],
-    plan: plan.data, dailyGoal: dailyGoal.data?.daily_goal_hours ?? null,
+    plan: plan.data,
     examGoal: examGoal.data?.[0] || null,
   })
   return { success: true, data: { userName: user.user_metadata?.full_name || 'Estudante', ...dashboard } }

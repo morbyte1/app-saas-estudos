@@ -1,9 +1,5 @@
-import { Loader2 } from 'lucide-react'
+import PanelPageLoading from '@/components/PanelPageLoading'
 
-export default function DashboardLoading() {
-  return (
-    <div className="flex h-full w-full min-h-screen items-center justify-center bg-slate-50">
-      <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
-    </div>
-  )
+export default function PainelLoading() {
+  return <PanelPageLoading />
 }

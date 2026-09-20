@@ -121,12 +121,17 @@ export default function Sidebar() {
       </nav>
 
       {openFlyoutId && <button aria-label="Fechar subpáginas" className="hidden lg:block fixed inset-0 z-40" onClick={() => setFlyout(null)} />}
-      <aside className={`relative z-50 hidden h-[100dvh] shrink-0 flex-col border-r border-slate-200 bg-white transition-[width] duration-300 lg:flex ${isMinimized ? 'w-24' : 'w-72'}`}>
+      <aside className={`relative z-50 hidden h-[100dvh] shrink-0 flex-col border-r border-slate-200 bg-white transition-[width] duration-300 motion-reduce:transition-none lg:flex ${isMinimized ? 'w-24' : 'w-72'}`}>
         <button type="button" onClick={toggleMinimize} aria-label={isMinimized ? 'Expandir navegação' : 'Minimizar navegação'} className="absolute -right-3 top-8 z-50 rounded-full border border-slate-200 bg-white p-1 text-slate-500 shadow-sm">
           {isMinimized ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </button>
-        <div className={`flex h-24 items-center px-6 ${isMinimized ? 'justify-center' : ''}`}>
-          <Image src={isMinimized ? '/icon.png' : '/logo.png'} alt="Revyza" width={isMinimized ? 40 : 140} height={40} priority />
+        <div className="relative h-24 shrink-0 overflow-hidden" role="img" aria-label="Revyza">
+          <div aria-hidden="true" className={`absolute left-0 top-0 flex h-24 w-24 items-center justify-center motion-safe:transition-opacity motion-safe:duration-100 motion-reduce:delay-0 ${isMinimized ? 'opacity-100' : 'opacity-0 motion-safe:delay-200'}`}>
+            <Image src="/icon.png" alt="" width={40} height={40} priority className="h-10 w-10 shrink-0 object-contain" />
+          </div>
+          <div aria-hidden="true" className={`absolute inset-0 flex items-center justify-center motion-safe:transition-opacity motion-safe:duration-100 motion-reduce:delay-0 ${isMinimized ? 'opacity-0' : 'opacity-100 motion-safe:delay-200'}`}>
+            <Image src="/logo.png" alt="" width={272} height={272} priority className="h-[272px] w-[272px] max-w-none shrink-0" />
+          </div>
         </div>
         <nav aria-label="Navegação lateral" className={`mt-4 flex-1 ${isMinimized ? 'overflow-visible' : 'overflow-y-auto'}`}>
           <ul className="space-y-1 px-4">
