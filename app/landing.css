@@ -1,0 +1,14 @@
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.revyza-landing) {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .revyza-landing *,
+  .revyza-landing *::before,
+  .revyza-landing *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
