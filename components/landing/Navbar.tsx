@@ -18,8 +18,8 @@ export default function Navbar() {
   const close = () => setOpen(false)
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#E0EEC6]/10 bg-[#14251f]/95 backdrop-blur-xl">
-      <nav aria-label="Navegação principal" className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-5 px-5 sm:px-8">
+    <header className="sticky top-0 z-50 border-b border-[#E0EEC6]/[.08] bg-[#0b1511]/90 backdrop-blur-xl">
+      <nav aria-label="Navegação principal" className="mx-auto flex h-[68px] max-w-7xl items-center justify-between gap-5 px-5 sm:px-8">
         <Brand />
         <div className="hidden items-center gap-7 lg:flex">
           {links.map(link => <Link key={link.href} href={link.href} className="text-sm font-medium text-[#F1F7ED]/70 transition-colors hover:text-[#F1F7ED] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#E0EEC6]">{link.label}</Link>)}
@@ -32,7 +32,7 @@ export default function Navbar() {
           {open ? <X className="size-5" aria-hidden="true" /> : <Menu className="size-5" aria-hidden="true" />}
         </button>
       </nav>
-      <div id="landing-mobile-menu" hidden={!open} className="border-t border-[#E0EEC6]/10 bg-[#14251f] px-5 pb-6 pt-3 lg:hidden">
+      <div id="landing-mobile-menu" hidden={!open} className="border-t border-[#E0EEC6]/10 bg-[#0b1511] px-5 pb-6 pt-3 lg:hidden">
         <nav aria-label="Navegação mobile" className="mx-auto flex max-w-7xl flex-col">
           {links.map(link => <Link key={link.href} href={link.href} onClick={close} className="rounded-lg px-2 py-3 text-base font-medium text-[#F1F7ED]/85 focus-visible:outline-2 focus-visible:outline-[#E0EEC6]">{link.label}</Link>)}
           <div className="mt-3 flex flex-col gap-3 border-t border-[#E0EEC6]/10 pt-5 sm:flex-row">

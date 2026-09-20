@@ -10,7 +10,7 @@ const faqs = [
 ]
 
 export default function FAQ() {
-  return <section id="faq" className="scroll-mt-24 bg-[#14251f] px-5 py-24 sm:px-8 lg:py-32" aria-labelledby="faq-title">
+  return <section id="faq" className="scroll-mt-24 bg-[#0e1814] px-5 py-24 sm:px-8 lg:py-32" aria-labelledby="faq-title">
     <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[.7fr_1.3fr] lg:gap-20">
       <div><p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#A9CEA7]">FAQ</p><h2 id="faq-title" className="mt-5 text-4xl font-semibold leading-[1.1] tracking-[-0.04em] sm:text-5xl">Perguntas frequentes.</h2></div>
       <div className="border-t border-[#E0EEC6]/20">

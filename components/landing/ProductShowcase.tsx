@@ -34,21 +34,21 @@ const stories = [
 ]
 
 function Story({ story, index }: { story: (typeof stories)[number]; index: number }) {
-  return <section className={`px-5 py-20 sm:px-8 lg:py-28 ${index % 2 === 0 ? 'bg-[#14251f]' : 'bg-[#1b3028]'}`} aria-labelledby={`${story.id}-title`}>
-    <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
+  return <section className={`relative overflow-hidden px-5 py-20 sm:px-8 lg:py-28 ${index % 2 === 0 ? 'bg-[#0e1814]' : 'bg-[#1a3028]'}`} aria-labelledby={`${story.id}-title`}>
+    <div className={`mx-auto grid max-w-7xl items-center gap-10 lg:gap-16 ${story.id === 'dashboard' ? 'lg:grid-cols-[.75fr_1.25fr]' : story.id === 'desempenho' ? 'lg:grid-cols-[.85fr_1.15fr]' : 'lg:grid-cols-2'}`}>
       <div className={index % 2 === 0 ? '' : 'lg:order-2'}>
         <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#A9CEA7]">{story.eyebrow}</p>
         <h3 id={`${story.id}-title`} className="mt-5 max-w-xl text-4xl font-semibold leading-[1.1] tracking-[-0.04em] text-[#F1F7ED] sm:text-5xl">{story.title}</h3>
         <p className="mt-6 max-w-lg text-base leading-relaxed text-[#F1F7ED]/65">{story.copy}</p>
       </div>
-      <ProductScreenshot id={story.id} className={index % 2 === 0 ? '' : 'lg:order-1'} />
+      <ProductScreenshot id={story.id} className={`${index % 2 === 0 ? '' : 'lg:order-1'} ring-1 ring-[#7CA982]/[.06]`} />
     </div>
   </section>
 }
 
 export default function ProductShowcase() {
   return <div id="recursos" className="scroll-mt-24">
-    <div className="border-y border-[#E0EEC6]/10 bg-[#14251f] px-5 py-16 sm:px-8">
+    <div className="border-y border-[#E0EEC6]/10 bg-[#0b1210] px-5 py-16 sm:px-8">
       <div className="mx-auto flex max-w-7xl flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div><p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#A9CEA7]">O produto</p><h2 className="mt-4 max-w-2xl text-3xl font-semibold tracking-[-0.04em] text-[#F1F7ED] sm:text-4xl">Uma preparação. Um contexto conectado.</h2></div>
         <p className="max-w-xs text-sm leading-relaxed text-[#F1F7ED]/55">Cada área resolve uma parte do estudo. Juntas, elas ajudam a ler o todo.</p>

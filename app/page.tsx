@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 }
 
 export default function LandingPage() {
-  return <div className={`revyza-landing min-w-0 overflow-x-clip bg-[#14251f] text-[#F1F7ED] antialiased ${outfit.className}`}>
+  return <div className={`revyza-landing min-w-0 overflow-x-clip bg-[#0b1210] text-[#F1F7ED] antialiased ${outfit.className}`}>
     <Navbar />
     <main>
       <Hero />

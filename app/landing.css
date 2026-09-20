@@ -2,6 +2,49 @@
   html:has(.revyza-landing) {
     scroll-behavior: smooth;
   }
+
+  .revyza-landing .landing-rise {
+    animation: landing-rise 700ms ease-out both;
+  }
+}
+
+@keyframes landing-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.revyza-landing .landing-hero::before,
+.revyza-landing .landing-final::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 48%, transparent 30%, rgba(2, 8, 5, .5) 100%);
+}
+
+.revyza-landing .landing-hero-grid {
+  background-image: linear-gradient(rgba(224, 238, 198, .035) 1px, transparent 1px), linear-gradient(90deg, rgba(224, 238, 198, .035) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, transparent, #000 32%, #000 65%, transparent);
+}
+
+.revyza-landing .landing-final::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(224, 238, 198, .14) .5px, transparent .5px);
+  background-size: 28px 28px;
+  opacity: .13;
+}
+
+@media (min-width: 640px) {
+  .revyza-landing .landing-fragment-1 { transform: translateY(15px); }
+  .revyza-landing .landing-fragment-2 { transform: translate(10px, -5px); }
+  .revyza-landing .landing-fragment-3 { transform: translate(18px, 6px); }
+  .revyza-landing .landing-fragment-4 { transform: translate(-9px, -8px); }
+  .revyza-landing .landing-fragment-5 { transform: translate(13px, 11px); }
+  .revyza-landing .landing-fragment-6 { transform: translate(36px, 3px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
