@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search } from 'lucide-react'
 import { useToast } from '@/components/ToastContext'
+import AsyncButton from '@/components/AsyncButton'
 import { MOTIVOS_ERRO, CONFIANCAS, type CadernoErro, type ErroInput, type MotivoErro, type Confianca } from '@/lib/caderno'
 import { saveCadernoErro } from './actions'
 
@@ -62,8 +63,8 @@ export default function CadernoForm({ materias, assuntos, erro, onClose }: Props
     }
   }
 
-  return <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose}>
-    <section role="dialog" aria-modal="true" aria-label={erro ? 'Editar erro' : 'Registrar erro'} onClick={e => e.stopPropagation()} className="max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-5 shadow-xl sm:p-7">
+  return <div className="animate-overlay fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose}>
+    <section role="dialog" aria-modal="true" aria-label={erro ? 'Editar erro' : 'Registrar erro'} onClick={e => e.stopPropagation()} className="animate-enter max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-5 shadow-xl sm:p-7">
       <div className="mb-5 flex items-center justify-between">
         <div><h2 className="text-xl font-bold text-slate-900">{erro ? 'Editar erro' : 'Registrar erro'}</h2><p className="mt-1 text-sm text-slate-500">{erro ? 'Complete os dados para manter uma revisão útil.' : 'A primeira revisão será amanhã.'}</p></div>
         <button onClick={onClose} aria-label="Fechar" className="rounded-lg px-3 py-1 text-slate-500 hover:bg-slate-100">✕</button>
@@ -112,7 +113,7 @@ export default function CadernoForm({ materias, assuntos, erro, onClose }: Props
       </div>
       <div className="mt-6 flex justify-end gap-3">
         <button onClick={onClose} className="rounded-xl px-4 py-2 font-semibold text-slate-600">Cancelar</button>
-        <button onClick={save} disabled={saving} className="rounded-xl bg-primary-600 px-5 py-2 font-semibold text-white disabled:opacity-50">{saving ? 'Salvando...' : 'Salvar erro'}</button>
+        <AsyncButton onClick={save} pendingText="Salvando..." disabled={saving} className="rounded-xl bg-primary-600 px-5 py-2 font-semibold text-white disabled:opacity-50">Salvar erro</AsyncButton>
       </div>
     </section>
   </div>

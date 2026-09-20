@@ -1,6 +1,7 @@
 'use client'
 
 import ConfirmModal from '@/components/ConfirmModal'
+import AsyncButton from '@/components/AsyncButton'
 import { useState } from 'react'
 import { Plus, Clock, BookOpen, Target, X, Trash2, Rocket, MoreVertical, AlertTriangle, Book, Percent } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -185,13 +186,14 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
                     </p>
                   </div>
                 </div>
-                <button
+                <AsyncButton
                   onClick={handleImportEnem}
+                  pendingText="Importando..."
                   disabled={isImporting}
                   className="w-full md:w-auto px-8 py-3.5 bg-white text-primary-600 font-bold rounded-xl hover:bg-primary-50 transition shadow-sm disabled:opacity-75 whitespace-nowrap relative z-10"
                 >
                   {isImporting ? 'Importando Conteúdo...' : 'Sim, importar trilha'}
-                </button>
+                </AsyncButton>
               </div>
             )}
             <div className="flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-200 rounded-3xl p-16 text-center shadow-sm">
@@ -211,7 +213,7 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
               <div
                 key={materia.id}
                 onClick={() => router.push(`/painel/materias/${materia.id}`)}
-                className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm hover:shadow-md hover:border-primary-200 transition-all cursor-pointer group flex flex-col relative"
+                className="animate-enter bg-white border border-slate-100 rounded-3xl p-5 shadow-sm hover:shadow-md hover:border-primary-200 transition-all cursor-pointer group flex flex-col relative"
               >
                 <div className="flex justify-between items-start mb-5">
                   <div className="pr-6">
@@ -293,7 +295,7 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
             </div>
             <div className="flex gap-3">
               <button onClick={closeModal} className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition">Cancelar</button>
-              <button onClick={handleSave} disabled={isSaving} className="flex-1 px-4 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50">{isSaving ? 'Salvando...' : 'Salvar'}</button>
+              <AsyncButton onClick={handleSave} pendingText="Salvando..." disabled={isSaving} className="flex-1 px-4 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50">Salvar</AsyncButton>
             </div>
           </div>
         </div>

@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ToastContext'
 import { MOTIVOS_ERRO, CONFIANCAS, assuntoDoErro, dadosRevisaoCompletos, type CadernoErro } from '@/lib/caderno'
 import { reviewCadernoErro } from './actions'
+import { createPendingAction } from '@/lib/pendingAction'
 
 export default function ReviewFlow({ erro, onClose }: { erro: CadernoErro; onClose: () => void }) {
   const router = useRouter()
@@ -15,8 +16,9 @@ export default function ReviewFlow({ erro, onClose }: { erro: CadernoErro; onClo
   const [motivo, setMotivo] = useState('')
   const [confianca, setConfianca] = useState('')
   const [feedback, setFeedback] = useState('')
+  const runFinish = useRef(createPendingAction())
 
-  const finish = async (acertou: boolean) => {
+  const finish = (acertou: boolean) => runFinish.current(async () => {
     setSaving(true)
     try {
       const result = await reviewCadernoErro(erro.id, acertou, motivo || null, confianca || null)
@@ -31,10 +33,10 @@ export default function ReviewFlow({ erro, onClose }: { erro: CadernoErro; onClo
     } finally {
       setSaving(false)
     }
-  }
+  })
 
-  return <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose}>
-    <section role="dialog" aria-modal="true" aria-label="Revisar erro" onClick={e => e.stopPropagation()} className="max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-5 shadow-xl sm:p-7">
+  return <div className="animate-overlay fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose}>
+    <section role="dialog" aria-modal="true" aria-label="Revisar erro" onClick={e => e.stopPropagation()} className="animate-enter max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-5 shadow-xl sm:p-7">
       <div className="flex items-start justify-between gap-4">
         <div><p className="text-xs font-bold uppercase text-primary-700">Revisão</p><h2 className="mt-1 text-xl font-bold text-slate-900">{erro.materias?.name || 'Matéria'} · {assuntoDoErro(erro)}</h2></div>
         <button aria-label="Fechar" onClick={onClose} className="text-slate-500">✕</button>
@@ -52,7 +54,7 @@ export default function ReviewFlow({ erro, onClose }: { erro: CadernoErro; onClo
             <label className="text-sm font-semibold text-slate-700">Confiança (opcional)<select value={confianca} onChange={e => setConfianca(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 p-2"><option value="">Não informar</option>{CONFIANCAS.map(c => <option key={c}>{c}</option>)}</select></label>
           </div>
           <p className="mt-5 text-sm font-semibold text-slate-700">Conseguiu acertar o raciocínio?</p>
-          <div className="mt-3 flex flex-wrap gap-3"><button disabled={saving} onClick={() => finish(false)} className="rounded-xl border border-slate-300 px-4 py-2 font-semibold text-slate-700 disabled:opacity-50">Ainda errei</button><button disabled={saving} onClick={() => finish(true)} className="rounded-xl bg-primary-600 px-4 py-2 font-semibold text-white disabled:opacity-50">Consegui acertar</button></div>
+          <div className="mt-3 flex flex-wrap gap-3"><button disabled={saving} onClick={() => finish(false)} className="rounded-xl border border-slate-300 px-4 py-2 font-semibold text-slate-700 disabled:opacity-50">{saving ? 'Aguarde...' : 'Ainda errei'}</button><button disabled={saving} onClick={() => finish(true)} className="rounded-xl bg-primary-600 px-4 py-2 font-semibold text-white disabled:opacity-50">{saving ? 'Aguarde...' : 'Consegui acertar'}</button></div>
         </>}
       </>}
     </section>

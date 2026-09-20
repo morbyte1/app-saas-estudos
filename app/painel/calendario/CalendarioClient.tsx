@@ -1,6 +1,7 @@
 'use client'
 
 import ConfirmModal from '@/components/ConfirmModal'
+import AsyncButton from '@/components/AsyncButton'
 import { useState, useEffect, useTransition } from 'react'
 import { useToast } from '@/components/ToastContext'
 import { 
@@ -588,23 +589,26 @@ export default function CalendarioClient({
                   return (
                     <div
                       key={event.id}
-                      className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4 relative shadow-sm"
+                      className="animate-enter bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4 relative shadow-sm"
                     >
                       <div className="flex flex-col items-center min-w-[60px]">
                         <span className="text-slate-900 font-bold">{event.time}</span>
                         <span className="text-slate-400 text-xs">{formatDuration(event.duration)}</span>
                       </div>
 
-                      <div
+                      <AsyncButton
                         onClick={() => toggleEventDone(event.id)}
-                        className={`w-6 h-6 border-2 rounded-lg flex-shrink-0 cursor-pointer ${
+                        pendingText="Atualizando..."
+                        iconOnly
+                        aria-label={event.is_done ? 'Marcar como pendente' : 'Concluir estudo'}
+                        className={`w-6 h-6 border-2 rounded-lg flex-shrink-0 cursor-pointer flex items-center justify-center ${
                           event.is_done
                             ? 'border-emerald-500 flex items-center justify-center'
                             : 'border-slate-300'
                         }`}
                       >
                         {event.is_done && <Check className="text-emerald-500 w-4 h-4 stroke-[3]" />}
-                      </div>
+                      </AsyncButton>
 
                       <div className="flex-1">
                         <p className={`font-semibold ${event.is_done ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
@@ -747,12 +751,13 @@ export default function CalendarioClient({
                 >
                   Cancelar
                 </button>
-                <button
+                <AsyncButton
                   onClick={saveEvent}
+                  pendingText={editingEventId ? 'Salvando...' : 'Criando...'}
                   className="flex-1 px-4 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition"
                 >
                   Salvar
-                </button>
+                </AsyncButton>
               </div>
             </div>
           </div>
@@ -821,13 +826,14 @@ export default function CalendarioClient({
                 >
                   Cancelar
                 </button>
-                <button
+                <AsyncButton
                   onClick={handleDuplicate}
+                  pendingText="Sincronizando..."
                   disabled={selectedEventsToDuplicate.length === 0 || isDuplicating}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
                 >
-                  {isDuplicating ? 'Sincronizando...' : 'Sincronizar'}
-                </button>
+                  Sincronizar
+                </AsyncButton>
               </div>
             </div>
           </div>

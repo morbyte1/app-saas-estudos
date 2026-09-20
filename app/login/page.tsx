@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useTransition, useRef, useEffect, Suspense } from 'react'
+import { useState, useRef, useEffect, Suspense } from 'react'
+import { usePendingActions } from '@/lib/usePendingActions'
 import Image from 'next/image'
 import { Eye, EyeOff, Lock } from 'lucide-react'
 import { loginAction, signupAction, resetPasswordAction, joinWaitlistAction } from './actions'
@@ -14,7 +15,8 @@ function LoginContent() {
   const [isWaitlistMode, setIsWaitlistMode] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isPending, startTransition] = useTransition()
+  const { run, isPending } = usePendingActions()
+  const submitting = isPending('auth')
   const { toast } = useToast()
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -26,7 +28,7 @@ function LoginContent() {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
 
-    startTransition(async () => {
+    void run('auth', async () => {
       if (isWaitlistMode) {
         const res = await joinWaitlistAction(formData)
         if (res?.error) toast(res.error, 'error')
@@ -59,7 +61,7 @@ function LoginContent() {
 
     if (!email) return toast('Preencha o campo de e-mail acima para recuperar sua senha.', 'error')
 
-    startTransition(async () => {
+    void run('auth', async () => {
       const res = await resetPasswordAction(email)
       if (res?.error) toast(res.error, 'error')
       else if (res?.success) toast(res.success, 'success')
@@ -117,12 +119,12 @@ function LoginContent() {
         {isLogin && !isWaitlistMode && (
           <div className="flex justify-between items-center px-1 mt-1 mb-2">
             <button type="button" onClick={handleForgotEmail} className="text-xs font-semibold text-primary-600 hover:text-primary-700 underline underline-offset-2">Esqueci meu e-mail</button>
-            <button type="button" onClick={handleForgotPassword} disabled={isPending} className="text-xs font-semibold text-primary-600 hover:text-primary-700 underline underline-offset-2 disabled:opacity-50">Esqueci minha senha</button>
+            <button type="button" onClick={handleForgotPassword} disabled={submitting} className="text-xs font-semibold text-primary-600 hover:text-primary-700 underline underline-offset-2 disabled:opacity-50">{submitting ? 'Aguarde...' : 'Esqueci minha senha'}</button>
           </div>
         )}
 
-        <button type="submit" disabled={isPending} className={`w-full py-3.5 mt-2 text-white font-bold rounded-xl transition shadow-md disabled:opacity-70 disabled:cursor-not-allowed ${isWaitlistMode ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary-600 hover:bg-primary-700'}`}>
-          {isPending ? 'Aguarde...' : isWaitlistMode ? 'Entrar na Lista de Espera' : isLogin ? 'Entrar' : 'Cadastrar'}
+        <button type="submit" disabled={submitting} className={`w-full py-3.5 mt-2 text-white font-bold rounded-xl transition shadow-md disabled:opacity-70 disabled:cursor-not-allowed ${isWaitlistMode ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary-600 hover:bg-primary-700'}`}>
+          {submitting ? 'Aguarde...' : isWaitlistMode ? 'Entrar na Lista de Espera' : isLogin ? 'Entrar' : 'Cadastrar'}
         </button>
 
         {isWaitlistMode && (

@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ToastContext'
 import { Clock, Check, Edit2, AlertTriangle, Target, Save } from 'lucide-react'
 import Link from 'next/link'
+import { usePendingActions } from '@/lib/usePendingActions'
 import { 
   salvarDisponibilidade, 
   salvarFrequenciaRedacao, 
@@ -42,7 +43,7 @@ interface MeuPlanoClientProps {
 export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
   const { toast } = useToast()
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+  const { run, isPending } = usePendingActions()
   
   const [horasDias, setHorasDias] = useState(initialData.settings.horas_dias_semana)
   const [horasSabado, setHorasSabado] = useState(initialData.settings.horas_sabado)
@@ -63,8 +64,7 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
     d.goalHoursAtual === (d.horasManuais !== null ? d.horasManuais : d.horasSugeridas)
   )
 
-  const handleSaveAvailability = () => {
-    startTransition(async () => {
+  const handleSaveAvailability = () => run('availability', async () => {
       const res = await salvarDisponibilidade({ horasDiasSemana: horasDias, horasSabado, horasDomingo })
       if (res.success) {
         toast('Disponibilidade salva com sucesso!', 'success')
@@ -72,11 +72,9 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
       } else {
         toast(res.error || 'Erro ao salvar disponibilidade.', 'error')
       }
-    })
-  }
+  })
 
-  const handleSaveRedacao = () => {
-    startTransition(async () => {
+  const handleSaveRedacao = () => run('redacao', async () => {
       const res = await salvarFrequenciaRedacao(frequenciaRedacao)
       if (res.success) {
         toast('Frequência de redação salva!', 'success')
@@ -84,11 +82,9 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
       } else {
         toast(res.error || 'Erro ao salvar frequência.', 'error')
       }
-    })
-  }
+  })
 
-  const handleSaveManualOverride = (materiaId: string) => {
-    startTransition(async () => {
+  const handleSaveManualOverride = (materiaId: string) => run(`hours:${materiaId}`, async () => {
       const val = editHorasValue.trim() === '' ? null : Number(editHorasValue)
       const res = await ajustarHorasManualMateria(materiaId, val)
       if (res.success) {
@@ -98,15 +94,14 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
       } else {
         toast(res.error || 'Erro ao ajustar horas.', 'error')
       }
-    })
-  }
+  })
 
   const handleApplyToPlan = () => {
     if (isOverAllocated) {
       toast('A distribuição excede as horas disponíveis após a reserva de redação.', 'error')
       return
     }
-    startTransition(async () => {
+    return run('apply', async () => {
       const payload: Record<string, number> = {}
       initialData.distribuicao.forEach(d => {
         payload[d.id] = d.horasManuais !== null ? d.horasManuais : d.horasSugeridas
@@ -156,8 +151,8 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
               <span className="block text-[10px] text-primary-600 font-bold uppercase tracking-wider mb-0.5">Total Semanal</span>
               <span className="text-2xl font-extrabold text-primary-700">{totalCalculado}h</span>
             </div>
-            <button onClick={handleSaveAvailability} disabled={isPending} className="w-full px-6 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition shadow-sm disabled:opacity-50">
-              Salvar Disponibilidade
+            <button onClick={handleSaveAvailability} disabled={isPending('availability')} className="w-full px-6 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition shadow-sm disabled:opacity-50">
+              {isPending('availability') ? 'Salvando...' : 'Salvar Disponibilidade'}
             </button>
           </div>
         </div>
@@ -221,8 +216,8 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
                         placeholder="Automático"
                         className="w-24 px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-primary-500"
                       />
-                      <button onClick={() => handleSaveManualOverride(d.id)} disabled={isPending} className="p-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
-                        <Save className="w-4 h-4" />
+                      <button onClick={() => handleSaveManualOverride(d.id)} disabled={isPending(`hours:${d.id}`)} aria-label={isPending(`hours:${d.id}`) ? 'Salvando...' : 'Salvar horas'} className="p-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50">
+                        {isPending(`hours:${d.id}`) ? 'Salvando...' : <Save className="w-4 h-4" />}
                       </button>
                     </div>
                   ) : (
@@ -251,8 +246,8 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
           </div>
           <div className="flex items-center gap-3 w-full md:w-auto">
             <input type="number" min="0" value={frequenciaRedacao} onChange={e => setFrequenciaRedacao(Number(e.target.value))} className="w-24 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary-500 text-center" />
-            <button onClick={handleSaveRedacao} disabled={isPending} className="px-6 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition shadow-sm disabled:opacity-50">
-              Salvar
+            <button onClick={handleSaveRedacao} disabled={isPending('redacao')} className="px-6 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition shadow-sm disabled:opacity-50">
+              {isPending('redacao') ? 'Salvando...' : 'Salvar'}
             </button>
           </div>
         </div>
@@ -278,10 +273,10 @@ export default function MeuPlanoClient({ initialData }: MeuPlanoClientProps) {
           <div className="relative z-10 w-full md:w-auto flex flex-col items-end shrink-0">
             <button 
               onClick={handleApplyToPlan} 
-              disabled={isPending || jaAplicado || isOverAllocated}
+              disabled={isPending('apply') || jaAplicado || isOverAllocated}
               className="w-full md:w-auto px-8 py-3.5 bg-white text-primary-900 font-bold rounded-xl hover:bg-primary-50 transition shadow-sm disabled:opacity-75 flex items-center justify-center gap-2"
             >
-              <Check className="w-5 h-5" /> {isPending ? 'Aplicando...' : (jaAplicado ? 'Plano já aplicado' : 'Aplicar ao meu plano')}
+              <Check className="w-5 h-5" /> {isPending('apply') ? 'Aplicando...' : (jaAplicado ? 'Plano já aplicado' : 'Aplicar ao meu plano')}
             </button>
             {initialData.settings.updated_at && (
               <span className="text-[10px] text-primary-300 font-medium mt-2">

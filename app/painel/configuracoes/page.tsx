@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect } from 'react'
 import { useToast } from '@/components/ToastContext'
 import { createClient } from '@/utils/supabase/client'
 import { User, Mail, Lock, LogOut, Loader2, AlertTriangle, X, Target } from 'lucide-react'
 import { updateUserProfile, updateUserEmail, updateUserPassword, deleteAccount, updateExamPreference } from './actions'
 import { signout } from '../actions'
 import ConfirmModal from '@/components/ConfirmModal'
+import { usePendingActions } from '@/lib/usePendingActions'
 
 
 export default function ConfiguracoesPage() {
@@ -14,7 +15,7 @@ export default function ConfiguracoesPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoadingData, setIsLoadingData] = useState(true)
-  const [isPending, startTransition] = useTransition()
+  const { run, isPending } = usePendingActions()
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
   const [examPreference, setExamPreference] = useState<'ENEM' | 'OUTRO'>('OUTRO')
   
@@ -39,13 +40,11 @@ useEffect(() => {
     loadUserData()
   }, [])
 
-  const handleUpdateExamPreference = () => {
-    startTransition(async () => {
+  const handleUpdateExamPreference = () => run('exam', async () => {
       const res = await updateExamPreference(examPreference)
       if (res.error) toast(res.error, 'error')
       else toast('Preferência de prova atualizada com sucesso!', 'success')
-    })
-  }
+  })
 
   // Estados para exclusão de conta
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -69,7 +68,7 @@ useEffect(() => {
 
   const handleUpdateName = () => {
     if (!fullName.trim()) return toast('O nome não pode estar vazio.', 'error')
-    startTransition(async () => {
+    return run('name', async () => {
       const res = await updateUserProfile(fullName)
       if (res.error) toast(`Erro ao atualizar nome: ${res.error}`, 'error')
       else toast('Nome atualizado com sucesso!', 'success')
@@ -78,7 +77,7 @@ useEffect(() => {
 
   const handleUpdateEmail = () => {
     if (!email.trim() || !email.includes('@')) return toast('Insira um e-mail válido.', 'error')
-    startTransition(async () => {
+    return run('email', async () => {
       const res = await updateUserEmail(email)
       if (res.error) {
         toast(`Erro ao atualizar e-mail: ${res.error}`, 'error')
@@ -90,7 +89,7 @@ useEffect(() => {
 
   const handleUpdatePassword = () => {
     if (password.length < 6) return toast('A nova senha deve ter no mínimo 6 caracteres.', 'error')
-    startTransition(async () => {
+    return run('password', async () => {
       const res = await updateUserPassword(password)
       if (res.error) toast(`Erro ao atualizar senha: ${res.error}`, 'error')
       else {
@@ -102,13 +101,12 @@ useEffect(() => {
 
   const handleDeleteAccount = () => {
     if (!deletePassword) return toast('Digite sua senha para confirmar.', 'error')
-    setIsDeleting(true)
-    startTransition(async () => {
-      const res = await deleteAccount(deletePassword)
-      if (res.error) {
-        toast(res.error, 'error')
-        setIsDeleting(false)
-      }
+    return run('delete', async () => {
+      setIsDeleting(true)
+      try {
+        const res = await deleteAccount(deletePassword)
+        if (res.error) toast(res.error, 'error')
+      } finally { setIsDeleting(false) }
     })
   }
 
@@ -150,10 +148,10 @@ useEffect(() => {
               </div>
               <button
                 onClick={handleUpdateName}
-                disabled={isPending || isDeleting}
+                disabled={isPending('name') || isDeleting}
                 className="w-full sm:w-auto px-6 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50 whitespace-nowrap"
               >
-                Atualizar Nome
+                {isPending('name') ? 'Atualizando...' : 'Atualizar Nome'}
               </button>
             </div>
           </section>
@@ -180,10 +178,10 @@ useEffect(() => {
                 </div>
                 <button
                   onClick={handleUpdateEmail}
-                  disabled={isPending || isDeleting}
+                  disabled={isPending('email') || isDeleting}
                   className="w-full sm:w-auto px-6 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50 whitespace-nowrap"
                 >
-                  Atualizar E-mail
+                  {isPending('email') ? 'Atualizando...' : 'Atualizar E-mail'}
                 </button>
               </div>
 
@@ -200,10 +198,10 @@ useEffect(() => {
                 </div>
                 <button
                   onClick={handleUpdatePassword}
-                  disabled={isPending || !password || isDeleting}
+                  disabled={isPending('password') || !password || isDeleting}
                   className="w-full sm:w-auto px-6 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50 whitespace-nowrap"
                 >
-                  Atualizar Senha
+                  {isPending('password') ? 'Atualizando...' : 'Atualizar Senha'}
                 </button>
               </div>
             </div>
@@ -231,10 +229,10 @@ useEffect(() => {
               </div>
               <button
                 onClick={handleUpdateExamPreference}
-                disabled={isPending || isDeleting}
+                disabled={isPending('exam') || isDeleting}
                 className="w-full sm:w-auto px-6 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50 whitespace-nowrap"
               >
-                Salvar Preferência
+                {isPending('exam') ? 'Salvando...' : 'Salvar Preferência'}
               </button>
             </div>
           </section>
@@ -254,7 +252,7 @@ useEffect(() => {
               
 <button
   onClick={() => setIsLogoutModalOpen(true)}
-  disabled={isPending || isDeleting}
+  disabled={isPending('logout') || isDeleting}
   className="w-full mt-2 px-6 py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition disabled:opacity-50 whitespace-nowrap"
 >
   Sair da conta
@@ -274,7 +272,7 @@ useEffect(() => {
               
               <button
                 onClick={() => setIsDeleteModalOpen(true)}
-                disabled={isPending || isDeleting}
+                disabled={isPending('delete') || isDeleting}
                 className="w-full mt-2 px-6 py-2.5 border border-red-200 bg-red-50 text-red-600 font-medium rounded-xl hover:bg-red-100 transition disabled:opacity-50 whitespace-nowrap"
               >
                 Excluir minha conta
@@ -325,10 +323,10 @@ useEffect(() => {
               </button>
               <button
                 onClick={handleDeleteAccount}
-                disabled={isDeleting || !deletePassword}
+                disabled={isPending('delete') || isDeleting || !deletePassword}
                 className="flex-1 px-4 py-2.5 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 transition disabled:opacity-50"
               >
-                {isDeleting ? 'Excluindo...' : 'Sim, excluir conta'}
+                {isPending('delete') || isDeleting ? 'Excluindo...' : 'Sim, excluir conta'}
               </button>
             </div>
           </div>
@@ -340,9 +338,9 @@ useEffect(() => {
   message="Tem certeza que deseja encerrar sua sessão neste dispositivo?"
   confirmText="Sim, sair"
   isDanger={false}
-  onConfirm={() => startTransition(async () => await signout())}
+  onConfirm={() => run('logout', signout).then(() => undefined)}
   onCancel={() => setIsLogoutModalOpen(false)}
-  isLoading={isPending}
+  isLoading={isPending('logout')}
 />
     </div>
   )

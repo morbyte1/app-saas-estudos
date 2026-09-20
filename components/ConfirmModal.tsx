@@ -1,12 +1,14 @@
 'use client'
 
+import { useRef, useState } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
+import { createPendingAction } from '@/lib/pendingAction'
 
 interface ConfirmModalProps {
   isOpen: boolean
   title: string
   message: string
-  onConfirm: () => void
+  onConfirm: () => void | Promise<void>
   onCancel: () => void
   confirmText?: string
   cancelText?: string
@@ -25,6 +27,14 @@ export default function ConfirmModal({
   isDanger = true,
   isLoading = false
 }: ConfirmModalProps) {
+  const [pending, setPending] = useState(false)
+  const run = useRef(createPendingAction())
+  const busy = isLoading || pending
+  const handleConfirm = () => run.current(async () => {
+    setPending(true)
+    try { await onConfirm() }
+    finally { setPending(false) }
+  })
   if (!isOpen) return null
 
   return (
@@ -37,7 +47,7 @@ export default function ConfirmModal({
           </h3>
           <button 
             onClick={onCancel} 
-            disabled={isLoading}
+            disabled={busy}
             className="p-1.5 hover:bg-slate-100 rounded-lg transition"
           >
             <X className="w-5 h-5 text-slate-600" />
@@ -51,21 +61,22 @@ export default function ConfirmModal({
         <div className="flex gap-3">
           <button
             onClick={onCancel}
-            disabled={isLoading}
+            disabled={busy}
             className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition"
           >
             {cancelText}
           </button>
           <button
-            onClick={onConfirm}
-            disabled={isLoading}
+            onClick={handleConfirm}
+            disabled={busy}
+            aria-busy={busy}
             className={`flex-1 px-4 py-2.5 text-white font-medium rounded-xl transition disabled:opacity-50 ${
               isDanger 
                 ? 'bg-red-600 hover:bg-red-700' 
                 : 'bg-primary-600 hover:bg-primary-700'
             }`}
           >
-            {isLoading ? 'Aguarde...' : confirmText}
+            {busy ? 'Aguarde...' : confirmText}
           </button>
         </div>
       </div>

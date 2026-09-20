@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Clock, Target, Plus, Check, X, Edit2, Trash2, Library, Play, Flame, RotateCcw, ArrowRight, Sparkles, TrendingUp, TrendingDown, Minus, CalendarDays, Info, CheckCircle2 } from 'lucide-react'
 import ConfirmModal from '@/components/ConfirmModal'
+import AsyncButton from '@/components/AsyncButton'
 import { useToast } from '@/components/ToastContext'
 import { formatarTempo, type Periodo } from '@/lib/desempenho'
 import { formatarDataObjetivo, formatarDiferencaTempo, type DashboardOutput } from '@/lib/dashboard'
@@ -103,7 +104,7 @@ export default function DashboardClient({ initialTasks, initialStats: stats }: P
       </header>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <section aria-labelledby="next-step-title" className="relative min-h-[300px] overflow-hidden rounded-3xl bg-primary-900 p-7 text-white shadow-md sm:p-8 lg:col-span-2">
+        <section aria-labelledby="next-step-title" className="relative self-start overflow-hidden rounded-3xl bg-primary-900 p-7 text-white shadow-md sm:p-8 lg:col-span-2">
           <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary-600 opacity-60 blur-[80px]" />
           <div className="relative max-w-2xl">
             <p className="mb-4 text-xs font-bold uppercase tracking-widest text-primary-200">Seu próximo passo</p>
@@ -216,8 +217,8 @@ export default function DashboardClient({ initialTasks, initialStats: stats }: P
 
       <section aria-labelledby="tasks-title" className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-4 flex items-center justify-between"><h2 id="tasks-title" className="text-lg font-bold">Tarefas manuais</h2><button onClick={openTaskModal} aria-label="Adicionar tarefa" className="rounded-lg bg-primary-50 p-2 text-primary-600 hover:bg-primary-100"><Plus className="h-4 w-4" /></button></div>
-        {sortedTasks.length ? <div className="grid gap-3 md:grid-cols-2">{sortedTasks.map(task => <div key={task.id} className="flex items-start gap-3 rounded-xl border border-slate-100 p-3">
-          <button onClick={() => handleToggleTask(task)} aria-label={task.is_done ? 'Marcar como pendente' : 'Concluir tarefa'} className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 ${task.is_done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300'}`}>{task.is_done && <Check className="h-3 w-3" />}</button>
+        {sortedTasks.length ? <div className="grid gap-3 md:grid-cols-2">{sortedTasks.map(task => <div key={task.id} className="animate-enter flex items-start gap-3 rounded-xl border border-slate-100 p-3">
+          <AsyncButton onClick={() => handleToggleTask(task)} pendingText="Atualizando..." iconOnly aria-label={task.is_done ? 'Marcar como pendente' : 'Concluir tarefa'} className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 ${task.is_done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300'}`}>{task.is_done && <Check className="h-3 w-3" />}</AsyncButton>
           <div className="min-w-0 flex-1"><p className={`break-words text-sm font-medium ${task.is_done ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{task.title}</p>{taskTag(task) && <span className="mt-1 inline-block rounded-md bg-primary-50 px-2 py-0.5 text-[11px] font-semibold text-primary-700">{taskTag(task)}</span>}</div>
           <button onClick={() => handleEditTask(task)} aria-label="Editar tarefa" className="p-1 text-slate-400 hover:text-primary-600"><Edit2 className="h-4 w-4" /></button>
           <button onClick={() => setTaskToDelete(task.id)} aria-label="Excluir tarefa" className="p-1 text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
@@ -225,14 +226,14 @@ export default function DashboardClient({ initialTasks, initialStats: stats }: P
       </section>
     </div>
 
-    {isTaskModalOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"><div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+    {isTaskModalOpen && <div className="animate-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"><div className="animate-enter w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
       <div className="mb-6 flex items-center justify-between"><h3 className="text-xl font-bold">{editingTaskId ? 'Editar tarefa' : 'Nova tarefa'}</h3><button onClick={closeTaskModal} aria-label="Fechar" className="rounded-lg p-2 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
       <div className="space-y-4">
         <label className="block text-sm font-medium">O que precisa ser feito?<input value={taskModalData.title} onChange={e => setTaskModalData({ ...taskModalData, title: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2" /></label>
         <label className="block text-sm font-medium">Prioridade<select value={taskModalData.priority} onChange={e => setTaskModalData({ ...taskModalData, priority: e.target.value as Task['priority'] })} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2"><option value="baixa">Baixa</option><option value="normal">Normal</option><option value="alta">Alta</option></select></label>
         <label className="block text-sm font-medium">Categoria<select value={taskModalData.selection} onChange={e => setTaskModalData({ ...taskModalData, selection: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2"><option value="" disabled>Selecione uma categoria</option><optgroup label="Padrões"><option value="tag:simulado">Simulado</option><option value="tag:questoes">Questões</option><option value="tag:revisao">Revisão</option></optgroup>{materias.length > 0 && <optgroup label="Suas matérias">{materias.map(m => <option key={m.id} value={`materia:${m.id}`}>{m.name}</option>)}</optgroup>}</select></label>
       </div>
-      <div className="mt-6 flex gap-3"><button onClick={closeTaskModal} className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 font-medium">Cancelar</button><button onClick={handleSaveTask} className="flex-1 rounded-xl bg-primary-600 px-4 py-2.5 font-medium text-white">Salvar</button></div>
+      <div className="mt-6 flex gap-3"><button onClick={closeTaskModal} className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 font-medium">Cancelar</button><AsyncButton onClick={handleSaveTask} pendingText="Salvando..." className="flex-1 rounded-xl bg-primary-600 px-4 py-2.5 font-medium text-white">Salvar</AsyncButton></div>
     </div></div>}
     <ConfirmModal isOpen={!!taskToDelete} title="Excluir tarefa" message="Tem certeza de que deseja excluir esta tarefa?" confirmText="Sim, excluir" onConfirm={executeDeleteTask} onCancel={() => setTaskToDelete(null)} isLoading={isDeletingBlock} />
   </div>

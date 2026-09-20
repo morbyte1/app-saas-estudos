@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
+import { usePendingActions } from '@/lib/usePendingActions'
 import Image from 'next/image'
 import { Eye, EyeOff } from 'lucide-react'
 import { updatePasswordAction } from './actions'
@@ -10,14 +11,14 @@ import Link from 'next/link'
 export default function ResetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isPending, startTransition] = useTransition()
+  const { run, isPending } = usePendingActions()
   const { toast } = useToast()
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
 
-    startTransition(async () => {
+    void run('submit', async () => {
       const res = await updatePasswordAction(formData)
       if (res?.error) {
         toast(res.error, 'error')
@@ -87,10 +88,10 @@ export default function ResetPasswordPage() {
 
           <button
             type="submit"
-            disabled={isPending}
+            disabled={isPending('submit')}
             className="w-full py-3.5 mt-4 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl transition shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            {isPending ? 'Salvando...' : 'Salvar Nova Senha'}
+            {isPending('submit') ? 'Salvando...' : 'Salvar Nova Senha'}
           </button>
         </form>
         

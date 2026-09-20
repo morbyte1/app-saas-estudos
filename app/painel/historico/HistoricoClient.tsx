@@ -111,7 +111,7 @@ export default function HistoricoClient({ initialHistory }: { initialHistory: St
                           : session.questions_done + session.questions_wrong;
 
                         return (
-                        <div key={session.id} className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-3 shadow-sm group relative hover:border-primary-200 transition-colors">
+                        <div key={session.id} className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-3 shadow-sm group relative hover:border-primary-200 transition-colors animate-enter">
                           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                             <div className="flex items-center gap-3">
                               <div className="p-2 bg-primary-50 rounded-lg">

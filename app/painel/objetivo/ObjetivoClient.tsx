@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useTransition, useMemo } from 'react'
+import { useState, useMemo } from 'react'
+import { usePendingActions } from '@/lib/usePendingActions'
 import { useToast } from '@/components/ToastContext'
 import { Target, ArrowRight, GraduationCap, Compass, CheckCircle2, Edit2, Check, X, Search, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
@@ -138,7 +139,7 @@ const gerarFraseAnaliseFoco = (gaps: GapInfo[], nomeCurso: string): string | nul
 
 export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
   const { toast } = useToast()
-  const [isPending, startTransition] = useTransition()
+  const { run, isPending } = usePendingActions()
   const [examGoalState, setExamGoalState] = useState(initialData.examGoal)
   
   const isComplete = initialData.context?.onboarding_completo || false
@@ -181,7 +182,7 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
     const finalExamName = examType === 'ENEM' ? 'ENEM 2026' : examName
     const finalExamDate = examType === 'ENEM' ? '2026-11-08T13:00:00Z' : new Date(examDate + 'T12:00:00Z').toISOString()
 
-    startTransition(async () => {
+    return run('onboarding', async () => {
       const result = await saveOnboardingComplete({
         examName: finalExamName,
         examDate: finalExamDate,
@@ -200,7 +201,7 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
   }
 
   const executeSaveCourse = (clearMetas: boolean) => {
-    startTransition(async () => {
+    return run('course', async () => {
       const payload = {
         curso: cursoSearch,
         curso_id: cursoId,
@@ -236,7 +237,7 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
     const finalName = examType === 'ENEM' ? 'ENEM 2026' : examName
     const finalDate = examType === 'ENEM' ? '2026-11-08T13:00:00Z' : new Date(examDate + 'T12:00:00Z').toISOString()
 
-    startTransition(async () => {
+    return run('exam', async () => {
       const result = await updateExamGoalTarget(finalName, finalDate)
       if (result.success) {
         setExamGoalState({ name: finalName, target_date: finalDate })
@@ -247,8 +248,8 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
   }
 
   const handleUpdateLevelInline = (materiaId: string, level: string) => {
-    setNiveis(prev => ({ ...prev, [materiaId]: level }))
-    startTransition(async () => {
+    return run(`level:${materiaId}`, async () => {
+      setNiveis(prev => ({ ...prev, [materiaId]: level }))
       const result = await updateNivelMateria(materiaId, level)
       if (result.success) setEditingSubjectId(null)
       else toast('Erro ao atualizar nível.', 'error')
@@ -433,8 +434,8 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
             </div>
           )}
           <div className="flex justify-end">
-            <button onClick={handleCompleteOnboarding} disabled={isPending} className="flex items-center gap-2 px-8 py-3.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition shadow-sm disabled:opacity-50">
-              {isPending ? 'Salvando...' : 'Finalizar Configuração'} <CheckCircle2 className="w-5 h-5" />
+            <button onClick={handleCompleteOnboarding} disabled={isPending('onboarding')} className="flex items-center gap-2 px-8 py-3.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition shadow-sm disabled:opacity-50">
+              {isPending('onboarding') ? 'Salvando...' : 'Finalizar Configuração'} <CheckCircle2 className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -492,7 +493,7 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
                     setExamName(currentExamName)
                     setExamDate(currentExamDate ? currentExamDate.substring(0, 10) : '')
                   }} className="flex-1 py-2 text-xs font-bold text-primary-200 hover:text-white transition">Cancelar</button>
-                  <button onClick={handleSaveExam} disabled={isPending} className="flex-1 py-2 bg-white text-primary-900 font-bold rounded-lg hover:bg-primary-50 transition">Salvar</button>
+                  <button onClick={handleSaveExam} disabled={isPending('exam')} className="flex-1 py-2 bg-white text-primary-900 font-bold rounded-lg hover:bg-primary-50 transition disabled:opacity-50">{isPending('exam') ? 'Salvando...' : 'Salvar'}</button>
                 </div>
               </div>
             ) : (
@@ -572,7 +573,7 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
                     setCursoSearch(initialData.context?.curso_desejado || '')
                     setCursoId(initialData.context?.curso_id || null)
                   }} className="px-6 py-2.5 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition">Cancelar</button>
-                  <button onClick={handleSaveCourseData} disabled={isPending} className="px-8 py-2.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition">Salvar Metas</button>
+                  <button onClick={handleSaveCourseData} disabled={isPending('course')} className="px-8 py-2.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50">{isPending('course') ? 'Salvando...' : 'Salvar Metas'}</button>
                 </div>
               </div>
             ) : (
@@ -627,10 +628,10 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
                               <button
                                 key={nivel}
                                 onClick={() => handleUpdateLevelInline(m.id, nivel)}
-                                disabled={isPending}
+                                disabled={isPending(`level:${m.id}`)}
                                 className={`flex-1 md:w-24 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors ${niveis[m.id] === nivel ? 'bg-white text-primary-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                               >
-                                {nivel === 'intermediario' ? 'Interm.' : nivel}
+                                {isPending(`level:${m.id}`) && niveis[m.id] === nivel ? 'Aguarde...' : nivel === 'intermediario' ? 'Interm.' : nivel}
                               </button>
                             ))}
                           </div>
@@ -673,7 +674,7 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
               </h3>
               <button 
                 onClick={() => setIsCourseChangeModalOpen(false)} 
-                disabled={isPending}
+                disabled={isPending('course')}
                 className="p-1.5 hover:bg-slate-100 rounded-lg transition shrink-0"
               >
                 <X className="w-5 h-5 text-slate-600" />
@@ -687,21 +688,21 @@ export default function ObjetivoClient({ initialData }: ObjetivoClientProps) {
             <div className="flex flex-col gap-3">
               <button
                 onClick={() => executeSaveCourse(false)}
-                disabled={isPending}
+                disabled={isPending('course')}
                 className="w-full px-4 py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition disabled:opacity-50"
               >
-                Manter valores
+                {isPending('course') ? 'Salvando...' : 'Manter valores'}
               </button>
               <button
                 onClick={() => executeSaveCourse(true)}
-                disabled={isPending}
+                disabled={isPending('course')}
                 className="w-full px-4 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition disabled:opacity-50"
               >
-                Limpar e definir depois
+                {isPending('course') ? 'Salvando...' : 'Limpar e definir depois'}
               </button>
               <button
                 onClick={() => setIsCourseChangeModalOpen(false)}
-                disabled={isPending}
+                disabled={isPending('course')}
                 className="w-full px-4 py-2.5 text-slate-500 font-medium rounded-xl hover:bg-slate-50 transition disabled:opacity-50"
               >
                 Cancelar troca

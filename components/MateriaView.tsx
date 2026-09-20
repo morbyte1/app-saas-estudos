@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { 
   ChevronLeft, PlayCircle, Clock, Target, Calendar, 
@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useToast } from '@/components/ToastContext'
+import { usePendingActions } from '@/lib/usePendingActions'
 import { 
   createTopico, updateTopico, deleteTopico, 
   createAssunto, updateAssunto, deleteAssunto, toggleAssunto 
@@ -27,7 +28,7 @@ interface MateriaViewProps {
 
 export default function MateriaView({ materia, initialTopicos, initialAssuntos, sessions }: MateriaViewProps) {
   const { toast } = useToast()
-  const [isPending, startTransition] = useTransition()
+  const { run, isPending } = usePendingActions()
   
   // Estados para Tópicos
   const [topicos, setTopicos] = useState<Topico[]>(initialTopicos)
@@ -71,9 +72,9 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
   const progressoConteudo = assuntos.length === 0 ? 0 : Math.round((assuntos.filter(a => a.is_done).length / assuntos.length) * 100)
 
   // Handlers Tópicos
-  const handleCreateTopico = async () => {
+  const handleCreateTopico = () => {
     if (!newTopicoName.trim()) return toast('Insira o nome do tópico.', 'error')
-    startTransition(async () => {
+    return run('create-topico', async () => {
       const result = await createTopico(materia.id, newTopicoName)
       if (result.topico) {
         setTopicos([...topicos, result.topico])
@@ -84,9 +85,9 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
     })
   }
 
-  const handleEditTopico = async () => {
+  const handleEditTopico = () => {
     if (!editingTopico || !editTopicoName.trim()) return toast('Insira um nome válido.', 'error')
-    startTransition(async () => {
+    return run('edit-topico', async () => {
       const result = await updateTopico(editingTopico.id, editTopicoName)
       if (result.topico) {
         setTopicos(topicos.map(t => t.id === editingTopico.id ? { ...t, name: editTopicoName } : t))
@@ -111,9 +112,9 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
   }
 
   // Handlers Assuntos
-  const handleCreateAssunto = async () => {
+  const handleCreateAssunto = () => {
     if (!newAssuntoName.trim() || !activeTopicoId) return toast('Insira o nome do assunto.', 'error')
-    startTransition(async () => {
+    return run('create-assunto', async () => {
       const result = await createAssunto(activeTopicoId, newAssuntoName)
       if (result.assunto) {
         setAssuntos([...assuntos, result.assunto])
@@ -124,9 +125,9 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
     })
   }
 
-  const handleEditAssunto = async () => {
+  const handleEditAssunto = () => {
     if (!editingAssunto || !editAssuntoName.trim()) return toast('Insira um nome válido.', 'error')
-    startTransition(async () => {
+    return run('edit-assunto', async () => {
       const result = await updateAssunto(editingAssunto.id, editAssuntoName)
       if (result.assunto) {
         setAssuntos(assuntos.map(a => a.id === editingAssunto.id ? { ...a, name: editAssuntoName } : a))
@@ -149,16 +150,15 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
     setAssuntoToDelete(null)
   }
 
-  const handleToggleAssunto = async (assuntoId: string, currentStatus: boolean) => {
-    setAssuntos(assuntos.map(a => a.id === assuntoId ? { ...a, is_done: !currentStatus } : a))
-    startTransition(async () => {
+  const handleToggleAssunto = (assuntoId: string, currentStatus: boolean) =>
+    run(`toggle:${assuntoId}`, async () => {
+      setAssuntos(assuntos.map(a => a.id === assuntoId ? { ...a, is_done: !currentStatus } : a))
       const result = await toggleAssunto(assuntoId, !currentStatus)
       if (result.error) {
         setAssuntos(assuntos.map(a => a.id === assuntoId ? { ...a, is_done: currentStatus } : a))
         toast('Erro ao alterar o status.', 'error')
       }
     })
-  }
 
   const formatTime = (totalSeconds: number) => {
     const h = Math.floor(totalSeconds / 3600)
@@ -260,7 +260,7 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
                   const topicoAssuntos = assuntos.filter(a => a.topico_id === topico.id)
                   
                   return (
-                    <div key={topico.id} className="relative group/topico">
+                    <div key={topico.id} className="relative group/topico animate-enter">
                       {/* Linha do Tópico */}
                       <div className="flex items-end justify-between border-b-2 border-slate-100 pb-2 mb-3">
                         <h2 className="text-xl font-extrabold text-slate-900 group-hover/topico:text-primary-700 transition-colors">
@@ -282,15 +282,16 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
                           </div>
                         ) : (
                           topicoAssuntos.map(assunto => (
-                            <div key={assunto.id} className="group/assunto flex items-center justify-between py-2 px-3 hover:bg-slate-50 hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-slate-100">
-                              <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => handleToggleAssunto(assunto.id, assunto.is_done)}>
+                            <div key={assunto.id} className="animate-enter group/assunto flex items-center justify-between py-2 px-3 hover:bg-slate-50 hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-slate-100">
+                              <button type="button" disabled={isPending(`toggle:${assunto.id}`)} aria-label={assunto.is_done ? `Marcar ${assunto.name} como pendente` : `Concluir ${assunto.name}`} className="flex items-center gap-3 flex-1 cursor-pointer text-left disabled:opacity-50" onClick={() => handleToggleAssunto(assunto.id, assunto.is_done)}>
                                 <div className={`w-5 h-5 border-[2px] rounded flex items-center justify-center flex-shrink-0 transition-all ${assunto.is_done ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 group-hover/assunto:border-primary-400 bg-white'}`}>
                                   {assunto.is_done && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
                                 </div>
                                 <span className={`text-sm font-semibold transition-colors ${assunto.is_done ? 'text-slate-400 line-through' : 'text-slate-700 group-hover/assunto:text-slate-900'}`}>
                                   {assunto.name}
                                 </span>
-                              </div>
+                                {isPending(`toggle:${assunto.id}`) && <span className="text-xs text-slate-500">Atualizando...</span>}
+                              </button>
                               
                               <div className="flex items-center gap-4">
                                 {assunto.duration_minutes > 0 && (
@@ -387,8 +388,8 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
               autoFocus 
               onKeyDown={e => e.key === 'Enter' && handleCreateTopico()}
             />
-            <button onClick={handleCreateTopico} disabled={!newTopicoName.trim() || isPending} className="w-full py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50">
-              Criar Tópico
+            <button onClick={handleCreateTopico} disabled={!newTopicoName.trim() || isPending('create-topico')} className="w-full py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50">
+              {isPending('create-topico') ? 'Criando...' : 'Criar Tópico'}
             </button>
           </div>
         </div>
@@ -413,8 +414,8 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
             />
             <div className="flex gap-3">
               <button onClick={() => setTopicoToDelete(editingTopico.id)} className="flex items-center justify-center p-3 border border-red-200 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition" title="Excluir"><Trash2 className="w-5 h-5" /></button>
-              <button onClick={handleEditTopico} disabled={!editTopicoName.trim() || editTopicoName === editingTopico.name || isPending} className="flex-1 py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50">
-                Salvar
+              <button onClick={handleEditTopico} disabled={!editTopicoName.trim() || editTopicoName === editingTopico.name || isPending('edit-topico')} className="flex-1 py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50">
+                {isPending('edit-topico') ? 'Salvando...' : 'Salvar'}
               </button>
             </div>
           </div>
@@ -439,8 +440,8 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
               autoFocus 
               onKeyDown={e => e.key === 'Enter' && handleCreateAssunto()}
             />
-            <button onClick={handleCreateAssunto} disabled={!newAssuntoName.trim() || isPending} className="w-full py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50">
-              Adicionar Assunto
+            <button onClick={handleCreateAssunto} disabled={!newAssuntoName.trim() || isPending('create-assunto')} className="w-full py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50">
+              {isPending('create-assunto') ? 'Adicionando...' : 'Adicionar Assunto'}
             </button>
           </div>
         </div>
@@ -465,8 +466,8 @@ export default function MateriaView({ materia, initialTopicos, initialAssuntos, 
             />
             <div className="flex gap-3">
               <button onClick={() => setAssuntoToDelete(editingAssunto.id)} className="flex items-center justify-center p-3 border border-red-200 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition" title="Excluir"><Trash2 className="w-5 h-5" /></button>
-              <button onClick={handleEditAssunto} disabled={!editAssuntoName.trim() || editAssuntoName === editingAssunto.name || isPending} className="flex-1 py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50">
-                Salvar
+              <button onClick={handleEditAssunto} disabled={!editAssuntoName.trim() || editAssuntoName === editingAssunto.name || isPending('edit-assunto')} className="flex-1 py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50">
+                {isPending('edit-assunto') ? 'Salvando...' : 'Salvar'}
               </button>
             </div>
           </div>

@@ -136,7 +136,7 @@ export default function Sidebar() {
               const rowClass = `flex w-full items-center rounded-xl px-3 py-2.5 font-medium ${active ? 'bg-primary-50 text-primary-700' : 'text-slate-600 hover:bg-slate-50'}`
               return <li key={item.id} className="relative">
                 {item.href ? (
-                  <Link href={item.href} title={item.name} aria-current={active ? 'page' : undefined} onClick={() => setFlyout(null)} className={rowClass}>
+                  <Link href={item.href} title={item.name} aria-current={active ? 'page' : undefined} onClick={() => setFlyout(null)} className={`${rowClass} ${isMinimized ? 'justify-center' : ''}`}>
                     <item.icon className="h-5 w-5 shrink-0" />{!isMinimized && <span className="ml-3">{item.name}</span>}
                   </Link>
                 ) : (

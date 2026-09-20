@@ -65,7 +65,7 @@ export default function CadernoClient({ erros, revisoes, materias, assuntos, ini
     }
   }
 
-  const errorCard = (erro: CadernoErro) => <button key={erro.id} onClick={() => setDetailId(erro.id)} className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-primary-300">
+  const errorCard = (erro: CadernoErro) => <button key={erro.id} onClick={() => setDetailId(erro.id)} className="animate-enter w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-primary-300">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <span className="text-xs font-bold text-primary-700">{erro.materias?.name || materias.find(m => m.id === erro.materia_id)?.name || 'Matéria'} · {assuntoDoErro(erro)}</span>
       <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${erro.estado === 'resolvido' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{erro.estado === 'resolvido' ? 'Resolvido' : 'Em revisão'}</span>
@@ -117,7 +117,7 @@ export default function CadernoClient({ erros, revisoes, materias, assuntos, ini
       </section>}
     </div>
 
-    {detail && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/40 p-4" onClick={() => setDetailId(null)}><section role="dialog" aria-modal="true" aria-label="Detalhe do erro" onClick={e => e.stopPropagation()} className="max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-5 shadow-xl sm:p-7">
+    {detail && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/40 p-4 animate-overlay" onClick={() => setDetailId(null)}><section role="dialog" aria-modal="true" aria-label="Detalhe do erro" onClick={e => e.stopPropagation()} className="max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-5 shadow-xl sm:p-7 animate-enter">
       <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold text-primary-700">{detail.materias?.name || 'Matéria'} · {assuntoDoErro(detail)}</p><h2 className="mt-2 text-xl font-bold">{detail.motivo_erro}</h2></div><button aria-label="Fechar" onClick={() => setDetailId(null)}>✕</button></div>
       <p className="mt-3 text-sm text-slate-500">{detail.estado === 'resolvido' ? 'Resolvido' : 'Em revisão'} · Registrado em {formatarData(detail.created_at)}</p>
       {detail.confianca && <p className="mt-2 text-sm text-slate-600">Confiança registrada: {detail.confianca}</p>}

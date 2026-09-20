@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import ConfirmModal from '@/components/ConfirmModal'
+import AsyncButton from '@/components/AsyncButton'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useToast } from '@/components/ToastContext'
 import { getTopicosEAssuntos } from '@/app/painel/materias/[id]/actions'
@@ -1081,13 +1082,14 @@ export default function TimerClient({ initialMaterias, initialContext }: TimerCl
               >
                 Voltar
               </button>
-              <button
+              <AsyncButton
                 onClick={handleConfirmFinish}
                 disabled={isLoading}
+                pendingText="Salvando..."
                 className="flex-1 px-4 py-2.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50 shadow-md flex items-center justify-center gap-2"
               >
                 {isLoading ? 'Salvando...' : 'Salvar Estudo'}
-              </button>
+              </AsyncButton>
             </div>
           </div>
         </div>
@@ -1201,13 +1203,14 @@ export default function TimerClient({ initialMaterias, initialContext }: TimerCl
               >
                 Cancelar
               </button>
-              <button
+              <AsyncButton
                 onClick={handleConfirmManual}
                 disabled={isLoading}
+                pendingText="Salvando..."
                 className="flex-1 px-4 py-2.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition disabled:opacity-50 shadow-md flex items-center justify-center gap-2 text-sm"
               >
                 {isLoading ? 'Salvando...' : 'Salvar Estudo'}
-              </button>
+              </AsyncButton>
             </div>
           </div>
         </div>

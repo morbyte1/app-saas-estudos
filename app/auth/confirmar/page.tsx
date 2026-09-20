@@ -1,7 +1,8 @@
 'use client'
 
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useState, useTransition, Suspense } from 'react'
+import { useState, Suspense } from 'react'
+import { usePendingActions } from '@/lib/usePendingActions'
 import Image from 'next/image'
 import { CheckCircle2, AlertCircle } from 'lucide-react'
 import { verifyTokenAction } from './actions'
@@ -9,7 +10,7 @@ import { verifyTokenAction } from './actions'
 function ConfirmarContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+  const { run, isPending } = usePendingActions()
   const [error, setError] = useState<string | null>(null)
 
   const token_hash = searchParams.get('token_hash')
@@ -22,7 +23,7 @@ function ConfirmarContent() {
       return
     }
 
-    startTransition(async () => {
+    void run('confirm', async () => {
       const res = await verifyTokenAction(token_hash, type, next)
       if (res?.error) {
         setError(res.error)
@@ -59,10 +60,10 @@ function ConfirmarContent() {
       </p>
       <button
         onClick={handleConfirm}
-        disabled={isPending}
+        disabled={isPending('confirm')}
         className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl transition shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
       >
-        {isPending ? 'Confirmando...' : 'Confirmar Acesso'}
+        {isPending('confirm') ? 'Confirmando...' : 'Confirmar Acesso'}
       </button>
     </div>
   )
