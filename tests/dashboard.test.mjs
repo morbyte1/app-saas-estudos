@@ -26,6 +26,7 @@ test('sem dados orienta primeiro estudo sem inventar insight', () => {
   const out = buildDashboard(input())
   assert.equal(out.maturity, 'new')
   assert.equal(out.recommendation.kind, 'first')
+  assert.notEqual(out.recommendation.title, 'Seus estudos estão em ordem')
   assert.deepEqual(out.insights, [])
   assert.equal(out.periods['7'].accuracy, null)
 })
@@ -38,12 +39,23 @@ test('amostra pequena mostra fatos, sem diagnosticar precisão baixa', () => {
   assert.equal(out.periods['7'].evolution, null)
 })
 
-test('três sessões não autorizam diagnóstico de precisão sem vinte questões', () => {
+test('maturidade geral não autoriza diagnóstico de precisão sem vinte questões', () => {
   const out = buildDashboard(input({ sessions: [session(today, 1, 1), session('2026-09-16', 1, 1), session('2026-09-15', 1, 1)] }))
-  assert.equal(out.maturity, 'ready')
+  assert.equal(out.maturity, 'learning')
   assert.equal(out.recommendation.kind, 'maintenance')
   assert.equal(out.periods['7'].accuracy, 0)
   assert.equal(out.periods['7'].evolution, null)
+  const established = buildDashboard(input({ sessions: [
+    session(today, 1, 1), session('2026-09-16', 1, 1), session('2026-09-15', 1, 1),
+    session('2026-09-14', 1, 1), session('2026-09-13', 1, 1),
+  ] }))
+  assert.equal(established.maturity, 'ready')
+  assert.equal(established.recommendation.kind, 'maintenance')
+  assert.deepEqual(established.subjects, [])
+  assert.equal(established.periods['7'].evolution, null)
+  const preciseButNew = buildDashboard(input({ sessions: [session(today, 20, 9)] }))
+  assert.equal(preciseButNew.maturity, 'learning')
+  assert.equal(preciseButNew.recommendation.kind, 'difficulty')
 })
 
 test('resumo expõe períodos anteriores iguais e sessões sem inventar comparação total', () => {
@@ -88,10 +100,34 @@ test('data civil do objetivo aceita data e timestamp sem deslocamento de fuso', 
 })
 
 test('dados suficientes e estáveis aceitam nenhuma prioridade especial', () => {
-  const out = buildDashboard(input({ sessions: [session(today, 20, 4), session('2026-09-03', 20, 4)] }))
+  const out = buildDashboard(input({ sessions: [
+    session(today, 20, 4), session('2026-09-16'), session('2026-09-15'),
+    session('2026-09-03', 20, 4), session('2026-09-02'),
+  ] }))
   assert.equal(out.maturity, 'ready')
   assert.equal(out.recommendation.kind, 'maintenance')
+  assert.equal(out.recommendation.title, 'Seus estudos estão em ordem')
+  assert.equal(out.recommendation.href, '/painel/timer')
+  assert.equal(out.recommendation.cta, 'Começar estudo')
   assert.ok(out.insights.some(i => i.title === 'Precisão estável'))
+})
+
+test('59% mantém ação forte; 60–69% permanece visível como atenção moderada', () => {
+  const low = buildDashboard(input({ sessions: [session(today, 100, 41)] }))
+  assert.equal(low.recommendation.kind, 'difficulty')
+  assert.equal(low.subjects[0].priority, 'Precisão para acompanhar')
+  const moderate60 = buildDashboard(input({ sessions: [session(today, 20, 8)] }))
+  assert.equal(moderate60.recommendation.kind, 'maintenance')
+  assert.equal(moderate60.subjects[0].priority, 'Precisão em observação')
+  assert.ok(moderate60.insights.some(i => i.title === 'Matemática em observação'))
+  const moderate69 = buildDashboard(input({ sessions: [session(today, 100, 31)] }))
+  assert.equal(moderate69.recommendation.kind, 'maintenance')
+  assert.equal(moderate69.subjects[0].signal, 'accuracyModerate')
+  const sufficient70 = buildDashboard(input({ sessions: [session(today, 20, 6)] }))
+  assert.deepEqual(sufficient70.subjects, [])
+  const together = buildDashboard(input({ materias: [materia(), { ...materia(), id: 'm2', name: 'Física' }],
+    sessions: [session(today, 20, 8), { ...session(today, 100, 41), materia_id: 'm2' }] }))
+  assert.deepEqual(together.subjects.map(s => s.id), ['m2', 'm1'])
 })
 
 test('revisão vencida supera calendário e explica a interrupção', () => {
@@ -157,12 +193,27 @@ test('meta antiga sem qualquer atividade não transforma usuário novo em atrasa
   assert.equal(out.recommendation.kind, 'first')
 })
 
-test('déficit só vira candidato depois da metade da semana e com histórico real', () => {
+test('déficit usa a disponibilidade salva, preservando início da semana', () => {
   const sessions = [session(today, 0, 0, null, 1200)]
-  const thursday = buildDashboard(input({ materias: [materia(5)], sessions }))
+  const plan = { horas_dias_semana: 2, horas_sabado: 2, horas_domingo: 2 }
+  const thursday = buildDashboard(input({ materias: [materia(5)], sessions, plan }))
   assert.equal(thursday.recommendation.kind, 'deficit')
-  const monday = buildDashboard(input({ today: '2026-09-14', materias: [materia(5)], sessions: [session('2026-09-14', 0, 0, null, 1200)] }))
+  assert.match(thursday.recommendation.reason, /cerca de 57%/)
+  const monday = buildDashboard(input({ today: '2026-09-14', materias: [materia(5)],
+    sessions: [session('2026-09-14', 0, 0, null, 1200)], plan }))
   assert.notEqual(monday.recommendation.kind, 'deficit')
+})
+
+test('fim de semana concentrado reduz expectativa; sem disponibilidade não cria déficit forte', () => {
+  const sessions = [session(today, 0, 0, null, 1200)]
+  const weekend = buildDashboard(input({ materias: [materia(5)], sessions,
+    plan: { horas_dias_semana: 1, horas_sabado: 5, horas_domingo: 5 } }))
+  assert.notEqual(weekend.recommendation.kind, 'deficit')
+  assert.deepEqual(weekend.subjects, [])
+  assert.ok(weekend.insights.some(i => i.family === 'planejamento' && i.message.includes('cerca de 27%')))
+  const unknown = buildDashboard(input({ materias: [materia(5)], sessions }))
+  assert.notEqual(unknown.recommendation.kind, 'deficit')
+  assert.ok(unknown.insights.some(i => i.family === 'planejamento' && i.message.includes('referência uniforme')))
 })
 
 test('matérias exibem o sinal real e são ordenadas por relevância antes do limite de três', () => {
@@ -182,7 +233,8 @@ test('matérias exibem o sinal real e são ordenadas por relevância antes do li
   assert.deepEqual(out.subjects.map(s => s.signal), ['accuracy', 'rhythm', 'accuracy'])
   const drop = buildDashboard(input({ sessions: [session(today, 20, 4), session('2026-09-03', 20, 1)] }))
   assert.equal(drop.subjects[0].priority, 'Queda recente')
-  const deficit = buildDashboard(input({ materias: [materia(5)], sessions: [session(today, 0, 0, null, 1200)] }))
+  const deficit = buildDashboard(input({ materias: [materia(5)], sessions: [session(today, 0, 0, null, 1200)],
+    plan: { horas_dias_semana: 2, horas_sabado: 2, horas_domingo: 2 } }))
   assert.equal(deficit.subjects[0].priority, 'Abaixo da meta')
 })
 
@@ -198,6 +250,8 @@ test('disponibilidade comprometida favorece calendário e impede estudo extra', 
     plan: { horas_dias_semana: 0, horas_sabado: 0, horas_domingo: 0 } }))
   assert.equal(noEvents.recommendation.kind, 'maintenance')
   assert.equal(noEvents.recommendation.href, '/painel/calendario')
+  assert.equal(noEvents.recommendation.cta, 'Ver calendário')
+  assert.notEqual(noEvents.recommendation.title, 'Seus estudos estão em ordem')
 })
 
 test('duração e questões usam mediana de três sessões válidas', () => {

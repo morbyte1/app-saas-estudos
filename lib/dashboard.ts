@@ -22,7 +22,7 @@ export type DashboardStep = {
 }
 export type DashboardSubject = {
   id: string; name: string; weeklyGoal: number; weeklyStudiedSeconds: number
-  progress: number | null; priority: string; signal: 'accuracy' | 'drop' | 'rhythm' | 'planning'
+  progress: number | null; priority: string; signal: 'accuracy' | 'accuracyModerate' | 'drop' | 'rhythm' | 'planning'
 }
 export type DashboardPeriod = {
   seconds: number; questions: number; sessions: number; accuracy: number | null; evolution: number | null
@@ -79,8 +79,26 @@ const roundFive = (value: number) => Math.max(5, Math.round(value / 5) * 5)
 const timerUrl = (materiaId?: string, assuntoId?: string) =>
   `/painel/timer${materiaId ? `?materiaId=${encodeURIComponent(materiaId)}${assuntoId ? `&assuntoId=${encodeURIComponent(assuntoId)}` : ''}` : ''}`
 const reviewUrl = '/painel/caderno?area=revisoes'
-const compareCandidates = (a: Candidate, b: Candidate) =>
+type CandidateRank = Pick<Candidate, 'urgency' | 'severity' | 'alignment' | 'key'>
+const compareCandidates = (a: CandidateRank, b: CandidateRank) =>
   b.urgency - a.urgency || b.alignment - a.alignment || b.severity - a.severity || a.key.localeCompare(b.key)
+
+const validHours = (hours: number | null | undefined): hours is number =>
+  typeof hours === 'number' && Number.isFinite(hours) && hours >= 0
+
+function weeklyExpectation(plan: DashboardPlano, weekDay: number) {
+  const weekdays = plan?.horas_dias_semana
+  const saturday = plan?.horas_sabado
+  const sunday = plan?.horas_domingo
+  if (validHours(weekdays) && validHours(saturday) && validHours(sunday)) {
+    const total = weekdays * 5 + saturday + sunday
+    if (total > 0) {
+      const elapsed = Math.min(weekDay, 5) * weekdays + (weekDay >= 6 ? saturday : 0) + (weekDay === 7 ? sunday : 0)
+      return { percent: elapsed / total * 100, configured: true }
+    }
+  }
+  return { percent: weekDay / 7 * 100, configured: false }
+}
 
 function streak(sessions: SessaoDesempenho[], today: string) {
   const dates = [...new Set(sessions.filter(s => (s.duration_seconds ?? 0) > 0).map(dataDaSessao).filter((d): d is string => !!d))].sort().reverse()
@@ -143,6 +161,7 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
   const dayOfWeek = new Date(`${today}T12:00:00Z`).getUTCDay()
   const weekDay = dayOfWeek || 7
   const weekStart = somarDiasCivis(today, 1 - weekDay)
+  const expectedWeek = weeklyExpectation(plan, weekDay)
   const todaySummary = resumirSessoes(sessions.filter(s => dataDaSessao(s) === today))
   const availabilityHours = plan ? (dayOfWeek === 0 ? plan.horas_domingo : dayOfWeek === 6 ? plan.horas_sabado : plan.horas_dias_semana) : null
   const available = availabilityHours === null || !Number.isFinite(availabilityHours) ? null
@@ -187,6 +206,7 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
   const weekSessions = sessions.filter(s => dentro(dataDaSessao(s), weekStart, today))
   const nextEvent = events.find(e => !e.is_done)
   const subjects: Omit<DashboardSubject, 'priority' | 'signal'>[] = []
+  const moderateSubjects: (CandidateRank & { subjectId: string; signal: DashboardSubject['signal'] })[] = []
   const difficulty = new Map<string, { severity: number; reason: string; assuntoId?: string }>()
   for (const materia of materias) {
     const currentMatterSessions = currentSessions.filter(s => s.materia_id === materia.id)
@@ -240,6 +260,8 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
     } else if (current.questoes >= AMOSTRA_MINIMA_PRECISAO && current.precisao !== null && current.precisao < 70) {
       addInsight({ family: 'aprendizado', title: `${materia.name} em observação`,
         message: `Nas últimas duas semanas, você acertou ${current.precisao}% de ${current.questoes} questões de ${materia.name}.`, tone: 'neutral' }, 2, `moderate:${materia.id}`)
+      moderateSubjects.push({ subjectId: materia.id, signal: 'accuracyModerate', urgency: 0,
+        severity: 70 - current.precisao, alignment: nextEvent?.subject_id === materia.id ? 2 : 0, key: `moderate:${materia.id}` })
     }
     if (delta !== null && delta <= -5 && delta > -10) addInsight({ family: 'aprendizado', title: `Precisão em ${materia.name}`,
       message: `A precisão caiu ${Math.abs(delta)} p.p. em relação às duas semanas anteriores.`, tone: 'attention' }, 2, `drop:${materia.id}`)
@@ -267,9 +289,9 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
         signal: 'rhythm', confidence: 'sufficient' })
     }
     if (goal > 0 && weekDay >= 3 && sessions.length > 0) {
-      const expected = weekDay / 7 * 100
+      const expected = expectedWeek.percent
       const gap = expected - Math.min(100, weeklySeconds / (goal * 3600) * 100)
-      if (gap >= 35 && weekDay >= 4 && planMature) {
+      if (gap >= 35 && weekDay >= 4 && planMature && expectedWeek.configured) {
         const duration = durationFor(materia.id, sessions, undefined, freeForExtra)
         candidates.push({ step: { kind: 'deficit', title: `Avance em ${materia.name}`,
           reason: `Você cumpriu ${progress}% da meta semanal de ${materia.name}; pelo andamento da semana, o esperado seria cerca de ${Math.round(expected)}%.`,
@@ -277,7 +299,9 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
           urgency: 1, severity: Math.round(gap), alignment: nextEvent?.subject_id === materia.id ? 2 : 0,
           key: `deficit:${materia.id}`, subjectId: materia.id, signal: 'planning', confidence: 'sufficient' })
       } else if (gap >= 20 && planMature) addInsight({ family: 'planejamento', title: `Meta de ${materia.name}`,
-        message: `Você cumpriu ${progress}% da meta semanal; pelo andamento da semana, o esperado seria cerca de ${Math.round(expected)}%.`,
+        message: expectedWeek.configured
+          ? `Você cumpriu ${progress}% da meta semanal; pela disponibilidade que configurou, a referência até hoje é cerca de ${Math.round(expected)}%.`
+          : `Você cumpriu ${progress}% da meta semanal; sem disponibilidade configurada, a referência uniforme da semana é cerca de ${Math.round(expected)}%.`,
         tone: 'neutral' }, 1, `gap:${materia.id}`)
     }
     subjects.push({ id: materia.id, name: materia.name, weeklyGoal: goal, weeklyStudiedSeconds: weeklySeconds, progress })
@@ -327,11 +351,13 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
     message: `${recurring.length} ${recurring.length === 1 ? 'questão teve' : 'questões tiveram'} pelo menos duas falhas de revisão registradas no Caderno.`, tone: 'neutral' }, 2, 'recurring')
 
   const subjectLabels: Record<DashboardSubject['signal'], string> = {
-    accuracy: 'Precisão para acompanhar', drop: 'Queda recente', rhythm: 'Fora do ritmo', planning: 'Abaixo da meta',
+    accuracy: 'Precisão para acompanhar', accuracyModerate: 'Precisão em observação',
+    drop: 'Queda recente', rhythm: 'Fora do ritmo', planning: 'Abaixo da meta',
   }
   const subjectById = new Map(subjects.map(subject => [subject.id, subject]))
   const rankedSubjects = new Map<string, DashboardSubject>()
-  for (const candidate of candidates.filter(c => c.confidence === 'sufficient' && c.subjectId && c.signal).sort(compareCandidates)) {
+  const subjectSignals = [...candidates.filter(c => c.confidence === 'sufficient' && c.subjectId && c.signal), ...moderateSubjects]
+  for (const candidate of subjectSignals.sort(compareCandidates)) {
     if (!candidate.subjectId || !candidate.signal || rankedSubjects.has(candidate.subjectId)) continue
     const subject = subjectById.get(candidate.subjectId)
     if (subject) rankedSubjects.set(candidate.subjectId, { ...subject, signal: candidate.signal,
@@ -341,17 +367,19 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
     (!noSpaceForExtra || !['difficulty', 'neglect', 'deficit'].includes(candidate.step.kind)))
   eligible.sort(compareCandidates)
   const selected = eligible[0]
-  const total = resumirSessoes(sessions)
+  const recordedSessions = sessions.filter(s => (s.duration_seconds ?? 0) >= 300 && dataDaSessao(s))
+  const recordedDays = new Set(recordedSessions.map(dataDaSessao)).size
   const maturity: DashboardOutput['maturity'] = sessions.length === 0 && errors.length === 0 && events.length === 0 ? 'new'
-    : sessions.length >= 3 || total.questoes >= AMOSTRA_MINIMA_PRECISAO ? 'ready' : 'learning'
+    : recordedSessions.length >= 5 && recordedDays >= 3 ? 'ready' : 'learning'
   const fallback: DashboardStep = maturity === 'new' ? { kind: 'first', title: 'Comece seu primeiro estudo',
     reason: 'Registre uma sessão para o Revyza começar a entender sua preparação.', href: materias.length ? '/painel/timer' : '/painel/materias',
     cta: materias.length ? 'Abrir Timer' : 'Adicionar matéria' }
-    : { kind: 'maintenance', title: maturity === 'learning' ? 'Estamos conhecendo seu ritmo' : 'Nenhuma prioridade especial agora',
+    : { kind: 'maintenance', title: noSpaceForExtra ? 'Nenhuma prioridade extra para hoje'
+      : maturity === 'learning' ? 'Estamos conhecendo seu ritmo' : 'Seus estudos estão em ordem',
       reason: noSpaceForExtra ? 'A disponibilidade configurada para hoje já está ocupada. Organize o próximo estudo no Calendário.'
-        : maturity === 'learning' ? 'Continue registrando seus estudos. Ainda não há evidência suficiente para apontar uma dificuldade ou tendência.'
-          : 'Siga seu planejamento ou escolha uma matéria para estudar. Seus dados não indicam uma urgência especial agora.',
-      href: noSpaceForExtra ? '/painel/calendario' : '/painel/timer', cta: noSpaceForExtra ? 'Ver Calendário' : 'Abrir Timer' }
+        : maturity === 'learning' ? 'Continue registrando seus estudos. Ainda estamos conhecendo seu ritmo; cada sinal aparece quando há dados suficientes.'
+          : 'Não encontramos nenhuma prioridade especial nos seus dados agora. Continue seu planejamento ou escolha o próximo estudo.',
+      href: noSpaceForExtra ? '/painel/calendario' : '/painel/timer', cta: noSpaceForExtra ? 'Ver calendário' : 'Começar estudo' }
   const recommendation = selected?.step ? { ...selected.step } : fallback
   if (selected && nextEvent && selected.step.kind !== 'calendar' && selected.urgency >= 3) {
     recommendation.reason += ` Antes da atividade ${nextEvent.title}, cuide desta prioridade; depois, continue seu planejamento.`
