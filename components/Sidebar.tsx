@@ -130,7 +130,7 @@ export default function Sidebar() {
             <Image src="/icon.png" alt="" width={40} height={40} priority className="h-10 w-10 shrink-0 object-contain" />
           </div>
           <div aria-hidden="true" className={`absolute inset-0 flex items-center justify-center motion-safe:transition-opacity motion-safe:duration-100 motion-reduce:delay-0 ${isMinimized ? 'opacity-0' : 'opacity-100 motion-safe:delay-200'}`}>
-            <Image src="/logo.png" alt="" width={272} height={272} priority className="h-[272px] w-[272px] max-w-none shrink-0" />
+            <Image src="/logo.png" alt="" width={224} height={224} priority className="h-56 w-56 max-w-none shrink-0" />
           </div>
         </div>
         <nav aria-label="Navegação lateral" className={`mt-4 flex-1 ${isMinimized ? 'overflow-visible' : 'overflow-y-auto'}`}>

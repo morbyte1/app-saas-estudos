@@ -2,7 +2,7 @@
 
 import ConfirmModal from '@/components/ConfirmModal'
 import AsyncButton from '@/components/AsyncButton'
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { Plus, Clock, BookOpen, Target, X, Trash2, Rocket, MoreVertical, AlertTriangle, Book, Percent } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -68,6 +68,13 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
   const [isImporting, setIsImporting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [modalData, setModalData] = useState({ name: '', goalHours: 1 })
+  const [openingMateriaId, setOpeningMateriaId] = useState<string | null>(null)
+  const [isNavigating, startNavigation] = useTransition()
+
+  const openMateria = (id: string) => {
+    setOpeningMateriaId(id)
+    startNavigation(() => router.push(`/painel/materias/${id}`))
+  }
 
   const openCreateModal = () => {
     setEditingId(null)
@@ -212,7 +219,7 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
             {materias.map(materia => (
               <div
                 key={materia.id}
-                onClick={() => router.push(`/painel/materias/${materia.id}`)}
+                onClick={() => openMateria(materia.id)}
                 className="animate-enter bg-white border border-slate-100 rounded-3xl p-5 shadow-sm hover:shadow-md hover:border-primary-200 transition-all cursor-pointer group flex flex-col relative"
               >
                 <div className="flex justify-between items-start mb-5">
@@ -274,6 +281,11 @@ export default function MateriasClient({ initialMaterias, initialEstatisticas }:
                     </span>
                   )}
                 </div>
+                {isNavigating && openingMateriaId === materia.id && (
+                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-white/90" role="status">
+                    <span className="rounded-lg bg-primary-50 px-3 py-2 text-sm font-semibold text-primary-700">Abrindo matéria...</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
