@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Clock, Target, Plus, Check, X, Edit2, Trash2, Library, Play, Flame, RotateCcw, ArrowRight, Sparkles } from 'lucide-react'
+import { Clock, Target, Plus, Check, X, Edit2, Trash2, Library, Play, Flame, RotateCcw, ArrowRight, Sparkles, TrendingUp, TrendingDown, Minus, CalendarDays, Info, CheckCircle2 } from 'lucide-react'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useToast } from '@/components/ToastContext'
 import { formatarTempo, type Periodo } from '@/lib/desempenho'
-import type { DashboardOutput } from '@/lib/dashboard'
+import { formatarDataObjetivo, formatarDiferencaTempo, type DashboardOutput } from '@/lib/dashboard'
 import { createTask, updateTask, deleteTask, toggleTaskStatus } from './actions'
 
 type Task = {
@@ -15,6 +15,14 @@ type Task = {
 }
 type Props = { initialTasks: Task[]; initialStats: DashboardOutput & { userName: string } }
 const priorityWeight = { alta: 3, normal: 2, baixa: 1 }
+const sectionLinkClass = 'inline-flex items-center gap-1.5 rounded-md text-sm font-semibold text-primary-700 transition-colors hover:text-primary-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2'
+const signedCount = (value: number) => value > 0 ? `+${value}` : value < 0 ? `−${Math.abs(value)}` : '0'
+const subjectStyles = {
+  accuracy: { icon: Target, iconClass: 'bg-amber-50 text-amber-700', reasonClass: 'text-amber-800', barClass: 'bg-amber-500' },
+  drop: { icon: TrendingDown, iconClass: 'bg-orange-50 text-orange-700', reasonClass: 'text-orange-800', barClass: 'bg-orange-500' },
+  rhythm: { icon: Clock, iconClass: 'bg-sky-50 text-sky-700', reasonClass: 'text-sky-800', barClass: 'bg-sky-500' },
+  planning: { icon: CalendarDays, iconClass: 'bg-violet-50 text-violet-700', reasonClass: 'text-violet-800', barClass: 'bg-violet-500' },
+} as const
 
 export default function DashboardClient({ initialTasks, initialStats: stats }: Props) {
   const [tasks, setTasks] = useState(initialTasks)
@@ -31,6 +39,8 @@ export default function DashboardClient({ initialTasks, initialStats: stats }: P
   const periodData = stats.periods[period]
   const step = stats.recommendation
   const firstName = stats.userName.split(' ')[0]
+  const examDate = stats.examGoal ? formatarDataObjetivo(stats.examGoal.target_date) : null
+  const previousLabel = period === 'all' ? null : `${period} dias anteriores`
 
   useEffect(() => {
     const mainElement = document.getElementById('main-scroll-container')
@@ -87,7 +97,7 @@ export default function DashboardClient({ initialTasks, initialStats: stats }: P
         <h1 className="text-3xl font-extrabold tracking-tight">Bom estudo, {firstName}.</h1>
         <p className="mt-2 text-sm font-medium text-slate-500">Veja o que é mais útil fazer agora e acompanhe seu progresso.</p>
         {stats.examGoal && <Link href="/painel/objetivo" className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-primary-700">
-          <Target className="h-3.5 w-3.5" /> Objetivo: {stats.examGoal.name} · {stats.examGoal.target_date.split('-').reverse().join('/')}
+          <Target className="h-3.5 w-3.5" /> Objetivo: {stats.examGoal.name}{examDate ? ` · ${examDate}` : ''}
         </Link>}
       </header>
 
@@ -106,7 +116,7 @@ export default function DashboardClient({ initialTasks, initialStats: stats }: P
             {stats.maturity === 'learning' && <p className="mb-5 text-xs font-semibold text-primary-200">Estamos conhecendo seu ritmo; tendências só aparecem com dados suficientes.</p>}
           </div>
           <Link href={step.href} className="relative inline-flex w-max items-center gap-2 rounded-xl bg-white px-6 py-3.5 font-bold text-primary-900 shadow-sm transition-colors hover:bg-primary-50">
-            {step.kind === 'review' ? <RotateCcw className="h-4 w-4" /> : <Play className="h-4 w-4" />}{step.cta}
+            {step.kind === 'review' ? <RotateCcw className="h-4 w-4" /> : step.href.startsWith('/painel/calendario') ? <CalendarDays className="h-4 w-4" /> : <Play className="h-4 w-4" />}{step.cta}
           </Link>
         </section>
 
@@ -124,46 +134,79 @@ export default function DashboardClient({ initialTasks, initialStats: stats }: P
             <p className="mt-2 text-2xl font-extrabold">{stats.streak.current} {stats.streak.current === 1 ? 'dia' : 'dias'}</p>
             <p className="mt-1 text-sm text-slate-500">Melhor sequência: {stats.streak.best} dias</p>
           </div>
-          <section className="flex-1 rounded-3xl border border-slate-100 bg-white p-5 shadow-sm" aria-labelledby="day-title">
-            <div className="flex items-center justify-between gap-3"><h2 id="day-title" className="font-bold">Seu dia</h2><Link href="/painel/calendario" className="text-xs font-semibold text-primary-700 hover:underline">Ver Calendário</Link></div>
-            {stats.events.length ? <div className="mt-3 space-y-2">{stats.events.map(event => <div key={event.id} className="flex items-start gap-3 text-sm">
+          <section className="flex flex-1 flex-col rounded-3xl border border-slate-100 bg-white p-5 shadow-sm" aria-labelledby="day-title">
+            <h2 id="day-title" className="font-bold">Seu dia</h2>
+            {stats.events.length ? <div className="mt-3 flex-1 space-y-2">{stats.events.map(event => <div key={event.id} className="flex items-start gap-3 text-sm">
               <span className="w-11 shrink-0 font-bold text-slate-700">{event.time.slice(0, 5)}</span>
               <div className="min-w-0 flex-1"><p className={`font-semibold ${event.is_done ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{event.title}</p><p className="text-xs text-slate-500">{event.activity_type || 'Estudo'} · {event.duration} min</p></div>
               {event.is_done ? <Check className="h-4 w-4 text-emerald-600" /> : event.id === nextEventId ? <span className="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] font-bold text-primary-700">Pendente</span> : null}
-            </div>)}</div> : <p className="mt-3 text-sm text-slate-500">Nada planejado para hoje.</p>}
+            </div>)}</div> : <p className="mt-3 flex-1 text-sm text-slate-500">Nada planejado para hoje.</p>}
+            <div className="mt-4 flex justify-end border-t border-slate-100 pt-3"><Link href="/painel/calendario" className={sectionLinkClass}>Ver calendário <ArrowRight className="h-4 w-4" /></Link></div>
           </section>
         </div>
       </div>
 
       {stats.insights.length > 0 && <section aria-labelledby="insights-title">
         <h2 id="insights-title" className="mb-4 flex items-center gap-2 text-lg font-bold"><Sparkles className="h-5 w-5 text-primary-600" />O Revyza percebeu</h2>
-        <div className="grid gap-4 md:grid-cols-2">{stats.insights.map(insight => <article key={`${insight.family}:${insight.title}`} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <h3 className="font-bold">{insight.title}</h3><p className="mt-1 text-sm leading-relaxed text-slate-600">{insight.message}</p>
+        <div className="grid items-stretch gap-4 md:grid-cols-2">{stats.insights.map(insight => <article key={`${insight.family}:${insight.title}`} className="flex gap-3 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+          <span className={`h-fit rounded-xl p-2 ${insight.tone === 'positive' ? 'bg-primary-50 text-primary-700' : insight.tone === 'attention' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
+            {insight.tone === 'positive' ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : insight.tone === 'attention' ? <TrendingDown className="h-4 w-4" aria-hidden="true" /> : <Info className="h-4 w-4" aria-hidden="true" />}
+          </span>
+          <div><h3 className="font-bold">{insight.title}</h3><p className="mt-1 text-sm leading-relaxed text-slate-600">{insight.message}</p></div>
         </article>)}</div>
       </section>}
 
       <section aria-labelledby="period-title">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 id="period-title" className="text-lg font-bold">Resumo recente</h2>
-          <div className="flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">{(['7', '14', '30', 'all'] as Periodo[]).map(p => <button key={p} onClick={() => setPeriod(p)} aria-pressed={period === p} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${period === p ? 'bg-primary-50 text-primary-700' : 'text-slate-500 hover:text-slate-700'}`}>{p === 'all' ? 'Todo período' : `${p} dias`}</button>)}</div>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h2 id="period-title" className="text-lg font-bold">Resumo recente</h2>
+          <div className="grid w-full grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm sm:flex sm:w-auto" role="group" aria-label="Período do resumo">{(['7', '14', '30', 'all'] as Periodo[]).map(p => <button key={p} onClick={() => setPeriod(p)} aria-pressed={period === p} className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold transition-colors sm:py-1.5 ${period === p ? 'bg-primary-50 text-primary-700' : 'text-slate-500 hover:text-slate-700'}`}>{p === 'all' ? 'Todo período' : `${p} dias`}</button>)}</div>
         </div>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {[
-            { label: 'Tempo estudado', value: formatarTempo(periodData.seconds) },
-            { label: 'Questões', value: String(periodData.questions) },
-            { label: 'Precisão', value: periodData.accuracy === null ? '—' : `${periodData.accuracy}%`, note: periodData.questions > 0 && periodData.questions < 20 ? 'Amostra pequena' : undefined },
-            { label: 'Evolução', value: periodData.evolution === null ? '—' : `${periodData.evolution > 0 ? '+' : ''}${periodData.evolution} p.p.`, note: period === 'all' ? 'Sem comparação' : periodData.evolution === null ? 'Exige 20 questões em cada período' : 'vs. período anterior' },
-          ].map(item => <div key={item.label} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><span className="block text-xs font-bold uppercase tracking-wider text-slate-400">{item.label}</span><strong className="mt-2 block text-2xl text-slate-900">{item.value}</strong>{item.note && <span className="mt-1 block text-xs text-slate-500">{item.note}</span>}</div>)}
+        <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-4">
+          <div className="flex min-h-36 flex-col rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Tempo estudado</span>
+            <strong className="mt-3 text-2xl text-slate-900">{formatarTempo(periodData.seconds)}</strong>
+            {periodData.previous && <span className="mt-auto pt-3 text-xs leading-snug text-slate-500">{formatarDiferencaTempo(periodData.seconds - periodData.previous.seconds)} vs. {previousLabel}</span>}
+          </div>
+          <div className="flex min-h-36 flex-col rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Questões</span>
+            <strong className="mt-3 text-2xl text-slate-900">{periodData.questions}</strong>
+            {periodData.previous && <span className="mt-auto pt-3 text-xs leading-snug text-slate-500">{signedCount(periodData.questions - periodData.previous.questions)} vs. {previousLabel}</span>}
+          </div>
+          <div className="flex min-h-36 flex-col rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Precisão</span>
+            <strong className="mt-3 text-2xl text-slate-900">{periodData.accuracy === null ? '—' : `${periodData.accuracy}%`}</strong>
+            {periodData.previous && <span className={`mt-auto inline-flex items-start gap-1 pt-3 text-xs leading-snug ${periodData.evolution === null ? 'text-slate-500' : periodData.evolution > 0 ? 'text-emerald-700' : periodData.evolution < 0 ? 'text-amber-700' : 'text-slate-600'}`}>
+              {periodData.evolution !== null && (periodData.evolution > 0 ? <TrendingUp className="h-4 w-4 shrink-0" aria-hidden="true" /> : periodData.evolution < 0 ? <TrendingDown className="h-4 w-4 shrink-0" aria-hidden="true" /> : <Minus className="h-4 w-4 shrink-0" aria-hidden="true" />)}
+              {periodData.evolution === null ? 'Amostra insuficiente para comparar' : `${periodData.evolution === 0 ? 'Estável · ' : ''}${signedCount(periodData.evolution)} p.p. vs. período anterior`}
+            </span>}
+          </div>
+          <div className="flex min-h-36 flex-col rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Sessões</span>
+            <strong className="mt-3 text-2xl text-slate-900">{periodData.sessions}</strong>
+            {periodData.previous && <span className="mt-auto pt-3 text-xs leading-snug text-slate-500">{signedCount(periodData.sessions - periodData.previous.sessions)} vs. período anterior</span>}
+          </div>
         </div>
-        <Link href={`/painel/estatisticas?periodo=${period}`} className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary-700 hover:underline">Ver análise completa <ArrowRight className="h-4 w-4" /></Link>
+        <div className="mt-4 flex justify-end border-t border-slate-200/70 pt-3"><Link href={`/painel/estatisticas?periodo=${period}`} className={sectionLinkClass}>Ver análise completa <ArrowRight className="h-4 w-4" /></Link></div>
       </section>
 
       {stats.subjects.length > 0 && <section aria-labelledby="subjects-title">
-        <div className="mb-4 flex items-center justify-between"><h2 id="subjects-title" className="text-lg font-bold">Matérias para acompanhar</h2><Link href="/painel/materias" className="text-sm font-semibold text-primary-700 hover:underline">Todas as matérias</Link></div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{stats.subjects.map(subject => <div key={subject.id} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <div className="flex items-start justify-between gap-3"><h3 className="font-bold">{subject.name}</h3><span className="rounded-md bg-primary-50 px-2 py-1 text-[10px] font-bold text-primary-700">{subject.priority}</span></div>
-          <p className="mt-2 text-xs text-slate-500">{formatarTempo(subject.weeklyStudiedSeconds)} de {subject.weeklyGoal}h semanais</p>
-          {subject.progress !== null && <div className="mt-3 h-1.5 rounded-full bg-slate-100"><div className="h-1.5 rounded-full bg-primary-600" style={{ width: `${subject.progress}%` }} /></div>}
-        </div>)}</div>
+        <h2 id="subjects-title" className="mb-4 text-lg font-bold">Matérias para acompanhar</h2>
+        <div className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3">{stats.subjects.map(subject => {
+          const style = subjectStyles[subject.signal]
+          const SignalIcon = style.icon
+          return <Link key={subject.id} href={`/painel/materias/${encodeURIComponent(subject.id)}`} className="group flex h-full min-h-40 flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:border-primary-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2">
+            <div className="flex items-start gap-3">
+              <span className={`rounded-xl p-2 ${style.iconClass}`}><SignalIcon className="h-4 w-4" aria-hidden="true" /></span>
+              <div className="min-w-0 flex-1"><h3 className="font-bold text-slate-900">{subject.name}</h3><p className={`mt-1 text-xs font-semibold ${style.reasonClass}`}>{subject.priority}</p></div>
+              <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-primary-700" aria-hidden="true" />
+            </div>
+            {subject.progress !== null && <div className="mt-auto pt-5">
+              <div className="flex items-baseline justify-between gap-2 text-xs"><span className="font-medium text-slate-500">Meta semanal</span><span className="font-bold text-slate-700">{subject.progress}%</span></div>
+              <div role="progressbar" aria-label={`Meta semanal de ${subject.name}`} aria-valuenow={subject.progress} aria-valuemin={0} aria-valuemax={100} className="mt-2 h-1.5 rounded-full bg-slate-100"><div className={`h-1.5 rounded-full ${style.barClass}`} style={{ width: `${subject.progress}%` }} /></div>
+              <p className="mt-2 text-xs text-slate-500">{formatarTempo(subject.weeklyStudiedSeconds)} de {subject.weeklyGoal}h planejadas</p>
+            </div>}
+          </Link>
+        })}</div>
+        <div className="mt-4 flex justify-end border-t border-slate-200/70 pt-3"><Link href="/painel/materias" className={sectionLinkClass}>Ver todas as matérias <ArrowRight className="h-4 w-4" /></Link></div>
       </section>}
 
       <section aria-labelledby="tasks-title" className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm sm:p-6">

@@ -22,7 +22,11 @@ export type DashboardStep = {
 }
 export type DashboardSubject = {
   id: string; name: string; weeklyGoal: number; weeklyStudiedSeconds: number
-  progress: number | null; priority: string | null
+  progress: number | null; priority: string; signal: 'accuracy' | 'drop' | 'rhythm' | 'planning'
+}
+export type DashboardPeriod = {
+  seconds: number; questions: number; sessions: number; accuracy: number | null; evolution: number | null
+  previous: { seconds: number; questions: number; sessions: number } | null
 }
 export type DashboardOutput = {
   maturity: 'new' | 'learning' | 'ready'
@@ -30,7 +34,7 @@ export type DashboardOutput = {
   streak: { current: number; best: number }
   recommendation: DashboardStep
   insights: DashboardInsight[]
-  periods: Record<Periodo, { seconds: number; questions: number; accuracy: number | null; evolution: number | null }>
+  periods: Record<Periodo, DashboardPeriod>
   subjects: DashboardSubject[]
   materias: { id: string; name: string }[]
   events: DashboardEvento[]
@@ -46,7 +50,24 @@ export type DashboardInput = {
 type EvidenceConfidence = 'insufficient' | 'sufficient'
 type Candidate = {
   step: DashboardStep; urgency: number; severity: number; alignment: number; key: string
-  subjectId?: string; confidence: EvidenceConfidence
+  subjectId?: string; confidence: EvidenceConfidence; signal?: DashboardSubject['signal']
+}
+
+// target_date representa a data civil da prova, mesmo quando o banco a devolve como timestamp.
+export function formatarDataObjetivo(value: string): string | null {
+  const civil = /^\d{4}-\d{2}-\d{2}/.exec(value)?.[0]
+  if (!civil) return null
+  const date = new Date(`${civil}T12:00:00Z`)
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== civil) return null
+  return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }).format(date)
+}
+
+export function formatarDiferencaTempo(seconds: number): string {
+  const minutes = Math.round(Math.abs(seconds) / 60)
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  const formatted = hours ? `${hours}h${rest ? ` ${rest}min` : ''}` : `${minutes} min`
+  return `${minutes === 0 ? '' : seconds > 0 ? '+' : '−'}${formatted}`
 }
 
 const median = (values: number[]) => {
@@ -58,6 +79,8 @@ const roundFive = (value: number) => Math.max(5, Math.round(value / 5) * 5)
 const timerUrl = (materiaId?: string, assuntoId?: string) =>
   `/painel/timer${materiaId ? `?materiaId=${encodeURIComponent(materiaId)}${assuntoId ? `&assuntoId=${encodeURIComponent(assuntoId)}` : ''}` : ''}`
 const reviewUrl = '/painel/caderno?area=revisoes'
+const compareCandidates = (a: Candidate, b: Candidate) =>
+  b.urgency - a.urgency || b.alignment - a.alignment || b.severity - a.severity || a.key.localeCompare(b.key)
 
 function streak(sessions: SessaoDesempenho[], today: string) {
   const dates = [...new Set(sessions.filter(s => (s.duration_seconds ?? 0) > 0).map(dataDaSessao).filter((d): d is string => !!d))].sort().reverse()
@@ -126,6 +149,7 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
     : Math.max(0, Math.round(availabilityHours * 60) - Math.round(todaySummary.segundos / 60))
   const scheduledRemaining = events.filter(e => !e.is_done).reduce((sum, e) => sum + Math.max(0, e.duration || 0), 0)
   const freeForExtra = available === null ? null : Math.max(0, available - scheduledRemaining)
+  const noSpaceForExtra = freeForExtra !== null && freeForExtra < 5
 
   const periods = {} as DashboardOutput['periods']
   for (const period of ['7', '14', '30', 'all'] as Periodo[]) {
@@ -133,8 +157,9 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
     const current = resumirSessoes(sessions.filter(s => dentro(dataDaSessao(s), limits.inicio, limits.fim)))
     const previous = limits.anteriorInicio && limits.anteriorFim
       ? resumirSessoes(sessions.filter(s => dentro(dataDaSessao(s), limits.anteriorInicio, limits.anteriorFim!))) : null
-    periods[period] = { seconds: current.segundos, questions: current.questoes, accuracy: current.precisao,
-      evolution: previous ? diferencaPrecisao(current, previous) : null }
+    periods[period] = { seconds: current.segundos, questions: current.questoes, sessions: current.sessoes,
+      accuracy: current.precisao, evolution: previous ? diferencaPrecisao(current, previous) : null,
+      previous: previous ? { seconds: previous.segundos, questions: previous.questoes, sessions: previous.sessoes } : null }
   }
 
   const currentWindow = janela('14', today)
@@ -161,7 +186,7 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
 
   const weekSessions = sessions.filter(s => dentro(dataDaSessao(s), weekStart, today))
   const nextEvent = events.find(e => !e.is_done)
-  const subjects: DashboardSubject[] = []
+  const subjects: Omit<DashboardSubject, 'priority' | 'signal'>[] = []
   const difficulty = new Map<string, { severity: number; reason: string; assuntoId?: string }>()
   for (const materia of materias) {
     const currentMatterSessions = currentSessions.filter(s => s.materia_id === materia.id)
@@ -172,7 +197,6 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
     const goal = Math.max(0, materia.goal_hours ?? 0)
     const weeklySeconds = resumirSessoes(weekSessions.filter(s => s.materia_id === materia.id)).segundos
     const progress = goal > 0 ? Math.min(100, Math.round(weeklySeconds / (goal * 3600) * 100)) : null
-    let priority: string | null = null
     const matterErrors = errors.filter(e => e.materia_id === materia.id && e.estado === 'ativo')
     const repeated = matterErrors.some(e => (e.erros_recorrentes_count ?? 0) >= 2)
     const precisionConfidence = current.questoes >= AMOSTRA_MINIMA_PRECISAO ? 'sufficient' : 'insufficient'
@@ -191,7 +215,7 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
       const errorTopics = new Map<string, CadernoErro[]>()
       for (const e of matterErrors.filter(e => e.assunto_id)) errorTopics.set(e.assunto_id!, [...(errorTopics.get(e.assunto_id!) || []), e])
       const errorTopic = [...errorTopics.values()]
-        .filter(rows => rows.length >= 2 || rows.some(e => (e.erros_recorrentes_count ?? 0) >= 2))
+        .filter(rows => rows.length >= 3 || rows.some(e => (e.erros_recorrentes_count ?? 0) >= 2))
         .sort((a, b) => b.length - a.length || Math.max(...b.map(e => e.erros_recorrentes_count ?? 0)) - Math.max(...a.map(e => e.erros_recorrentes_count ?? 0)))[0]?.[0]
       const chosenTopic = topic || (errorTopic && assuntos.find(a => a.id === errorTopic.assunto_id && a.materia_id === materia.id))
       const reason = lowAccuracy
@@ -205,7 +229,6 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
           message: `${pattern.motivo.nome} pode estar pesando em ${materia.name}. A precisão recente foi ${current.precisao}% em ${current.questoes} questões, e ${pattern.motivo.nome.toLowerCase()} aparece em ${pattern.motivo.quantidade} de ${pattern.total} erros ativos registrados no Caderno.`,
           tone: 'neutral' }, 4, `pattern:${materia.id}`)
       }
-      priority = 'Prática a retomar'
       const duration = durationFor(materia.id, sessions, undefined, freeForExtra)
       candidates.push({ step: { kind: 'difficulty', title: `Pratique ${chosenTopic?.name || materia.name}`,
         subtitle: chosenTopic ? materia.name : undefined, reason: `${reason} Uma sessão de questões pode ajudar a verificar o que precisa de revisão.`,
@@ -213,7 +236,7 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
         questions: questionsFor(materia.id, sessions, duration) },
         urgency: strongDrop && repeated || current.precisao !== null && current.precisao < 50 ? 3 : 2,
         severity: difficulty.get(materia.id)!.severity, alignment: nextEvent?.subject_id === materia.id ? 2 : 0,
-        key: `difficulty:${materia.id}`, subjectId: materia.id, confidence: 'sufficient' })
+        key: `difficulty:${materia.id}`, subjectId: materia.id, signal: lowAccuracy ? 'accuracy' : 'drop', confidence: 'sufficient' })
     } else if (current.questoes >= AMOSTRA_MINIMA_PRECISAO && current.precisao !== null && current.precisao < 70) {
       addInsight({ family: 'aprendizado', title: `${materia.name} em observação`,
         message: `Nas últimas duas semanas, você acertou ${current.precisao}% de ${current.questoes} questões de ${materia.name}.`, tone: 'neutral' }, 2, `moderate:${materia.id}`)
@@ -235,30 +258,29 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
     })
     const daysSince = last ? Math.round((Date.parse(`${today}T12:00:00Z`) - Date.parse(`${last}T12:00:00Z`)) / 86400000) : null
     if (established && weeklySeconds === 0 && (weekDay >= 4 || (daysSince !== null && daysSince >= 7))) {
-      priority ||= 'Fora do ritmo recente'
       const duration = durationFor(materia.id, sessions, undefined, freeForExtra)
       candidates.push({ step: { kind: 'neglect', title: `Retome ${materia.name}`,
         reason: `${materia.name} tem meta semanal de ${goal}h, não teve estudo registrado nesta semana e saiu do seu ritmo recente.`,
         href: timerUrl(materia.id), cta: 'Abrir Timer', duration, questions: questionsFor(materia.id, sessions, duration) },
         urgency: daysSince !== null && daysSince >= 7 ? 2 : 1, severity: daysSince || 0,
-        alignment: nextEvent?.subject_id === materia.id ? 2 : 0, key: `neglect:${materia.id}`, subjectId: materia.id, confidence: 'sufficient' })
+        alignment: nextEvent?.subject_id === materia.id ? 2 : 0, key: `neglect:${materia.id}`, subjectId: materia.id,
+        signal: 'rhythm', confidence: 'sufficient' })
     }
     if (goal > 0 && weekDay >= 3 && sessions.length > 0) {
       const expected = weekDay / 7 * 100
       const gap = expected - Math.min(100, weeklySeconds / (goal * 3600) * 100)
       if (gap >= 35 && weekDay >= 4 && planMature) {
-        priority ||= 'Abaixo da meta da semana'
         const duration = durationFor(materia.id, sessions, undefined, freeForExtra)
         candidates.push({ step: { kind: 'deficit', title: `Avance em ${materia.name}`,
           reason: `Você cumpriu ${progress}% da meta semanal de ${materia.name}; pelo andamento da semana, o esperado seria cerca de ${Math.round(expected)}%.`,
           href: timerUrl(materia.id), cta: 'Abrir Timer', duration, questions: questionsFor(materia.id, sessions, duration) },
           urgency: 1, severity: Math.round(gap), alignment: nextEvent?.subject_id === materia.id ? 2 : 0,
-          key: `deficit:${materia.id}`, subjectId: materia.id, confidence: 'sufficient' })
+          key: `deficit:${materia.id}`, subjectId: materia.id, signal: 'planning', confidence: 'sufficient' })
       } else if (gap >= 20 && planMature) addInsight({ family: 'planejamento', title: `Meta de ${materia.name}`,
         message: `Você cumpriu ${progress}% da meta semanal; pelo andamento da semana, o esperado seria cerca de ${Math.round(expected)}%.`,
         tone: 'neutral' }, 1, `gap:${materia.id}`)
     }
-    subjects.push({ id: materia.id, name: materia.name, weeklyGoal: goal, weeklyStudiedSeconds: weeklySeconds, progress, priority })
+    subjects.push({ id: materia.id, name: materia.name, weeklyGoal: goal, weeklyStudiedSeconds: weeklySeconds, progress })
   }
 
   if (nextEvent) {
@@ -304,8 +326,20 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
   if (recurring.length) addInsight({ family: 'erros', title: 'Conteúdo em revisão',
     message: `${recurring.length} ${recurring.length === 1 ? 'questão teve' : 'questões tiveram'} pelo menos duas falhas de revisão registradas no Caderno.`, tone: 'neutral' }, 2, 'recurring')
 
-  const eligible = candidates.filter(candidate => candidate.confidence === 'sufficient')
-  eligible.sort((a, b) => b.urgency - a.urgency || b.alignment - a.alignment || b.severity - a.severity || a.key.localeCompare(b.key))
+  const subjectLabels: Record<DashboardSubject['signal'], string> = {
+    accuracy: 'Precisão para acompanhar', drop: 'Queda recente', rhythm: 'Fora do ritmo', planning: 'Abaixo da meta',
+  }
+  const subjectById = new Map(subjects.map(subject => [subject.id, subject]))
+  const rankedSubjects = new Map<string, DashboardSubject>()
+  for (const candidate of candidates.filter(c => c.confidence === 'sufficient' && c.subjectId && c.signal).sort(compareCandidates)) {
+    if (!candidate.subjectId || !candidate.signal || rankedSubjects.has(candidate.subjectId)) continue
+    const subject = subjectById.get(candidate.subjectId)
+    if (subject) rankedSubjects.set(candidate.subjectId, { ...subject, signal: candidate.signal,
+      priority: subjectLabels[candidate.signal] })
+  }
+  const eligible = candidates.filter(candidate => candidate.confidence === 'sufficient' &&
+    (!noSpaceForExtra || !['difficulty', 'neglect', 'deficit'].includes(candidate.step.kind)))
+  eligible.sort(compareCandidates)
   const selected = eligible[0]
   const total = resumirSessoes(sessions)
   const maturity: DashboardOutput['maturity'] = sessions.length === 0 && errors.length === 0 && events.length === 0 ? 'new'
@@ -314,9 +348,10 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
     reason: 'Registre uma sessão para o Revyza começar a entender sua preparação.', href: materias.length ? '/painel/timer' : '/painel/materias',
     cta: materias.length ? 'Abrir Timer' : 'Adicionar matéria' }
     : { kind: 'maintenance', title: maturity === 'learning' ? 'Estamos conhecendo seu ritmo' : 'Nenhuma prioridade especial agora',
-      reason: maturity === 'learning' ? 'Continue registrando seus estudos. Ainda não há evidência suficiente para apontar uma dificuldade ou tendência.'
-        : 'Siga seu planejamento ou escolha uma matéria para estudar. Seus dados não indicam uma urgência especial agora.',
-      href: '/painel/timer', cta: 'Abrir Timer' }
+      reason: noSpaceForExtra ? 'A disponibilidade configurada para hoje já está ocupada. Organize o próximo estudo no Calendário.'
+        : maturity === 'learning' ? 'Continue registrando seus estudos. Ainda não há evidência suficiente para apontar uma dificuldade ou tendência.'
+          : 'Siga seu planejamento ou escolha uma matéria para estudar. Seus dados não indicam uma urgência especial agora.',
+      href: noSpaceForExtra ? '/painel/calendario' : '/painel/timer', cta: noSpaceForExtra ? 'Ver Calendário' : 'Abrir Timer' }
   const recommendation = selected?.step ? { ...selected.step } : fallback
   if (selected && nextEvent && selected.step.kind !== 'calendar' && selected.urgency >= 3) {
     recommendation.reason += ` Antes da atividade ${nextEvent.title}, cuide desta prioridade; depois, continue seu planejamento.`
@@ -348,5 +383,5 @@ export function buildDashboard(input: DashboardInput): DashboardOutput {
   return { maturity, today: { seconds: todaySummary.segundos, goal: input.dailyGoal,
     progress: input.dailyGoal && input.dailyGoal > 0 ? Math.min(100, Math.round(todaySummary.segundos / (input.dailyGoal * 3600) * 100)) : null },
     streak: streak(sessions, today), recommendation, insights: selectedInsights, periods,
-    subjects: subjects.filter(s => s.priority).slice(0, 3), materias: materias.map(m => ({ id: m.id, name: m.name })), events, examGoal }
+    subjects: [...rankedSubjects.values()].slice(0, 3), materias: materias.map(m => ({ id: m.id, name: m.name })), events, examGoal }
 }
