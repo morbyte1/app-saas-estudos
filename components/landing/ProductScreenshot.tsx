@@ -4,7 +4,19 @@ import { ImageIcon } from 'lucide-react'
 // Troque somente src de null pelo caminho indicado quando a captura real estiver em public/screenshots.
 // Todas as imagens devem ter 1600 × 900 (16:9); preserve o alt descritivo já preparado.
 const screenshots = {
-  dashboard: { label: 'Dashboard', src: null as string | null, alt: 'Dashboard do Revyza reunindo contexto de estudo e próxima ação', ratio: 'aspect-video' }, // /public/screenshots/dashboard.webp
+  dashboardOverview: {
+  label: 'Dashboard',
+  src: '/screenshots/dashboard-overview.png',
+  alt: 'Visão geral do Dashboard do Revyza com contexto e desempenho dos estudos',
+  ratio: 'aspect-video'
+},
+
+dashboardNextStep: {
+  label: 'Dashboard — Próximo passo',
+  src: '/screenshots/dashboard-next-step.png',
+  alt: 'Dashboard do Revyza mostrando o próximo passo recomendado para os estudos',
+  ratio: 'aspect-video'
+},
   timer: { label: 'Timer', src: null as string | null, alt: 'Timer do Revyza com registro da sessão de estudo', ratio: 'aspect-video' }, // /public/screenshots/timer.webp
   materias: { label: 'Minhas Matérias', src: null as string | null, alt: 'Detalhe de uma matéria no Revyza com tópicos e assuntos', ratio: 'aspect-video' }, // /public/screenshots/materias.webp
   calendario: { label: 'Calendário', src: null as string | null, alt: 'Calendário do Revyza com atividades planejadas', ratio: 'aspect-video' }, // /public/screenshots/calendario.webp

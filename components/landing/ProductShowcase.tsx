@@ -2,7 +2,7 @@ import ProductScreenshot from './ProductScreenshot'
 
 const stories = [
   {
-    id: 'dashboard' as const,
+    id: 'dashboardNextStep' as const,
     eyebrow: 'Dashboard',
     title: 'Saiba o que fazer agora.',
     copy: 'Planejamento, histórico, revisões, desempenho e ritmo aparecem juntos para destacar a informação mais útil naquele momento.',
@@ -35,7 +35,7 @@ const stories = [
 
 function Story({ story, index }: { story: (typeof stories)[number]; index: number }) {
   return <section className={`relative overflow-hidden px-5 py-20 sm:px-8 lg:py-28 ${index % 2 === 0 ? 'bg-[#0e1814]' : 'bg-[#1a3028]'}`} aria-labelledby={`${story.id}-title`}>
-    <div className={`mx-auto grid max-w-7xl items-center gap-10 lg:gap-16 ${story.id === 'dashboard' ? 'lg:grid-cols-[.75fr_1.25fr]' : story.id === 'desempenho' ? 'lg:grid-cols-[.85fr_1.15fr]' : 'lg:grid-cols-2'}`}>
+    <div className={`mx-auto grid max-w-7xl items-center gap-10 lg:gap-16 ${story.id === 'dashboardNextStep' ? 'lg:grid-cols-[.75fr_1.25fr]' : story.id === 'desempenho' ? 'lg:grid-cols-[.85fr_1.15fr]' : 'lg:grid-cols-2'}`}>
       <div className={index % 2 === 0 ? '' : 'lg:order-2'}>
         <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#A9CEA7]">{story.eyebrow}</p>
         <h3 id={`${story.id}-title`} className="mt-5 max-w-xl text-4xl font-semibold leading-[1.1] tracking-[-0.04em] text-[#F1F7ED] sm:text-5xl">{story.title}</h3>
