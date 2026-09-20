@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { atividadeAno, assuntosDaMateria, dataTimestampBrasil, diferencaPrecisao, formatarTempoExtenso, janela, nivelAtividade, padroesErros, pontosEvolucao, resumirSessoes, tituloPeriodo } from '../lib/desempenho.ts'
+import { analisarPadroesErros, atividadeAno, assuntosDaMateria, dataTimestampBrasil, diferencaPrecisao, formatarTempoExtenso, janela, nivelAtividade, padroesErros, pontosEvolucao, resumirSessoes, tituloPeriodo } from '../lib/desempenho.ts'
 
 const sessao = (date, total = 0, wrong = 0, materia_id = 'm1') => ({
   session_date: date, created_at: `${date}T12:00:00Z`, duration_seconds: 3600,
@@ -91,4 +91,21 @@ test('padrões exigem cinco registros e ignoram amostras pequenas', () => {
   const patterns = padroesErros([erro('Interpretação'), erro('Interpretação'), erro('Interpretação'), erro('Outro'), erro('Outro')], [{ id: 'm1', name: 'Matemática' }])
   assert.equal(patterns.length, 2)
   assert.match(patterns[0], /3 dos 5 erros registrados/)
+})
+
+test('leitura estruturada preserva os textos e a ordem dos padrões de Desempenho', () => {
+  const errors = Array.from({ length: 5 }, (_, index) => ({
+    materia_id: 'm1', assunto_id: index < 3 ? 'a1' : 'a2', assunto_texto: index < 3 ? 'Funções' : 'Geometria',
+    motivo_erro: index < 3 ? 'Interpretação' : 'Desatenção', estado: 'ativo',
+    erros_recorrentes_count: index < 3 ? 1 : 0, created_at: '2026-09-19T12:00:00Z', assuntos: null,
+  }))
+  const materias = [{ id: 'm1', name: 'Matemática' }]
+  const structured = analisarPadroesErros(errors, materias)
+  assert.deepEqual(structured, { total: 5, motivo: { nome: 'Interpretação', quantidade: 3 },
+    assunto: { nome: 'Funções', quantidade: 3 }, materia: null, recorrentes: 3 })
+  assert.deepEqual(padroesErros(errors, materias), [
+    'Interpretação aparece em 3 dos 5 erros registrados no Caderno.',
+    '3 dos 5 erros registrados estão no assunto Funções.',
+    '3 dos 5 erros registrados tiveram pelo menos uma falha em revisão.',
+  ])
 })

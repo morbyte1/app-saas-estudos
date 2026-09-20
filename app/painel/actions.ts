@@ -3,7 +3,9 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { dataBrasil, dataTimestampBrasil, diferencaPrecisao, precisao, questoesDaSessao, resumirSessoes } from '@/lib/desempenho'
+import { dataBrasil, type AssuntoDesempenho, type SessaoDesempenho } from '@/lib/desempenho'
+import { buildDashboard, type DashboardEvento, type DashboardMateria } from '@/lib/dashboard'
+import type { CadernoErro } from '@/lib/caderno'
 
 export async function saveStudySession(duration_seconds: number) {
   const supabase = await createClient()
@@ -128,448 +130,73 @@ export async function toggleTaskStatus(id: string, is_done: boolean) {
 
 export async function getDashboardStats() {
   const supabase = await createClient()
-
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) return { success: false, error: 'Usuário não autenticado', data: null }
 
-  const userName = user.user_metadata?.full_name || 'Estudante'
+  const now = new Date()
+  const today = dataBrasil(now)
+  const time = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).format(now)
+  const pageSize = 1000
+  const loadSessions = async () => {
+    const rows: SessaoDesempenho[] = []
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await supabase.from('study_sessions')
+        .select('session_date, created_at, duration_seconds, questions_total, questions_done, questions_wrong, materia_id, assunto_id')
+        .eq('user_id', user.id).order('created_at').order('id').range(offset, offset + pageSize - 1)
+      if (error) return { error: error.message, rows }
+      rows.push(...(data || []))
+      if (!data || data.length < pageSize) break
+    }
+    return { error: null, rows }
+  }
+  const loadErrors = async () => {
+    const rows: CadernoErro[] = []
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await supabase.from('caderno_erros')
+        .select('*, assuntos(name)').eq('user_id', user.id).is('deleted_at', null)
+        .order('created_at').order('id').range(offset, offset + pageSize - 1)
+      if (error) return { error: error.message, rows }
+      rows.push(...((data || []).map(e => ({ ...e, assuntos: Array.isArray(e.assuntos) ? e.assuntos[0] || null : e.assuntos })) as CadernoErro[]))
+      if (!data || data.length < pageSize) break
+    }
+    return { error: null, rows }
+  }
+  const loadTopics = async () => {
+    const rows: AssuntoDesempenho[] = []
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await supabase.from('assuntos').select('id, name, topicos(materia_id)')
+        .eq('user_id', user.id).order('id').range(offset, offset + pageSize - 1)
+      if (error) return { error: error.message, rows }
+      rows.push(...(data || []).map(a => ({ id: a.id, name: a.name,
+        materia_id: a.topicos?.[0]?.materia_id || ''
+      })).filter(a => !!a.materia_id))
+      if (!data || data.length < pageSize) break
+    }
+    return { error: null, rows }
+  }
 
-  // Datas civis de São Paulo para alinhar as janelas com Desempenho.
-  const now = new Date(`${dataBrasil()}T12:00:00Z`)
-  
-  const getYYYYMMDD = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
-  const todayStr = getYYYYMMDD(now)
-  
-  const currentDayOfWeek = now.getUTCDay() === 0 ? 7 : now.getUTCDay() // 1=Seg, 7=Dom
-  const daysRemainingWeek = 7 - currentDayOfWeek + 1
-
-  const [
-    { data: sessionsData },
-    { data: materiasData },
-    { data: userSettings },
-    { data: errosData }
-  ] = await Promise.all([
-    supabase.from('study_sessions').select('id, session_date, created_at, duration_seconds, materia_id, assunto_id, questions_total, questions_done, questions_wrong').eq('user_id', user.id),
-    supabase.from('materias').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+  const [sessions, errors, topics, materias, events, plan, dailyGoal, examGoal] = await Promise.all([
+    loadSessions(), loadErrors(), loadTopics(),
+    supabase.from('materias').select('id, name, goal_hours, created_at').eq('user_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('schedule_events').select('id, title, event_date, time, duration, subject_id, activity_type, is_done')
+      .eq('user_id', user.id).eq('event_date', today).order('time'),
+    supabase.from('user_plan_settings').select('horas_dias_semana, horas_sabado, horas_domingo').eq('user_id', user.id).maybeSingle(),
     supabase.from('user_settings').select('daily_goal_hours').eq('user_id', user.id).maybeSingle(),
-    supabase.from('caderno_erros').select('materia_id, erros_recorrentes_count').eq('user_id', user.id).is('deleted_at', null)
+    supabase.from('exam_goals').select('name, target_date').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
   ])
+  const error = sessions.error || errors.error || topics.error || materias.error?.message || events.error?.message
+    || plan.error?.message || dailyGoal.error?.message || examGoal.error?.message
+  if (error) return { success: false, error, data: null }
 
-  const sessions = (sessionsData || []).map(s => ({ ...s, session_date: s.session_date || (s.created_at ? dataTimestampBrasil(s.created_at) : '') })).filter(s => !!s.session_date && s.session_date <= todayStr)
-  const materias = materiasData || []
-  const dailyGoalHours = userSettings?.daily_goal_hours || 3
-
-  // ----------------------------------------------------
-  // CALCULO DE SEQUÊNCIA (STREAK)
-  // ----------------------------------------------------
-  const uniqueDates = [...new Set(sessions.map(s => s.session_date))].sort().reverse()
-  let currentStreak = 0
-  let bestStreak = 0
-
-  if (uniqueDates.length > 0) {
-    let curr = 1
-    let max = 1
-    for (let i = 0; i < uniqueDates.length - 1; i++) {
-      const d1 = new Date(uniqueDates[i] + 'T12:00:00Z')
-      const d2 = new Date(uniqueDates[i + 1] + 'T12:00:00Z')
-      const diffDays = Math.round((d1.getTime() - d2.getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDays === 1) {
-        curr++
-        max = Math.max(max, curr)
-      } else {
-        curr = 1
-      }
-    }
-    bestStreak = max
-
-    const hasToday = uniqueDates.includes(todayStr)
-    const yesterday = new Date(now)
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1)
-    const yesterdayStr = getYYYYMMDD(yesterday)
-    
-    if (!hasToday && !uniqueDates.includes(yesterdayStr)) {
-      currentStreak = 0
-    } else {
-      let streakDate = new Date(hasToday ? now : yesterday)
-      currentStreak = 1
-      while (true) {
-        streakDate.setUTCDate(streakDate.getUTCDate() - 1)
-        const checkStr = getYYYYMMDD(streakDate)
-        if (uniqueDates.includes(checkStr)) currentStreak++
-        else break
-      }
-    }
-  }
-
-  // ----------------------------------------------------
-  // GERADOR DE PERÍODOS (7, 14, 30, All)
-  // ----------------------------------------------------
-  const calculatePeriod = (days: number | 'all') => {
-    let periodSessions: typeof sessions = []
-    let prevPeriodSessions: typeof sessions = []
-    const activityMap = new Map<string, number>()
-
-    if (days === 'all') {
-      periodSessions = sessions
-      sessions.forEach(s => {
-        const monthYear = s.session_date.substring(0, 7)
-        activityMap.set(monthYear, (activityMap.get(monthYear) || 0) + Math.max(0, s.duration_seconds || 0))
-      })
-    } else {
-      const cutOffDate = new Date(now)
-      cutOffDate.setUTCDate(cutOffDate.getUTCDate() - days + 1)
-      const cutOffStr = getYYYYMMDD(cutOffDate)
-
-      const prevCutOffDate = new Date(cutOffDate)
-      prevCutOffDate.setUTCDate(prevCutOffDate.getUTCDate() - days)
-      const prevCutOffStr = getYYYYMMDD(prevCutOffDate)
-
-      sessions.forEach(s => {
-        if (s.session_date >= cutOffStr && s.session_date <= todayStr) {
-          periodSessions.push(s)
-          activityMap.set(s.session_date, (activityMap.get(s.session_date) || 0) + Math.max(0, s.duration_seconds || 0))
-        } else if (s.session_date >= prevCutOffStr && s.session_date < cutOffStr) {
-          prevPeriodSessions.push(s)
-        }
-      })
-    }
-
-    const atual = resumirSessoes(periodSessions)
-    const anterior = resumirSessoes(prevPeriodSessions)
-    const accuracy = atual.precisao
-
-    let evolutionLabel = "— Dados insuficientes para comparar"
-    const diff = diferencaPrecisao(atual, anterior)
-    if (diff !== null) {
-      evolutionLabel = diff === 0 ? '0 p.p.' : `${diff > 0 ? '+' : ''}${diff} p.p.`
-    }
-
-    const hours = Math.floor(atual.segundos / 3600)
-    const minutes = Math.floor((atual.segundos % 3600) / 60)
-    const timeFormatted = hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`
-
-    let activityChart = []
-    if (days === 'all') {
-      const sortedMonths = Array.from(activityMap.keys()).sort()
-      activityChart = sortedMonths.map(m => {
-        const [yy, mm] = m.split('-')
-        const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-        const labelStr = `${monthNames[parseInt(mm)-1]} ${yy}`
-        return { 
-          dateStr: m, 
-          label: labelStr,
-          fullDate: labelStr,
-          value: activityMap.get(m) ? Number((activityMap.get(m)! / 3600).toFixed(2)) : 0,
-          rawSeconds: activityMap.get(m) || 0
-        } 
-      })
-    } else {
-      for (let i = days - 1; i >= 0; i--) {
-        const d = new Date(now)
-        d.setUTCDate(d.getUTCDate() - i)
-        const dStr = getYYYYMMDD(d)
-        const dayNamesShort = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-        const dayNamesFull = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
-        const [yy, mm, dd] = dStr.split('-')
-        
-        let displayLabel = ''
-        if (days === 7) displayLabel = dayNamesShort[d.getUTCDay()]
-        else displayLabel = `${dd}/${mm}`
-
-        activityChart.push({
-          dateStr: dStr,
-          label: displayLabel,
-          fullDate: `${dayNamesFull[d.getUTCDay()]}, ${dd}/${mm}`,
-          value: activityMap.get(dStr) ? Number((activityMap.get(dStr)! / 3600).toFixed(2)) : 0, 
-          rawSeconds: activityMap.get(dStr) || 0
-        })
-      }
-    }
-
-    return { timeFormatted, questions: atual.questoes, accuracy, evolutionLabel, activityChart }
-  }
-
-  const periods = {
-    '7': calculatePeriod(7),
-    '14': calculatePeriod(14),
-    '30': calculatePeriod(30),
-    'all': calculatePeriod('all')
-  }
-
-  // ----------------------------------------------------
-  // ANÁLISE POR MATÉRIA E RECUPERAÇÃO DE DADOS
-  // ----------------------------------------------------
-  const startOfWeek = new Date(now)
-  startOfWeek.setUTCDate(startOfWeek.getUTCDate() - currentDayOfWeek + 1)
-  const startOfWeekStr = getYYYYMMDD(startOfWeek)
-
-  let todaySeconds = 0
-  const errorsBySubject: Record<string, number> = {}
-  if (errosData) {
-    errosData.forEach(e => {
-      if (e.materia_id && e.erros_recorrentes_count > 0) {
-        errorsBySubject[e.materia_id] = (errorsBySubject[e.materia_id] || 0) + e.erros_recorrentes_count
-      }
-    })
-  }
-
-  const processedSubjects = materias.map(m => {
-    let weeklySeconds = 0
-    let totalQ = 0
-    let wrongQ = 0
-    let recentQ = 0
-    let recentWrong = 0
-    let prevQ = 0
-    let prevWrong = 0
-    let lastStudiedAt: string | null = null
-    const durations: number[] = []
-
-    const mSessions = sessions.filter(s => s.materia_id === m.id)
-    
-    // Períodos móveis de comparação justa
-    const fourteenDaysAgo = new Date(now)
-    fourteenDaysAgo.setUTCDate(fourteenDaysAgo.getUTCDate() - 14)
-    const fourteenStr = getYYYYMMDD(fourteenDaysAgo)
-
-    const twentyEightDaysAgo = new Date(now)
-    twentyEightDaysAgo.setUTCDate(twentyEightDaysAgo.getUTCDate() - 28)
-    const twentyEightStr = getYYYYMMDD(twentyEightDaysAgo)
-
-    mSessions.forEach(s => {
-      if (s.session_date === todayStr) todaySeconds += (s.duration_seconds || 0)
-      if (s.session_date >= startOfWeekStr) weeklySeconds += (s.duration_seconds || 0)
-      
-      if (!lastStudiedAt || s.session_date > lastStudiedAt) lastStudiedAt = s.session_date
-      durations.push(s.duration_seconds || 0)
-
-      const q = questoesDaSessao(s)
-      if (q.total > 0) {
-        totalQ += q.total
-        wrongQ += q.erradas
-        
-        if (s.session_date >= fourteenStr) {
-          recentQ += q.total
-          recentWrong += q.erradas
-        } else if (s.session_date >= twentyEightStr && s.session_date < fourteenStr) {
-          prevQ += q.total
-          prevWrong += q.erradas
-        }
-      }
-    })
-
-    const weeklyStudiedHours = weeklySeconds / 3600
-    const goalHours = m.goal_hours || 1
-    const missingHours = goalHours - weeklyStudiedHours
-    const requiredPacePerDay = missingHours > 0 ? (missingHours / daysRemainingWeek) : 0
-    const progress = Math.min(Math.round((weeklyStudiedHours / goalHours) * 100), 100)
-    
-    let statusLabel = 'No ritmo'
-    let statusColor = 'bg-primary-100 text-primary-700'
-
-    if (mSessions.length === 0) {
-      statusLabel = 'Não iniciada'
-      statusColor = 'bg-slate-100 text-slate-600'
-    } else if (missingHours <= 0) {
-      statusLabel = 'Meta alcançada'
-      statusColor = 'bg-emerald-100 text-emerald-700'
-    } else if (requiredPacePerDay > 1.5 || weeklySeconds === 0) {
-      statusLabel = 'Atrasado'
-      statusColor = 'bg-red-100 text-red-700'
-    }
-
-    const accuracy = precisao(totalQ, wrongQ)
-    const recentAccuracy = precisao(recentQ, recentWrong)
-    const prevAccuracy = precisao(prevQ, prevWrong)
-
-    const sortedDurations = [...durations].sort((a, b) => a - b)
-    const medianDurationMinutes = sortedDurations.length > 0 
-      ? Math.round(sortedDurations[Math.floor(sortedDurations.length / 2)] / 60)
-      : 30
-
-    return {
-      id: m.id,
-      name: m.name,
-      weeklyGoal: goalHours,
-      missingHours,
-      progress,
-      statusLabel,
-      statusColor,
-      daysRemainingWeek,
-      weeklyStudiedFormatted: `${Math.floor(weeklySeconds/3600)}h ${Math.floor((weeklySeconds%3600)/60)}m`,
-      accuracy,
-      recentAccuracy,
-      prevAccuracy,
-      lastStudiedAt,
-      sessionCount: mSessions.length,
-      medianDurationMinutes,
-      errors: errorsBySubject[m.id] || 0
-    }
+  const dashboard = buildDashboard({
+    today, time, sessions: sessions.rows, erros: errors.rows, assuntos: topics.rows,
+    materias: (materias.data || []) as DashboardMateria[], events: (events.data || []) as DashboardEvento[],
+    plan: plan.data, dailyGoal: dailyGoal.data?.daily_goal_hours ?? null,
+    examGoal: examGoal.data?.[0] || null,
   })
-
-  // ----------------------------------------------------
-  // MOTOR DE RECOMENDAÇÃO E DIAGNÓSTICO CONTEXTUAL
-  // ----------------------------------------------------
-  const formatTimeHuman = (hoursDecimal: number) => {
-    const h = Math.floor(hoursDecimal)
-    const m = Math.round((hoursDecimal - h) * 60)
-    if (h > 0 && m > 0) return `${h}h${m.toString().padStart(2, '0')}`
-    if (h > 0) return `${h}h`
-    return `${m}min`
-  }
-
-  let recommendation = null
-  const allDiagnostics: any[] = []
-  const fallbackCandidates: any[] = []
-
-  processedSubjects.forEach(sub => {
-    const daysSince = sub.lastStudiedAt
-      ? Math.floor((now.getTime() - new Date(sub.lastStudiedAt + 'T12:00:00Z').getTime()) / (1000 * 60 * 60 * 24))
-      : null
-
-    let accuracyDrop = 0
-    if (sub.recentAccuracy !== null && sub.prevAccuracy !== null) {
-      accuracyDrop = sub.prevAccuracy - sub.recentAccuracy
-    }
-
-    const scores = {
-      erros: sub.errors * 25,
-      queda: accuracyDrop > 5 ? accuracyDrop * 3 : 0,
-      baixaPrec: (sub.recentAccuracy !== null && sub.recentAccuracy < 65) ? (65 - sub.recentAccuracy) * 2 : 0,
-      tempo: (daysSince !== null && daysSince > 4) ? (daysSince - 4) * 8 : 0,
-      atraso: (sub.missingHours > 0 && sub.sessionCount > 0) ? sub.missingHours * 10 : 0,
-      novo: sub.sessionCount === 0 ? 45 : 0
-    }
-
-    const totalUrgency = Object.values(scores).reduce((acc, val) => acc + val, 0)
-
-    let primaryReason = 'nenhum'
-    let maxScore = -1
-    for (const [key, value] of Object.entries(scores)) {
-      if (value > maxScore) {
-        maxScore = value
-        primaryReason = key
-      }
-    }
-
-    let actionFocus = ''
-    let actionReason = ''
-    let type = ''
-    let msg = ''
-
-    if (maxScore > 0) {
-      if (primaryReason === 'erros') {
-        type = 'erros'
-        actionFocus = 'Revisão e Correção'
-        actionReason = `Você possui ${sub.errors} erros marcados para revisão. Corrigir essas lacunas agora é o caminho mais rápido para evitar repetições e seguir avançando.`
-        msg = `Acúmulo de ${sub.errors} erros recorrentes exige correção.`
-      } else if (primaryReason === 'queda') {
-        type = 'desempenho'
-        actionFocus = 'Recuperação de Desempenho'
-        actionReason = `Notei uma queda de ${accuracyDrop} pontos percentuais na sua precisão recente. É um ótimo momento para revisar os fundamentos e estabilizar os acertos.`
-        msg = `Queda de ${accuracyDrop} p.p. na precisão (vs. período anterior).`
-      } else if (primaryReason === 'baixaPrec') {
-        type = 'desempenho'
-        actionFocus = 'Resolução de Questões'
-        actionReason = `Sua taxa de acertos de ${sub.recentAccuracy}% indica espaço para melhoria. Foque em resolver questões diagnosticando o motivo primário das dificuldades.`
-        msg = `Precisão recente de ${sub.recentAccuracy}% exige atenção especial.`
-      } else if (primaryReason === 'tempo') {
-        type = 'consistencia'
-        actionFocus = 'Retomada de Conteúdo'
-        actionReason = `Já faz ${daysSince} dias que você não estuda esta matéria. Retome o contato hoje para fixar o que já foi aprendido e não perder o ritmo.`
-        msg = `Matéria sem atividade de estudo há ${daysSince} dias.`
-      } else if (primaryReason === 'atraso') {
-        type = 'volume'
-        actionFocus = 'Sessão de Avanço'
-        actionReason = `Você ainda precisa avançar cerca de ${formatTimeHuman(sub.missingHours)} nesta semana. Essa sessão ajuda a recuperar o tempo investido no planejamento.`
-        msg = `Atraso no volume da semana (${formatTimeHuman(sub.missingHours)} pendentes).`
-      } else if (primaryReason === 'novo') {
-        type = 'novo'
-        actionFocus = 'Primeiro Estudo'
-        actionReason = 'Você ainda não possui um histórico registrado. Inicie a primeira sessão para que possamos traçar seu perfil de desempenho nesta disciplina.'
-        msg = 'Primeiro acesso à matéria no sistema.'
-      }
-
-      if (totalUrgency >= 40) {
-        allDiagnostics.push({
-          totalUrgency,
-          type,
-          subject: sub.name,
-          msg,
-          actionFocus,
-          actionReason,
-          subData: sub
-        })
-      }
-    }
-
-    const assumedDays = daysSince !== null ? daysSince : 5
-    const fallbackScore = assumedDays * 2 + (sub.missingHours > 0 ? sub.missingHours * 5 : 0)
-    fallbackCandidates.push({ fallbackScore, subData: sub })
-  })
-
-  allDiagnostics.sort((a, b) => b.totalUrgency - a.totalUrgency)
-
-  const diagnostics = allDiagnostics.slice(0, 3).map(d => ({
-    type: d.type,
-    subject: d.subject,
-    msg: d.msg
-  }))
-
-  if (allDiagnostics.length > 0) {
-    const topIssue = allDiagnostics[0]
-    recommendation = {
-      materiaId: topIssue.subData.id,
-      subject: topIssue.subData.name,
-      topic: topIssue.actionFocus,
-      duration: topIssue.subData.medianDurationMinutes,
-      accuracy: topIssue.subData.recentAccuracy ?? topIssue.subData.accuracy,
-      reason: topIssue.actionReason,
-      actionUrl: `/painel/timer?materiaId=${topIssue.subData.id}`
-    }
-  } else if (fallbackCandidates.length > 0) {
-    fallbackCandidates.sort((a, b) => b.fallbackScore - a.fallbackScore)
-    const bestFallback = fallbackCandidates[0].subData
-    
-    recommendation = {
-      materiaId: bestFallback.id,
-      subject: bestFallback.name,
-      topic: 'Manutenção de Ritmo',
-      duration: bestFallback.medianDurationMinutes,
-      accuracy: bestFallback.recentAccuracy ?? bestFallback.accuracy,
-      reason: 'Seu desempenho e frequência estão equilibrados nesta disciplina. Siga avançando com o estudo regular para consolidar ainda mais o domínio.',
-      actionUrl: `/painel/timer?materiaId=${bestFallback.id}`
-    }
-  }
-
-  // ----------------------------------------------------
-  // FECHAMENTO DA FUNÇÃO
-  // ----------------------------------------------------
-  let todayProgress = 0
-  if (dailyGoalHours > 0) {
-    todayProgress = Math.min(Math.round(((todaySeconds / 3600) / dailyGoalHours) * 100), 100)
-  }
-
-  return {
-    success: true,
-    data: {
-      userName,
-      current: {
-        today: {
-          timeFormatted: `${Math.floor(todaySeconds/3600)}h ${Math.floor((todaySeconds%3600)/60)}min`,
-          goal: dailyGoalHours,
-          progress: todayProgress
-        },
-        streak: {
-          current: currentStreak,
-          best: bestStreak
-        },
-        recommendation,
-        diagnostics
-      },
-      periods,
-      subjects: processedSubjects
-    }
-  }
+  return { success: true, data: { userName: user.user_metadata?.full_name || 'Estudante', ...dashboard } }
 }
 
 export async function updateExamGoal(id: string, data: { name: string, target_date: string }) {

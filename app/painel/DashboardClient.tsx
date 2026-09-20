@@ -1,481 +1,191 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import ConfirmModal from '@/components/ConfirmModal'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Calendar, Clock, Target, TrendingUp, TrendingDown, Plus, Check, X, Edit2, Trash2, Library, ChevronRight, HelpCircle, AlertTriangle, Play, CheckCircle, Flame, BarChart2 } from 'lucide-react'
+import { Clock, Target, Plus, Check, X, Edit2, Trash2, Library, Play, Flame, RotateCcw, ArrowRight, Sparkles } from 'lucide-react'
+import ConfirmModal from '@/components/ConfirmModal'
 import { useToast } from '@/components/ToastContext'
-import { getTasks, createTask, updateTask, deleteTask, toggleTaskStatus } from './actions'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { formatarTempo, type Periodo } from '@/lib/desempenho'
+import type { DashboardOutput } from '@/lib/dashboard'
+import { createTask, updateTask, deleteTask, toggleTaskStatus } from './actions'
 
-type PeriodKey = '7' | '14' | '30' | 'all'
-
-const CustomTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload
-    const hours = Math.floor(data.rawSeconds / 3600)
-    const minutes = Math.floor((data.rawSeconds % 3600) / 60)
-    
-    let timeStr = ''
-    if (hours > 0) timeStr += `${hours}h `
-    timeStr += `${minutes}min estudados`
-    if (data.rawSeconds === 0) timeStr = '0min estudados'
-
-    return (
-      <div className="bg-white p-3 rounded-xl shadow-lg border border-slate-100">
-        <p className="text-slate-500 text-xs font-bold mb-1">{data.fullDate}</p>
-        <p className="text-slate-900 text-sm font-extrabold">{timeStr}</p>
-      </div>
-    )
-  }
-  return null
+type Task = {
+  id: string; title: string; materia_id: string | null; tag_padrao: string | null
+  priority: 'baixa' | 'normal' | 'alta'; is_done: boolean
 }
+type Props = { initialTasks: Task[]; initialStats: DashboardOutput & { userName: string } }
+const priorityWeight = { alta: 3, normal: 2, baixa: 1 }
 
-export default function DashboardClient({ initialEvents, initialTasks, initialStats, initialMaterias }: any) {
-  const [events, setEvents] = useState(initialEvents)
-  const [materias, setMaterias] = useState(initialMaterias)
+export default function DashboardClient({ initialTasks, initialStats: stats }: Props) {
   const [tasks, setTasks] = useState(initialTasks)
-  const [stats, setStats] = useState(initialStats)
-  const [period, setPeriod] = useState<PeriodKey>('7')
-  const { toast } = useToast()
-  
+  const [period, setPeriod] = useState<Periodo>('7')
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null)
   const [isDeletingBlock, setIsDeletingBlock] = useState(false)
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
-  const [taskModalData, setTaskModalData] = useState<{title: string; selection: string; priority: 'baixa' | 'normal' | 'alta';}>({title: '', selection: '', priority: 'normal'})
+  const [taskModalData, setTaskModalData] = useState<{ title: string; selection: string; priority: Task['priority'] }>({ title: '', selection: '', priority: 'normal' })
+  const { toast } = useToast()
+  const materias = stats.materias
+  const sortedTasks = [...tasks].sort((a, b) => priorityWeight[b.priority] - priorityWeight[a.priority])
+  const nextEventId = stats.events.find(e => !e.is_done)?.id
+  const periodData = stats.periods[period]
+  const step = stats.recommendation
+  const firstName = stats.userName.split(' ')[0]
 
   useEffect(() => {
     const mainElement = document.getElementById('main-scroll-container')
-    if (isTaskModalOpen) {
-      document.body.classList.add('overflow-hidden')
-      mainElement?.classList.add('!overflow-hidden')
-    } else {
-      document.body.classList.remove('overflow-hidden')
-      mainElement?.classList.remove('!overflow-hidden')
-    }
+    document.body.classList.toggle('overflow-hidden', isTaskModalOpen)
+    mainElement?.classList.toggle('!overflow-hidden', isTaskModalOpen)
+    return () => { document.body.classList.remove('overflow-hidden'); mainElement?.classList.remove('!overflow-hidden') }
   }, [isTaskModalOpen])
 
-  // Helpers de Data para o Calendário
-  const today = new Date()
-  today.setHours(today.getHours() - 3)
-  const dateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-
-  const todaysEvents = events
-    .filter((e: any) => e.event_date && e.event_date.startsWith(dateString))
-    .sort((a: any, b: any) => a.time.localeCompare(b.time))
-
-  let foundNext = false
-  const eventsWithStatus = todaysEvents.map((event: any) => {
-    let status = ''
-    if (event.is_done) status = 'Feito'
-    else if (!foundNext) { status = 'Próxima'; foundNext = true } 
-    else status = 'Depois'
-    return { ...event, status }
-  })
-
-  const priorityWeight = { alta: 3, normal: 2, baixa: 1 }
-  const sortedTasks = [...tasks].sort((a, b) => priorityWeight[b.priority as keyof typeof priorityWeight] - priorityWeight[a.priority as keyof typeof priorityWeight])
-
   const openTaskModal = () => {
-    setIsTaskModalOpen(true)
-    setTaskModalData({ title: '', selection: materias.length > 0 ? `materia:${materias[0].id}` : 'tag:simulado', priority: 'normal' })
+    setTaskModalData({ title: '', selection: materias.length ? `materia:${materias[0].id}` : 'tag:simulado', priority: 'normal' })
     setEditingTaskId(null)
+    setIsTaskModalOpen(true)
   }
-  
   const closeTaskModal = () => { setIsTaskModalOpen(false); setEditingTaskId(null) }
-
   const handleSaveTask = async () => {
-    if (!taskModalData.title.trim() || !taskModalData.selection) return toast("Por favor, preencha o nome e selecione uma categoria.", "error")
-    const isMateria = taskModalData.selection.startsWith('materia:')
-    const isTag = taskModalData.selection.startsWith('tag:')
-    const materia_id = isMateria ? taskModalData.selection.replace('materia:', '') : null
-    const tag_padrao = isTag ? taskModalData.selection.replace('tag:', '') : null
-
-    if (editingTaskId) {
-      const result = await updateTask(editingTaskId, { title: taskModalData.title, materia_id, tag_padrao, priority: taskModalData.priority })
-      if (result.success && result.task) { setTasks(tasks.map((t: any) => t.id === editingTaskId ? result.task : t)); closeTaskModal() }
-    } else {
-      const result = await createTask({ title: taskModalData.title, materia_id, tag_padrao, priority: taskModalData.priority })
-      if (result.success && result.task) { setTasks([...tasks, result.task]); closeTaskModal() }
-    }
+    if (!taskModalData.title.trim() || !taskModalData.selection) return toast('Preencha o nome e selecione uma categoria.', 'error')
+    const materia_id = taskModalData.selection.startsWith('materia:') ? taskModalData.selection.slice(8) : null
+    const tag_padrao = taskModalData.selection.startsWith('tag:') ? taskModalData.selection.slice(4) : null
+    const data = { title: taskModalData.title.trim(), materia_id, tag_padrao, priority: taskModalData.priority }
+    const result = editingTaskId ? await updateTask(editingTaskId, data) : await createTask(data)
+    if (result.error) return toast(result.error, 'error')
+    if (result.task) setTasks(previous => editingTaskId
+      ? previous.map(t => t.id === editingTaskId ? result.task as Task : t)
+      : [...previous, result.task as Task])
+    closeTaskModal()
   }
-
-  const handleEditTask = (task: any) => {
-    let selection = ''
-    if (task.materia_id) selection = `materia:${task.materia_id}`
-    else if (task.tag_padrao) selection = `tag:${task.tag_padrao}`
-    setTaskModalData({ title: task.title, selection, priority: task.priority })
+  const handleEditTask = (task: Task) => {
+    setTaskModalData({ title: task.title, selection: task.materia_id ? `materia:${task.materia_id}` : task.tag_padrao ? `tag:${task.tag_padrao}` : '', priority: task.priority })
     setEditingTaskId(task.id)
     setIsTaskModalOpen(true)
   }
-
   const executeDeleteTask = async () => {
     if (!taskToDelete) return
     setIsDeletingBlock(true)
     const result = await deleteTask(taskToDelete)
-    if(result.success) setTasks(tasks.filter((t: any) => t.id !== taskToDelete))
+    if (result.success) setTasks(previous => previous.filter(t => t.id !== taskToDelete))
+    else toast(result.error || 'Não foi possível excluir a tarefa.', 'error')
     setIsDeletingBlock(false)
     setTaskToDelete(null)
   }
-
-  const handleToggleTask = async (id: string, currentStatus: boolean) => {
-    const result = await toggleTaskStatus(id, !currentStatus)
-    if(result.success) setTasks(tasks.map((t: any) => t.id === id ? { ...t, is_done: !currentStatus } : t))
+  const handleToggleTask = async (task: Task) => {
+    const result = await toggleTaskStatus(task.id, !task.is_done)
+    if (result.success) setTasks(previous => previous.map(t => t.id === task.id ? { ...t, is_done: !task.is_done } : t))
+    else toast(result.error || 'Não foi possível atualizar a tarefa.', 'error')
+  }
+  const taskTag = (task: Task) => {
+    const labels: Record<string, string> = { simulado: 'Simulado', questoes: 'Questões', revisao: 'Revisão' }
+    return task.tag_padrao ? labels[task.tag_padrao] || task.tag_padrao : materias.find(m => m.id === task.materia_id)?.name
   }
 
-  const renderTaskTag = (task: any) => {
-    const TAGS_PADRAO: Record<string, { name: string; colorClass: string }> = {
-      simulado: { name: 'Simulado', colorClass: 'text-purple-600 bg-purple-100' },
-      questoes: { name: 'Questões', colorClass: 'text-orange-600 bg-orange-100' },
-      revisao: { name: 'Revisão', colorClass: 'text-blue-600 bg-blue-100' }
-    }
+  return <div className="min-h-screen bg-slate-50 p-4 text-slate-900 md:p-8">
+    <div className="mx-auto max-w-7xl space-y-8">
+      <header>
+        <h1 className="text-3xl font-extrabold tracking-tight">Bom estudo, {firstName}.</h1>
+        <p className="mt-2 text-sm font-medium text-slate-500">Veja o que é mais útil fazer agora e acompanhe seu progresso.</p>
+        {stats.examGoal && <Link href="/painel/objetivo" className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-primary-700">
+          <Target className="h-3.5 w-3.5" /> Objetivo: {stats.examGoal.name} · {stats.examGoal.target_date.split('-').reverse().join('/')}
+        </Link>}
+      </header>
 
-    if (task.tag_padrao) {
-      const config = TAGS_PADRAO[task.tag_padrao]
-      if (config) return <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${config.colorClass}`}>{config.name}</span>
-    } else if (task.materia_id) {
-      const mat = materias.find((m: any) => m.id === task.materia_id)
-      if (mat) return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-primary-100 text-primary-700">{mat.name}</span>
-    }
-    return null
-  }
-
-  if (!stats) return <div className="p-8">Carregando dados...</div>
-
-  const firstName = stats.userName.split(' ')[0]
-  const currentStats = stats.current
-  const periodData = stats.periods[period]
-
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        
-        {/* HEADER */}
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Bom estudo, {firstName}.</h1>
-          <p className="text-sm text-slate-500 mt-2 font-medium">Veja o que fazer agora e acompanhe seu histórico.</p>
-        </div>
-
-        {/* SECTION 1: ESTADO ATUAL (Recomendação + Hoje/Streak) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-primary-900 rounded-3xl p-8 shadow-md text-white relative overflow-hidden flex flex-col justify-between min-h-[300px]">
-            <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary-600 rounded-full blur-[80px] opacity-60 pointer-events-none"></div>
-            <div>
-              <p className="text-primary-200 font-bold uppercase tracking-widest text-xs mb-5">Seu Próximo Estudo</p>
-              {currentStats.recommendation ? (
-                <>
-                  <h2 className="text-3xl sm:text-4xl font-extrabold mb-1">{currentStats.recommendation.subject}</h2>
-                  <h3 className="text-lg text-primary-100 font-medium mb-6">{currentStats.recommendation.topic}</h3>
-                  <div className="flex flex-wrap gap-3 mb-6">
-                    <div className="flex items-center gap-2 bg-primary-800/60 px-3 py-1.5 rounded-lg border border-primary-700/50">
-                      <Clock className="w-4 h-4 text-primary-300" />
-                      <span className="text-sm font-semibold text-primary-50">Estude por {currentStats.recommendation.duration} min</span>
-                    </div>
-                  </div>
-                  <p className="text-primary-100/90 text-sm max-w-xl leading-relaxed mb-6">
-                    {currentStats.recommendation.reason}
-                  </p>
-                </>
-              ) : (
-                <div className="py-6">
-                  <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">Configuração necessária</h2>
-                  <p className="text-primary-100 text-lg">Adicione suas matérias para receber recomendações personalizadas baseadas no seu histórico.</p>
-                </div>
-              )}
-            </div>
-            <div>
-              <Link href={currentStats.recommendation?.actionUrl || '/painel/materias'} className="inline-flex items-center gap-2 bg-white text-primary-900 px-6 py-3.5 rounded-xl font-bold hover:bg-primary-50 transition-colors shadow-sm w-max">
-                <Play className="w-4 h-4 fill-current" />
-                {currentStats.recommendation ? 'Começar estudo' : 'Ir para Matérias'}
-              </Link>
-            </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <section aria-labelledby="next-step-title" className="relative flex min-h-[300px] flex-col justify-between overflow-hidden rounded-3xl bg-primary-900 p-7 text-white shadow-md sm:p-8 lg:col-span-2">
+          <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary-600 opacity-60 blur-[80px]" />
+          <div className="relative">
+            <p className="mb-5 text-xs font-bold uppercase tracking-widest text-primary-200">Seu próximo passo</p>
+            <h2 id="next-step-title" className="text-3xl font-extrabold sm:text-4xl">{step.title}</h2>
+            {step.subtitle && <p className="mt-1 text-lg font-medium text-primary-100">{step.subtitle}</p>}
+            {(step.duration || step.questions) && <div className="mt-5 flex flex-wrap gap-2">
+              {step.duration && <span className="inline-flex items-center gap-2 rounded-lg border border-primary-700/50 bg-primary-800/60 px-3 py-1.5 text-sm font-semibold text-primary-50"><Clock className="h-4 w-4 text-primary-300" />{step.duration} min</span>}
+              {step.questions && <span className="rounded-lg border border-primary-700/50 bg-primary-800/60 px-3 py-1.5 text-sm font-semibold text-primary-50">~{step.questions} questões</span>}
+            </div>}
+            <p className="mb-6 mt-5 max-w-xl text-sm leading-relaxed text-primary-100/90">{step.reason}</p>
+            {stats.maturity === 'learning' && <p className="mb-5 text-xs font-semibold text-primary-200">Estamos conhecendo seu ritmo; tendências só aparecem com dados suficientes.</p>}
           </div>
+          <Link href={step.href} className="relative inline-flex w-max items-center gap-2 rounded-xl bg-white px-6 py-3.5 font-bold text-primary-900 shadow-sm transition-colors hover:bg-primary-50">
+            {step.kind === 'review' ? <RotateCcw className="h-4 w-4" /> : <Play className="h-4 w-4" />}{step.cta}
+          </Link>
+        </section>
 
-          <div className="flex flex-col gap-6">
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex-1 flex flex-col justify-center">
-              <div className="flex justify-between items-start mb-2">
-                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Hoje</span>
-                <Clock className="w-4 h-4 text-primary-600" />
-              </div>
-              <h3 className="text-2xl font-extrabold text-slate-900">{currentStats.today.timeFormatted}</h3>
-              {currentStats.today.goal > 0 ? (
-                <>
-                  <p className="text-sm font-medium text-slate-500 mb-3">{currentStats.today.progress}% da meta de {currentStats.today.goal}h</p>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div className="bg-primary-600 h-2 rounded-full transition-all" style={{ width: `${currentStats.today.progress}%` }}></div>
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm font-medium text-slate-500">Sem meta diária configurada</p>
-              )}
-            </div>
-            
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex-1 flex flex-col justify-center">
-              <div className="flex justify-between items-start mb-2">
-                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Sequência atual</span>
-                <Flame className="w-4 h-4 text-orange-500" />
-              </div>
-              {currentStats.streak.current > 0 ? (
-                <h3 className="text-2xl font-extrabold text-slate-900">{currentStats.streak.current} {currentStats.streak.current === 1 ? 'dia' : 'dias'}</h3>
-              ) : (
-                <h3 className="text-xl font-extrabold text-slate-400">—</h3>
-              )}
-              <p className="text-sm font-medium text-slate-500 mt-1">Melhor sequência: {currentStats.streak.best} dias</p>
-            </div>
+        <div className="flex flex-col gap-4">
+          <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wider text-slate-400">Estudo de hoje</span><Clock className="h-4 w-4 text-primary-600" /></div>
+            <p className="mt-2 text-2xl font-extrabold">{formatarTempo(stats.today.seconds)}</p>
+            {stats.today.goal !== null && stats.today.goal > 0 ? <>
+              <p className="mt-1 text-sm font-medium text-slate-500">{stats.today.progress}% da meta de {stats.today.goal}h</p>
+              <div className="mt-3 h-2 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-primary-600" style={{ width: `${stats.today.progress}%` }} /></div>
+            </> : <p className="mt-1 text-sm text-slate-500">{stats.today.goal === 0 ? 'Meta diária definida como 0h' : 'Sem meta diária configurada'}</p>}
           </div>
-        </div>
-
-        {/* SECTION 2: ANÁLISE DO PERÍODO */}
-        <div>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-            <h2 className="text-xl font-bold text-slate-900">Análise do Período</h2>
-            <div className="flex bg-white p-1 rounded-xl shadow-sm border border-slate-200">
-              {(['7', '14', '30', 'all'] as PeriodKey[]).map(p => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-colors ${period === p ? 'bg-primary-50 text-primary-700' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  {p === 'all' ? 'Todo Período' : `${p} dias`}
-                </button>
-              ))}
-            </div>
+          <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wider text-slate-400">Sequência atual</span><Flame className="h-4 w-4 text-orange-500" /></div>
+            <p className="mt-2 text-2xl font-extrabold">{stats.streak.current} {stats.streak.current === 1 ? 'dia' : 'dias'}</p>
+            <p className="mt-1 text-sm text-slate-500">Melhor sequência: {stats.streak.best} dias</p>
           </div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-            <div className="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm">
-              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block">Tempo Estudado</span>
-              <span className="text-2xl font-extrabold text-slate-900">{periodData.timeFormatted}</span>
-            </div>
-            <div className="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm">
-              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block">Questões Respondidas</span>
-              <span className="text-2xl font-extrabold text-slate-900">{periodData.questions}</span>
-            </div>
-            <div className="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm">
-              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block">Precisão</span>
-              <span className="text-2xl font-extrabold text-slate-900">{periodData.accuracy !== null ? `${periodData.accuracy}%` : '—'}</span>
-            </div>
-            <div className="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
-              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block">Evolução</span>
-              <div className="flex items-center gap-2">
-                <span className={`font-extrabold ${periodData.evolutionLabel.includes('Dados') ? 'text-slate-400 text-sm leading-tight' : 'text-slate-900 text-2xl'}`}>
-                  {periodData.evolutionLabel}
-                </span>
-                {periodData.evolutionLabel.includes('+') && <TrendingUp className="w-5 h-5 text-emerald-500" />}
-                {periodData.evolutionLabel.includes('-') && !periodData.evolutionLabel.includes('Dados') && <TrendingDown className="w-5 h-5 text-red-500" />}
-              </div>
-              {!periodData.evolutionLabel.includes('Dados') && (
-                <span className="text-[10px] text-slate-400 mt-1 block">vs. período anterior</span>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-100 p-6 rounded-3xl shadow-sm">
-            <h3 className="text-sm font-bold text-slate-900 mb-4">Atividade Visual (Horas)</h3>
-            <div className="h-48 w-full">
-              {periodData.activityChart.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={periodData.activityChart} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
-                    <Tooltip cursor={{ fill: '#f8fafc' }} content={<CustomTooltip />} />
-                    <Bar dataKey="value" fill="#71c385" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-sm text-slate-400">Sem dados no período.</div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* SECTION 3: DIAGNÓSTICO (Atenção) */}
-        {currentStats.diagnostics.length > 0 && (
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 mb-4">Onde você precisa de atenção</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {currentStats.diagnostics.map((diag: any, i: number) => (
-                <div key={i} className="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm flex items-start gap-4">
-                  <div className={`p-2 rounded-xl flex-shrink-0 ${
-                    diag.type === 'erros' ? 'bg-red-100 text-red-600' : 
-                    diag.type === 'desempenho' ? 'bg-orange-100 text-orange-600' : 
-                    'bg-amber-100 text-amber-600'
-                  }`}>
-                    <AlertTriangle className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-sm">{diag.subject}</h3>
-                    <p className="text-slate-500 text-sm mt-1 leading-snug font-medium">{diag.msg}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* SECTION 4: MATÉRIAS */}
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-bold text-slate-900">Acompanhamento por Matéria</h2>
-            <Link href="/painel/materias" className="text-primary-600 text-sm font-semibold hover:text-primary-700">Configurar</Link>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {stats.subjects.length === 0 ? (
-              <div className="col-span-full flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center shadow-sm">
-                <Library className="w-10 h-10 text-slate-300 mb-3" />
-                <p className="text-slate-500 text-sm">Nenhuma matéria para acompanhar.</p>
-              </div>
-            ) : (
-              stats.subjects.map((sub: any) => (
-                <div key={sub.id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="font-bold text-slate-900">{sub.name}</h3>
-                      <p className="text-xs text-slate-500 font-medium mt-0.5">{sub.weeklyGoal}h semanais</p>
-                    </div>
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${sub.statusColor}`}>
-                      {sub.statusLabel}
-                    </span>
-                  </div>
-                  
-                  <div>
-                    <div className="mb-4">
-                      <div className="flex justify-between items-center mb-1.5">
-                        <span className="text-xs font-semibold text-slate-700">Progresso semanal</span>
-                        <span className="text-xs font-bold text-primary-600">{sub.progress}%</span>
-                      </div>
-                      <div className="w-full bg-slate-100 rounded-full h-1.5">
-                        <div className="bg-primary-600 h-1.5 rounded-full transition-all" style={{ width: `${sub.progress}%` }}></div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between border-t border-slate-100 pt-3">
-                      <div className="text-xs text-slate-500 font-medium">Estudado: <strong className="text-slate-900">{sub.weeklyStudiedFormatted}</strong></div>
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                        <Target className="w-3.5 h-3.5 text-slate-400" />
-                        {sub.accuracy !== null ? `${sub.accuracy}% prec` : '—'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* SECTION 5: PLANEJADO E TAREFAS */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-bold text-slate-900">Planejado para hoje</h2>
-              <Link href="/painel/calendario" className="text-sm text-primary-600 font-semibold hover:text-primary-700">Ver Agenda</Link>
-            </div>
-            <div className="flex flex-col gap-3">
-              {eventsWithStatus.length === 0 ? (
-                <p className="text-center text-slate-500 py-4 text-sm font-medium border border-dashed border-slate-200 rounded-xl">Sem planejamento no calendário hoje.</p>
-              ) : (
-                eventsWithStatus.map((event: any) => (
-                  <div key={event.id} className="flex items-center gap-4 py-1">
-                    <div className="w-12 text-slate-900 font-bold text-sm text-right">{event.time}</div>
-                    <div className="w-1.5 h-8 rounded-full bg-primary-300"></div>
-                    <div className={`flex-1 text-sm font-semibold ${event.is_done ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{event.title}</div>
-                    <div>
-                      {event.status === 'Feito' && <span className="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-1 rounded font-bold uppercase">Feito</span>}
-                      {event.status === 'Próxima' && <span className="bg-primary-100 text-primary-700 text-[10px] px-2 py-1 rounded font-bold uppercase">Próxima</span>}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-bold text-slate-900">Tarefas Manuais</h2>
-              <button onClick={openTaskModal} className="bg-primary-50 text-primary-600 p-2 rounded-lg hover:bg-primary-100 transition"><Plus className="w-4 h-4" /></button>
-            </div>
-            <div className="space-y-3">
-              {sortedTasks.length === 0 ? (
-                <p className="text-center text-slate-500 py-4 text-sm border border-dashed border-slate-200 rounded-xl">Nenhuma tarefa pendente.</p>
-              ) : (
-                sortedTasks.map((task: any) => (
-                  <div key={task.id} className="flex items-start gap-3 border border-slate-100 rounded-xl p-3 group relative hover:border-slate-200 transition">
-                    <div onClick={() => handleToggleTask(task.id, task.is_done)} className={`w-5 h-5 border-2 rounded flex-shrink-0 cursor-pointer flex items-center justify-center mt-0.5 ${task.is_done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300'}`}>
-                      {task.is_done && <Check className="w-3 h-3 stroke-[3]" />}
-                    </div>
-                    <div className="flex-1 min-w-0 pr-12">
-                      <p className={`font-medium break-words leading-snug text-sm ${task.is_done ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{task.title}</p>
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">{renderTaskTag(task)}</div>
-                    </div>
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleEditTask(task)} className="p-1.5 text-slate-400 hover:text-primary-600 rounded-md transition"><Edit2 className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => setTaskToDelete(task.id)} className="p-1.5 text-slate-400 hover:text-red-600 rounded-md transition"><Trash2 className="w-3.5 h-3.5" /></button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          <section className="flex-1 rounded-3xl border border-slate-100 bg-white p-5 shadow-sm" aria-labelledby="day-title">
+            <div className="flex items-center justify-between gap-3"><h2 id="day-title" className="font-bold">Seu dia</h2><Link href="/painel/calendario" className="text-xs font-semibold text-primary-700 hover:underline">Ver Calendário</Link></div>
+            {stats.events.length ? <div className="mt-3 space-y-2">{stats.events.map(event => <div key={event.id} className="flex items-start gap-3 text-sm">
+              <span className="w-11 shrink-0 font-bold text-slate-700">{event.time.slice(0, 5)}</span>
+              <div className="min-w-0 flex-1"><p className={`font-semibold ${event.is_done ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{event.title}</p><p className="text-xs text-slate-500">{event.activity_type || 'Estudo'} · {event.duration} min</p></div>
+              {event.is_done ? <Check className="h-4 w-4 text-emerald-600" /> : event.id === nextEventId ? <span className="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] font-bold text-primary-700">Pendente</span> : null}
+            </div>)}</div> : <p className="mt-3 text-sm text-slate-500">Nada planejado para hoje.</p>}
+          </section>
         </div>
       </div>
 
-      {isTaskModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-overlay">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl animate-modal">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-slate-900">{editingTaskId ? 'Editar Tarefa' : 'Nova Tarefa'}</h3>
-              <button onClick={closeTaskModal} className="p-2 hover:bg-slate-100 rounded-lg"><X className="w-5 h-5 text-slate-600" /></button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">O que precisa ser feito?</label>
-                <input type="text" value={taskModalData.title} onChange={(e) => setTaskModalData({ ...taskModalData, title: e.target.value })} className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 bg-white" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Prioridade</label>
-                <select value={taskModalData.priority} onChange={(e) => setTaskModalData({ ...taskModalData, priority: e.target.value as any })} className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 bg-white">
-                  <option value="baixa">Baixa</option>
-                  <option value="normal">Normal</option>
-                  <option value="alta">Alta</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Categoria</label>
-                <select value={taskModalData.selection} onChange={(e) => setTaskModalData({ ...taskModalData, selection: e.target.value })} className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 bg-white">
-                  <option value="" disabled>Selecione uma categoria</option>
-                  <optgroup label="Padrões">
-                    <option value="tag:simulado">Simulado</option>
-                    <option value="tag:questoes">Questões</option>
-                    <option value="tag:revisao">Revisão</option>
-                  </optgroup>
-                  {materias.length > 0 && (
-                    <optgroup label="Suas Matérias">
-                      {materias.map((m: any) => <option key={m.id} value={`materia:${m.id}`}>{m.name}</option>)}
-                    </optgroup>
-                  )}
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={closeTaskModal} className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition">Cancelar</button>
-              <button onClick={handleSaveTask} className="flex-1 px-4 py-2.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition">Salvar</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {stats.insights.length > 0 && <section aria-labelledby="insights-title">
+        <h2 id="insights-title" className="mb-4 flex items-center gap-2 text-lg font-bold"><Sparkles className="h-5 w-5 text-primary-600" />O Revyza percebeu</h2>
+        <div className="grid gap-4 md:grid-cols-2">{stats.insights.map(insight => <article key={`${insight.family}:${insight.title}`} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+          <h3 className="font-bold">{insight.title}</h3><p className="mt-1 text-sm leading-relaxed text-slate-600">{insight.message}</p>
+        </article>)}</div>
+      </section>}
 
-      <ConfirmModal
-        isOpen={!!taskToDelete}
-        title="Excluir Tarefa"
-        message="Tem certeza que deseja excluir esta tarefa?"
-        confirmText="Sim, excluir"
-        onConfirm={executeDeleteTask}
-        onCancel={() => setTaskToDelete(null)}
-        isLoading={isDeletingBlock}
-      />
+      <section aria-labelledby="period-title">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 id="period-title" className="text-lg font-bold">Resumo recente</h2>
+          <div className="flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">{(['7', '14', '30', 'all'] as Periodo[]).map(p => <button key={p} onClick={() => setPeriod(p)} aria-pressed={period === p} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${period === p ? 'bg-primary-50 text-primary-700' : 'text-slate-500 hover:text-slate-700'}`}>{p === 'all' ? 'Todo período' : `${p} dias`}</button>)}</div>
+        </div>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {[
+            { label: 'Tempo estudado', value: formatarTempo(periodData.seconds) },
+            { label: 'Questões', value: String(periodData.questions) },
+            { label: 'Precisão', value: periodData.accuracy === null ? '—' : `${periodData.accuracy}%`, note: periodData.questions > 0 && periodData.questions < 20 ? 'Amostra pequena' : undefined },
+            { label: 'Evolução', value: periodData.evolution === null ? '—' : `${periodData.evolution > 0 ? '+' : ''}${periodData.evolution} p.p.`, note: period === 'all' ? 'Sem comparação' : periodData.evolution === null ? 'Exige 20 questões em cada período' : 'vs. período anterior' },
+          ].map(item => <div key={item.label} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><span className="block text-xs font-bold uppercase tracking-wider text-slate-400">{item.label}</span><strong className="mt-2 block text-2xl text-slate-900">{item.value}</strong>{item.note && <span className="mt-1 block text-xs text-slate-500">{item.note}</span>}</div>)}
+        </div>
+        <Link href={`/painel/estatisticas?periodo=${period}`} className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary-700 hover:underline">Ver análise completa <ArrowRight className="h-4 w-4" /></Link>
+      </section>
+
+      {stats.subjects.length > 0 && <section aria-labelledby="subjects-title">
+        <div className="mb-4 flex items-center justify-between"><h2 id="subjects-title" className="text-lg font-bold">Matérias para acompanhar</h2><Link href="/painel/materias" className="text-sm font-semibold text-primary-700 hover:underline">Todas as matérias</Link></div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{stats.subjects.map(subject => <div key={subject.id} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3"><h3 className="font-bold">{subject.name}</h3><span className="rounded-md bg-primary-50 px-2 py-1 text-[10px] font-bold text-primary-700">{subject.priority}</span></div>
+          <p className="mt-2 text-xs text-slate-500">{formatarTempo(subject.weeklyStudiedSeconds)} de {subject.weeklyGoal}h semanais</p>
+          {subject.progress !== null && <div className="mt-3 h-1.5 rounded-full bg-slate-100"><div className="h-1.5 rounded-full bg-primary-600" style={{ width: `${subject.progress}%` }} /></div>}
+        </div>)}</div>
+      </section>}
+
+      <section aria-labelledby="tasks-title" className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-4 flex items-center justify-between"><h2 id="tasks-title" className="text-lg font-bold">Tarefas manuais</h2><button onClick={openTaskModal} aria-label="Adicionar tarefa" className="rounded-lg bg-primary-50 p-2 text-primary-600 hover:bg-primary-100"><Plus className="h-4 w-4" /></button></div>
+        {sortedTasks.length ? <div className="grid gap-3 md:grid-cols-2">{sortedTasks.map(task => <div key={task.id} className="flex items-start gap-3 rounded-xl border border-slate-100 p-3">
+          <button onClick={() => handleToggleTask(task)} aria-label={task.is_done ? 'Marcar como pendente' : 'Concluir tarefa'} className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 ${task.is_done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300'}`}>{task.is_done && <Check className="h-3 w-3" />}</button>
+          <div className="min-w-0 flex-1"><p className={`break-words text-sm font-medium ${task.is_done ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{task.title}</p>{taskTag(task) && <span className="mt-1 inline-block rounded-md bg-primary-50 px-2 py-0.5 text-[11px] font-semibold text-primary-700">{taskTag(task)}</span>}</div>
+          <button onClick={() => handleEditTask(task)} aria-label="Editar tarefa" className="p-1 text-slate-400 hover:text-primary-600"><Edit2 className="h-4 w-4" /></button>
+          <button onClick={() => setTaskToDelete(task.id)} aria-label="Excluir tarefa" className="p-1 text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+        </div>)}</div> : <p className="flex items-center gap-2 text-sm text-slate-500"><Library className="h-4 w-4" />Nenhuma tarefa manual pendente.</p>}
+      </section>
     </div>
-  )
+
+    {isTaskModalOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"><div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+      <div className="mb-6 flex items-center justify-between"><h3 className="text-xl font-bold">{editingTaskId ? 'Editar tarefa' : 'Nova tarefa'}</h3><button onClick={closeTaskModal} aria-label="Fechar" className="rounded-lg p-2 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
+      <div className="space-y-4">
+        <label className="block text-sm font-medium">O que precisa ser feito?<input value={taskModalData.title} onChange={e => setTaskModalData({ ...taskModalData, title: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2" /></label>
+        <label className="block text-sm font-medium">Prioridade<select value={taskModalData.priority} onChange={e => setTaskModalData({ ...taskModalData, priority: e.target.value as Task['priority'] })} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2"><option value="baixa">Baixa</option><option value="normal">Normal</option><option value="alta">Alta</option></select></label>
+        <label className="block text-sm font-medium">Categoria<select value={taskModalData.selection} onChange={e => setTaskModalData({ ...taskModalData, selection: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2"><option value="" disabled>Selecione uma categoria</option><optgroup label="Padrões"><option value="tag:simulado">Simulado</option><option value="tag:questoes">Questões</option><option value="tag:revisao">Revisão</option></optgroup>{materias.length > 0 && <optgroup label="Suas matérias">{materias.map(m => <option key={m.id} value={`materia:${m.id}`}>{m.name}</option>)}</optgroup>}</select></label>
+      </div>
+      <div className="mt-6 flex gap-3"><button onClick={closeTaskModal} className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 font-medium">Cancelar</button><button onClick={handleSaveTask} className="flex-1 rounded-xl bg-primary-600 px-4 py-2.5 font-medium text-white">Salvar</button></div>
+    </div></div>}
+    <ConfirmModal isOpen={!!taskToDelete} title="Excluir tarefa" message="Tem certeza de que deseja excluir esta tarefa?" confirmText="Sim, excluir" onConfirm={executeDeleteTask} onCancel={() => setTaskToDelete(null)} isLoading={isDeletingBlock} />
+  </div>
 }

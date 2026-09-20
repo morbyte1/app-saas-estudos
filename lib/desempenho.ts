@@ -171,9 +171,17 @@ export function atividadeAno(sessoes: SessaoDesempenho[], hoje = dataBrasil()): 
   return dias
 }
 
-export function padroesErros(erros: ErroDesempenho[], materias: { id: string; name: string }[]) {
-  if (erros.length < 5) return []
-  const result: string[] = []
+export type PadroesErros = {
+  total: number
+  motivo: { nome: string; quantidade: number } | null
+  assunto: { nome: string; quantidade: number } | null
+  materia: { nome: string; quantidade: number } | null
+  recorrentes: number | null
+}
+
+// A mesma leitura estruturada alimenta Desempenho e os insights da Dashboard.
+export function analisarPadroesErros(erros: ErroDesempenho[], materias: { id: string; name: string }[]): PadroesErros | null {
+  if (erros.length < 5) return null
   const nomes = new Map(materias.map(m => [m.id, m.name]))
   const porMotivo = new Map<string, number>()
   const porMateria = new Map<string, number>()
@@ -189,18 +197,26 @@ export function padroesErros(erros: ErroDesempenho[], materias: { id: string; na
     }
   }
   const principal = [...porMotivo].sort((a, b) => b[1] - a[1])[0]
-  if (principal && principal[1] >= 3 && principal[1] / erros.length >= 0.4)
-    result.push(`${principal[0]} aparece em ${principal[1]} dos ${erros.length} erros registrados no Caderno.`)
-  const assunto = [...porAssunto.values()].sort((a, b) => b.count - a.count)[0]
-  if (assunto && assunto.count >= 3 && assunto.count / erros.length >= 0.4)
-    result.push(`${assunto.count} dos ${erros.length} erros registrados estão no assunto ${assunto.name}.`)
-  else {
-    const materia = [...porMateria].sort((a, b) => b[1] - a[1])[0]
-    if (materia && materia[1] >= 3 && materia[1] / erros.length >= 0.4)
-      result.push(`${materia[1]} dos ${erros.length} erros registrados estão em ${nomes.get(materia[0]) || 'uma matéria'}.`)
-  }
+  const motivo = principal && principal[1] >= 3 && principal[1] / erros.length >= 0.4
+    ? { nome: principal[0], quantidade: principal[1] } : null
+  const topAssunto = [...porAssunto.values()].sort((a, b) => b.count - a.count)[0]
+  const assunto = topAssunto && topAssunto.count >= 3 && topAssunto.count / erros.length >= 0.4
+    ? { nome: topAssunto.name, quantidade: topAssunto.count } : null
+  const topMateria = [...porMateria].sort((a, b) => b[1] - a[1])[0]
+  const materia = !assunto && topMateria && topMateria[1] >= 3 && topMateria[1] / erros.length >= 0.4
+    ? { nome: nomes.get(topMateria[0]) || 'uma matéria', quantidade: topMateria[1] } : null
   const recorrentes = erros.filter(e => (e.erros_recorrentes_count || 0) > 0).length
-  if (recorrentes >= 3 && recorrentes / erros.length >= 0.4)
-    result.push(`${recorrentes} dos ${erros.length} erros registrados tiveram pelo menos uma falha em revisão.`)
+  return { total: erros.length, motivo, assunto, materia,
+    recorrentes: recorrentes >= 3 && recorrentes / erros.length >= 0.4 ? recorrentes : null }
+}
+
+export function padroesErros(erros: ErroDesempenho[], materias: { id: string; name: string }[]) {
+  const padrao = analisarPadroesErros(erros, materias)
+  if (!padrao) return []
+  const result: string[] = []
+  if (padrao.motivo) result.push(`${padrao.motivo.nome} aparece em ${padrao.motivo.quantidade} dos ${padrao.total} erros registrados no Caderno.`)
+  if (padrao.assunto) result.push(`${padrao.assunto.quantidade} dos ${padrao.total} erros registrados estão no assunto ${padrao.assunto.nome}.`)
+  else if (padrao.materia) result.push(`${padrao.materia.quantidade} dos ${padrao.total} erros registrados estão em ${padrao.materia.nome}.`)
+  if (padrao.recorrentes) result.push(`${padrao.recorrentes} dos ${padrao.total} erros registrados tiveram pelo menos uma falha em revisão.`)
   return result.slice(0, 3)
 }

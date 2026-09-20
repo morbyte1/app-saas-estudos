@@ -11,16 +11,17 @@ import CadernoForm from './CadernoForm'
 import ReviewFlow from './ReviewFlow'
 
 interface Props {
+  initialArea?: 'erros' | 'revisoes'
   erros: CadernoErro[]
   revisoes: CadernoRevisao[]
   materias: { id: string; name: string }[]
   assuntos: { id: string; name: string; materia_id: string }[]
 }
 
-export default function CadernoClient({ erros, revisoes, materias, assuntos }: Props) {
+export default function CadernoClient({ erros, revisoes, materias, assuntos, initialArea = 'erros' }: Props) {
   const router = useRouter()
   const { toast } = useToast()
-  const [area, setArea] = useState<'erros' | 'revisoes'>('erros')
+  const [area, setArea] = useState<'erros' | 'revisoes'>(initialArea)
   const [status, setStatus] = useState('todos')
   const [materia, setMateria] = useState('todas')
   const [busca, setBusca] = useState('')
