@@ -36,7 +36,7 @@ export function Hero() {
         <div className="pointer-events-none absolute -inset-8 rounded-[40px] bg-[radial-gradient(ellipse_at_50%_50%,rgba(124,169,130,.14),transparent_72%)] blur-2xl" aria-hidden="true" />
         <div className="pointer-events-none absolute -inset-3 rounded-[32px] border border-[#E0EEC6]/[.09] sm:-inset-6" aria-hidden="true" />
         <span className="pointer-events-none absolute -left-3 -top-3 z-10 h-px w-10 bg-[#C2A83E]/75 sm:-left-6 sm:-top-6" aria-hidden="true" />
-        <ProductScreenshot id="dashboardOverview" priority className="relative shadow-[0_45px_100px_-35px_rgba(0,0,0,.85)]" />
+        <ProductScreenshot id="dashboardOverview" preload className="relative shadow-[0_45px_100px_-35px_rgba(0,0,0,.85)]" />
         <p className="mt-4 text-center text-[11px] uppercase tracking-[0.2em] text-[#F1F7ED]/40">Visão geral do produto</p>
       </div>
     </div>
